@@ -3,6 +3,246 @@
 -- Units for CDACC examined courses
 -- ============================================================================
 
+-- ============================================================================
+-- ENSURE COURSES EXIST (for foreign key constraint)
+-- These course inserts ensure the courses exist before units are added
+-- ============================================================================
+
+-- Insert Departments
+INSERT INTO departments (name) VALUES 
+  ('Engineering & Technology'),
+  ('Building & Construction'),
+  ('Business & Administration'),
+  ('Health & Medical')
+ON CONFLICT (name) DO NOTHING;
+
+-- Automotive Engineering Courses
+INSERT INTO courses (id, name, department_id) VALUES 
+  ('CDACC-454A-AE', 'Automotive Engineering', (SELECT id FROM departments WHERE name = 'Engineering & Technology' LIMIT 1)),
+  ('CDACC-554A-AT', 'Automotive Technician', (SELECT id FROM departments WHERE name = 'Engineering & Technology' LIMIT 1))
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('CDACC-454A-AE', 'certificate', true, 'D+', 'module', 24),
+  ('CDACC-554A-AT', 'diploma', true, 'C-', 'module', 36)
+ON CONFLICT (course_id, level) DO NOTHING;
+
+-- Automotive Engineering - Modules and Semesters
+INSERT INTO modules (course_type_id, module_index, exam_body) VALUES
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-454A-AE' AND level = 'certificate' LIMIT 1), 1, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-454A-AE' AND level = 'certificate' LIMIT 1), 2, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-454A-AE' AND level = 'certificate' LIMIT 1), 3, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-454A-AE' AND level = 'certificate' LIMIT 1), 4, 'CDACC')
+ON CONFLICT (course_type_id, module_index) DO NOTHING;
+
+INSERT INTO semesters (module_id, semester_index, duration_months, fee, practical_fee, internal_exams) VALUES
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-454A-AE' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-454A-AE' AND level = 'certificate' LIMIT 1) AND module_index = 2 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-454A-AE' AND level = 'certificate' LIMIT 1) AND module_index = 3 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-454A-AE' AND level = 'certificate' LIMIT 1) AND module_index = 4 LIMIT 1), 1, 6, 0, 0, 2)
+ON CONFLICT DO NOTHING;
+
+-- Automotive Technician - Modules and Semesters
+INSERT INTO modules (course_type_id, module_index, exam_body) VALUES
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-554A-AT' AND level = 'diploma' LIMIT 1), 1, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-554A-AT' AND level = 'diploma' LIMIT 1), 2, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-554A-AT' AND level = 'diploma' LIMIT 1), 3, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-554A-AT' AND level = 'diploma' LIMIT 1), 4, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-554A-AT' AND level = 'diploma' LIMIT 1), 5, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-554A-AT' AND level = 'diploma' LIMIT 1), 6, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-554A-AT' AND level = 'diploma' LIMIT 1), 7, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-554A-AT' AND level = 'diploma' LIMIT 1), 8, 'CDACC')
+ON CONFLICT (course_type_id, module_index) DO NOTHING;
+
+INSERT INTO semesters (module_id, semester_index, duration_months, fee, practical_fee, internal_exams) VALUES
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-554A-AT' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-554A-AT' AND level = 'diploma' LIMIT 1) AND module_index = 2 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-554A-AT' AND level = 'diploma' LIMIT 1) AND module_index = 3 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-554A-AT' AND level = 'diploma' LIMIT 1) AND module_index = 4 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-554A-AT' AND level = 'diploma' LIMIT 1) AND module_index = 5 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-554A-AT' AND level = 'diploma' LIMIT 1) AND module_index = 6 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-554A-AT' AND level = 'diploma' LIMIT 1) AND module_index = 7 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-554A-AT' AND level = 'diploma' LIMIT 1) AND module_index = 8 LIMIT 1), 1, 6, 0, 0, 2)
+ON CONFLICT DO NOTHING;
+
+-- Plumbing Courses
+INSERT INTO courses (id, name, department_id) VALUES 
+  ('CDACC-254A-P3', 'Plumbing (Grade Test)', (SELECT id FROM departments WHERE name = 'Building & Construction' LIMIT 1)),
+  ('CDACC-254A-P4', 'Plumbing (Artisan)', (SELECT id FROM departments WHERE name = 'Building & Construction' LIMIT 1)),
+  ('CDACC-254A-P5', 'Plumbing (Certificate)', (SELECT id FROM departments WHERE name = 'Building & Construction' LIMIT 1))
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('CDACC-254A-P3', 'artisan', true, 'KCPE', 'module', 6),
+  ('CDACC-254A-P4', 'artisan', true, 'D-', 'module', 12),
+  ('CDACC-254A-P5', 'certificate', true, 'D+', 'module', 24)
+ON CONFLICT (course_id, level) DO NOTHING;
+
+-- Plumbing - Modules and Semesters
+INSERT INTO modules (course_type_id, module_index, exam_body) VALUES
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-254A-P3' AND level = 'artisan' LIMIT 1), 1, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-254A-P4' AND level = 'artisan' LIMIT 1), 1, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-254A-P5' AND level = 'certificate' LIMIT 1), 1, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-254A-P5' AND level = 'certificate' LIMIT 1), 2, 'CDACC')
+ON CONFLICT (course_type_id, module_index) DO NOTHING;
+
+INSERT INTO semesters (module_id, semester_index, duration_months, fee, practical_fee, internal_exams) VALUES
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-254A-P3' AND level = 'artisan' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-254A-P4' AND level = 'artisan' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-254A-P5' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-254A-P5' AND level = 'certificate' LIMIT 1) AND module_index = 2 LIMIT 1), 1, 6, 0, 0, 2)
+ON CONFLICT DO NOTHING;
+
+-- Office Administration Courses
+INSERT INTO courses (id, name, department_id) VALUES 
+  ('CDACC-554A-OA4', 'Office Assistance (Artisan)', (SELECT id FROM departments WHERE name = 'Business & Administration' LIMIT 1)),
+  ('CDACC-554A-OA5', 'Office Administration (Certificate)', (SELECT id FROM departments WHERE name = 'Business & Administration' LIMIT 1)),
+  ('CDACC-554A-OA6', 'Office Administration (Diploma)', (SELECT id FROM departments WHERE name = 'Business & Administration' LIMIT 1))
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('CDACC-554A-OA4', 'artisan', true, 'D-', 'module', 12),
+  ('CDACC-554A-OA5', 'certificate', true, 'D+', 'module', 24),
+  ('CDACC-554A-OA6', 'diploma', true, 'C-', 'module', 36)
+ON CONFLICT (course_id, level) DO NOTHING;
+
+-- Office Administration - Modules and Semesters
+INSERT INTO modules (course_type_id, module_index, exam_body) VALUES
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-554A-OA4' AND level = 'artisan' LIMIT 1), 1, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-554A-OA5' AND level = 'certificate' LIMIT 1), 1, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-554A-OA5' AND level = 'certificate' LIMIT 1), 2, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-554A-OA6' AND level = 'diploma' LIMIT 1), 1, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-554A-OA6' AND level = 'diploma' LIMIT 1), 2, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-554A-OA6' AND level = 'diploma' LIMIT 1), 3, 'CDACC')
+ON CONFLICT (course_type_id, module_index) DO NOTHING;
+
+INSERT INTO semesters (module_id, semester_index, duration_months, fee, practical_fee, internal_exams) VALUES
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-554A-OA4' AND level = 'artisan' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-554A-OA5' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-554A-OA5' AND level = 'certificate' LIMIT 1) AND module_index = 2 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-554A-OA6' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-554A-OA6' AND level = 'diploma' LIMIT 1) AND module_index = 2 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-554A-OA6' AND level = 'diploma' LIMIT 1) AND module_index = 3 LIMIT 1), 1, 6, 0, 0, 2)
+ON CONFLICT DO NOTHING;
+
+-- Public Administration Course
+INSERT INTO courses (id, name, department_id) VALUES 
+  ('CDACC-554A-PA', 'Public Administration', (SELECT id FROM departments WHERE name = 'Business & Administration' LIMIT 1))
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('CDACC-554A-PA', 'diploma', true, 'C-', 'module', 36)
+ON CONFLICT (course_id, level) DO NOTHING;
+
+-- Public Administration - Modules and Semesters
+INSERT INTO modules (course_type_id, module_index, exam_body) VALUES
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-554A-PA' AND level = 'diploma' LIMIT 1), 1, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-554A-PA' AND level = 'diploma' LIMIT 1), 2, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-554A-PA' AND level = 'diploma' LIMIT 1), 3, 'CDACC')
+ON CONFLICT (course_type_id, module_index) DO NOTHING;
+
+INSERT INTO semesters (module_id, semester_index, duration_months, fee, practical_fee, internal_exams) VALUES
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-554A-PA' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-554A-PA' AND level = 'diploma' LIMIT 1) AND module_index = 2 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-554A-PA' AND level = 'diploma' LIMIT 1) AND module_index = 3 LIMIT 1), 1, 6, 0, 0, 2)
+ON CONFLICT DO NOTHING;
+
+-- Community Health Courses
+INSERT INTO courses (id, name, department_id) VALUES 
+  ('CDACC-454A-CH5', 'Community Health (Certificate)', (SELECT id FROM departments WHERE name = 'Health & Medical' LIMIT 1)),
+  ('CDACC-554A-CH6', 'Community Health (Diploma)', (SELECT id FROM departments WHERE name = 'Health & Medical' LIMIT 1))
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('CDACC-454A-CH5', 'certificate', true, 'D+', 'module', 24),
+  ('CDACC-554A-CH6', 'diploma', true, 'C-', 'module', 36)
+ON CONFLICT (course_id, level) DO NOTHING;
+
+-- Community Health - Modules and Semesters
+INSERT INTO modules (course_type_id, module_index, exam_body) VALUES
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-454A-CH5' AND level = 'certificate' LIMIT 1), 1, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-454A-CH5' AND level = 'certificate' LIMIT 1), 2, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-554A-CH6' AND level = 'diploma' LIMIT 1), 1, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-554A-CH6' AND level = 'diploma' LIMIT 1), 2, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-554A-CH6' AND level = 'diploma' LIMIT 1), 3, 'CDACC')
+ON CONFLICT (course_type_id, module_index) DO NOTHING;
+
+INSERT INTO semesters (module_id, semester_index, duration_months, fee, practical_fee, internal_exams) VALUES
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-454A-CH5' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-454A-CH5' AND level = 'certificate' LIMIT 1) AND module_index = 2 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-554A-CH6' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-554A-CH6' AND level = 'diploma' LIMIT 1) AND module_index = 2 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-554A-CH6' AND level = 'diploma' LIMIT 1) AND module_index = 3 LIMIT 1), 1, 6, 0, 0, 2)
+ON CONFLICT DO NOTHING;
+
+-- Electrical Installation/Engineering Courses
+INSERT INTO courses (id, name, department_id) VALUES 
+  ('CDACC-354A-EI4', 'Electrical Installation/Engineering (Artisan)', (SELECT id FROM departments WHERE name = 'Engineering & Technology' LIMIT 1)),
+  ('CDACC-354A-EI5', 'Electrical Installation/Engineering (Certificate)', (SELECT id FROM departments WHERE name = 'Engineering & Technology' LIMIT 1)),
+  ('CDACC-354A-EI6', 'Electrical Installation/Engineering (Diploma)', (SELECT id FROM departments WHERE name = 'Engineering & Technology' LIMIT 1))
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('CDACC-354A-EI4', 'artisan', true, 'D-', 'module', 12),
+  ('CDACC-354A-EI5', 'certificate', true, 'D+', 'module', 24),
+  ('CDACC-354A-EI6', 'diploma', true, 'C-', 'module', 36)
+ON CONFLICT (course_id, level) DO NOTHING;
+
+-- Electrical Installation/Engineering - Modules and Semesters
+INSERT INTO modules (course_type_id, module_index, exam_body) VALUES
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-354A-EI4' AND level = 'artisan' LIMIT 1), 1, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-354A-EI5' AND level = 'certificate' LIMIT 1), 1, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-354A-EI5' AND level = 'certificate' LIMIT 1), 2, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-354A-EI6' AND level = 'diploma' LIMIT 1), 1, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-354A-EI6' AND level = 'diploma' LIMIT 1), 2, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-354A-EI6' AND level = 'diploma' LIMIT 1), 3, 'CDACC')
+ON CONFLICT (course_type_id, module_index) DO NOTHING;
+
+INSERT INTO semesters (module_id, semester_index, duration_months, fee, practical_fee, internal_exams) VALUES
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-354A-EI4' AND level = 'artisan' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-354A-EI5' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-354A-EI5' AND level = 'certificate' LIMIT 1) AND module_index = 2 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-354A-EI6' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-354A-EI6' AND level = 'diploma' LIMIT 1) AND module_index = 2 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-354A-EI6' AND level = 'diploma' LIMIT 1) AND module_index = 3 LIMIT 1), 1, 6, 0, 0, 2)
+ON CONFLICT DO NOTHING;
+
+-- Electronics Technology Courses
+INSERT INTO courses (id, name, department_id) VALUES 
+  ('CDACC-254B-ET3', 'Electronics Technology (Grade Test)', (SELECT id FROM departments WHERE name = 'Engineering & Technology' LIMIT 1)),
+  ('CDACC-254B-ET4', 'Electronics Technology (Artisan)', (SELECT id FROM departments WHERE name = 'Engineering & Technology' LIMIT 1)),
+  ('CDACC-254B-ET5', 'Electronics Technology (Certificate)', (SELECT id FROM departments WHERE name = 'Engineering & Technology' LIMIT 1)),
+  ('CDACC-254B-ET6', 'Electronics Technology (Diploma)', (SELECT id FROM departments WHERE name = 'Engineering & Technology' LIMIT 1))
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('CDACC-254B-ET3', 'artisan', true, 'KCPE', 'module', 6),
+  ('CDACC-254B-ET4', 'artisan', true, 'D-', 'module', 12),
+  ('CDACC-254B-ET5', 'certificate', true, 'D+', 'module', 24),
+  ('CDACC-254B-ET6', 'diploma', true, 'C-', 'module', 36)
+ON CONFLICT (course_id, level) DO NOTHING;
+
+-- Electronics Technology - Modules and Semesters
+INSERT INTO modules (course_type_id, module_index, exam_body) VALUES
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-254B-ET3' AND level = 'artisan' LIMIT 1), 1, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-254B-ET4' AND level = 'artisan' LIMIT 1), 1, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-254B-ET5' AND level = 'certificate' LIMIT 1), 1, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-254B-ET5' AND level = 'certificate' LIMIT 1), 2, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-254B-ET6' AND level = 'diploma' LIMIT 1), 1, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-254B-ET6' AND level = 'diploma' LIMIT 1), 2, 'CDACC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CDACC-254B-ET6' AND level = 'diploma' LIMIT 1), 3, 'CDACC')
+ON CONFLICT (course_type_id, module_index) DO NOTHING;
+
+INSERT INTO semesters (module_id, semester_index, duration_months, fee, practical_fee, internal_exams) VALUES
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-254B-ET3' AND level = 'artisan' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-254B-ET4' AND level = 'artisan' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-254B-ET5' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-254B-ET5' AND level = 'certificate' LIMIT 1) AND module_index = 2 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-254B-ET6' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-254B-ET6' AND level = 'diploma' LIMIT 1) AND module_index = 2 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CDACC-254B-ET6' AND level = 'diploma' LIMIT 1) AND module_index = 3 LIMIT 1), 1, 6, 0, 0, 2)
+ON CONFLICT DO NOTHING;
+
 -- 1. Automotive Engineering (Certificate) - Modules I-IV
 INSERT INTO units (course_id, unit_code, name, module_index, semester_index) VALUES
   ('CDACC-454A-AE', '101', 'Vehicle petrol engine maintenance', 1, 1),
