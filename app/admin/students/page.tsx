@@ -73,7 +73,11 @@ export default function StudentsPage() {
 
   const loadStudents = async (campusCode: string) => {
     try {
-      let query = supabase.from('applications').select('*').eq('status', 'enrolled').order('application_date', { ascending: false });
+      let query = supabase
+        .from('applications')
+        .select('*, courses(name), course_types(level)')
+        .eq('status', 'enrolled')
+        .order('application_date', { ascending: false });
 
       // Filter by campus to show only this campus's students
       if (campusCode && campusCode !== 'all') {
@@ -88,7 +92,13 @@ export default function StudentsPage() {
         setStudents([]);
       } else {
         console.log('Loaded students:', data);
-        setStudents(data || []);
+        // Flatten the data for the UI
+        const enrichedData = (data || []).map((student: any) => ({
+          ...student,
+          course: student.courses?.name,
+          course_type: student.course_types?.level
+        }));
+        setStudents(enrichedData);
       }
     } catch (err) {
       console.error('Error loading students:', err);

@@ -19,8 +19,11 @@ export default function AdminDashboard() {
     pendingApplications: 0,
     approvedApplications: 0,
     totalStudents: 0,
-    totalLecturers: 0
+    totalLecturers: 0,
+    totalRevenueThisMonth: 0,
+    paymentBreakdown: [] as { method: string; amount: number; percentage: number }[]
   });
+  const [recentPayments, setRecentPayments] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -36,7 +39,7 @@ export default function AdminDashboard() {
       if (campusCode && campusCode !== 'all') {
         appsQuery = appsQuery.eq('campus', campusCode);
       }
-      const { data: applications, error: appsError } = await appsQuery;
+      const { data: applications } = await appsQuery;
 
       const totalApps = applications?.length || 0;
       const pendingApps = applications?.filter((app: any) => app.status === 'pending').length || 0;
@@ -56,12 +59,49 @@ export default function AdminDashboard() {
       }
       const { count: studentsCount } = await studentsQuery;
 
+      // Load revenue this month
+      const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+      let revenueQuery = supabase.from('fee_payments').select('amount, payment_method').eq('status', 'completed').gte('payment_date', monthStart);
+      if (campusCode && campusCode !== 'all') {
+        revenueQuery = revenueQuery.eq('campus', campusCode);
+      }
+      const { data: revenueData } = await revenueQuery;
+
+      const totalRevenue = revenueData?.reduce((sum: number, p: any) => sum + p.amount, 0) || 0;
+
+      // Calculate payment breakdown
+      const breakdown: { [key: string]: number } = {};
+      revenueData?.forEach((p: any) => {
+        breakdown[p.payment_method] = (breakdown[p.payment_method] || 0) + p.amount;
+      });
+
+      const paymentBreakdown = Object.entries(breakdown).map(([method, amount]) => ({
+        method,
+        amount,
+        percentage: totalRevenue > 0 ? (amount / totalRevenue) * 100 : 0
+      })).sort((a, b) => b.amount - a.amount);
+
+      // Load recent payments
+      let recentPaymentsQuery = supabase
+        .from('fee_payments')
+        .select('*, applications(full_name)')
+        .order('payment_date', { ascending: false })
+        .limit(5);
+      
+      if (campusCode && campusCode !== 'all') {
+        recentPaymentsQuery = recentPaymentsQuery.eq('campus', campusCode);
+      }
+      const { data: recentPaymentsData } = await recentPaymentsQuery;
+      setRecentPayments(recentPaymentsData || []);
+
       setStats({
         totalApplications: totalApps,
         pendingApplications: pendingApps,
         approvedApplications: approvedApps,
         totalStudents: studentsCount || 0,
-        totalLecturers: lecturersCount || 0
+        totalLecturers: lecturersCount || 0,
+        totalRevenueThisMonth: totalRevenue,
+        paymentBreakdown
       });
     } catch (err) {
       console.error('Error loading stats:', err);
@@ -284,7 +324,7 @@ export default function AdminDashboard() {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8">
             <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
               <div className="text-purple-300 text-sm mb-2">Total Applications</div>
               <div className="text-3xl md:text-4xl font-bold text-white">{stats.totalApplications}</div>
@@ -304,6 +344,13 @@ export default function AdminDashboard() {
             <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
               <div className="text-purple-300 text-sm mb-2">Total Lecturers</div>
               <div className="text-3xl md:text-4xl font-bold text-purple-400">{stats.totalLecturers}</div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+              <div className="text-purple-300 text-sm mb-2">Revenue (This Month)</div>
+              <div className="text-3xl md:text-4xl font-bold text-emerald-400">
+                <span className="text-sm font-normal mr-1">KES</span>
+                {stats.totalRevenueThisMonth.toLocaleString()}
+              </div>
             </div>
           </div>
 
@@ -462,6 +509,40 @@ export default function AdminDashboard() {
             </Link>
 
             <Link
+              href="/admin/payments"
+              className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-colors duration-300"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-emerald-600 rounded-lg flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Fee Payments</h3>
+                  <p className="text-purple-200 text-sm">Record and manage payments</p>
+                </div>
+              </div>
+            </Link>
+
+            <Link
+              href="/admin/financial-reports"
+              className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-colors duration-300"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-blue-700 rounded-lg flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Financial Reports</h3>
+                  <p className="text-purple-200 text-sm">Revenue analysis and charts</p>
+                </div>
+              </div>
+            </Link>
+
+            <Link
               href="/admin/reports"
               className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-colors duration-300"
             >
@@ -479,11 +560,69 @@ export default function AdminDashboard() {
             </Link>
           </div>
 
-          {/* Recent Activity */}
-          <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
-            <h3 className="text-xl font-semibold text-white mb-4">Recent Activity</h3>
-            <div className="text-purple-200 text-sm">
-              <p>No recent activity to display.</p>
+          {/* Recent Activity & Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+              <h3 className="text-xl font-semibold text-white mb-4">Recent Payments</h3>
+              <div className="space-y-4">
+                {recentPayments.length === 0 ? (
+                  <p className="text-purple-200 text-sm">No recent payments to display.</p>
+                ) : (
+                  recentPayments.map((payment) => (
+                    <div key={payment.id} className="flex justify-between items-center p-3 bg-white/5 rounded-lg border border-white/10">
+                      <div>
+                        <p className="text-white font-medium text-sm">{payment.applications?.full_name}</p>
+                        <p className="text-purple-300 text-xs capitalize">{payment.payment_type} - {payment.payment_method}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-emerald-400 font-bold text-sm">KES {payment.amount.toLocaleString()}</p>
+                        <p className="text-purple-300 text-[10px]">{new Date(payment.payment_date).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+                <Link 
+                  href="/admin/payments"
+                  className="block text-center text-purple-300 hover:text-white text-sm mt-4 transition-colors"
+                >
+                  View all payments →
+                </Link>
+              </div>
+            </div>
+
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+              <h3 className="text-xl font-semibold text-white mb-4">Payment Methods (This Month)</h3>
+              {stats.paymentBreakdown.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-48 text-purple-200">
+                  <p>No revenue data for this month</p>
+                </div>
+              ) : (
+                <div className="space-y-5 mt-4">
+                  {stats.paymentBreakdown.map((item) => (
+                    <div key={item.method}>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-white capitalize">{item.method.replace('_', ' ')}</span>
+                        <span className="text-purple-300">{item.percentage.toFixed(1)}%</span>
+                      </div>
+                      <div className="w-full bg-white/10 rounded-full h-2.5">
+                        <div 
+                          className="bg-emerald-500 h-2.5 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.5)]" 
+                          style={{ width: `${item.percentage}%` }}
+                        ></div>
+                      </div>
+                      <div className="flex justify-end mt-1">
+                        <span className="text-xs text-purple-300">KES {item.amount.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  ))}
+                  <Link 
+                    href="/admin/financial-reports"
+                    className="block text-center text-purple-300 hover:text-white text-sm mt-6 transition-colors"
+                  >
+                    Detailed financial reports →
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -117,7 +117,7 @@ export default function StudentDashboard() {
     try {
       const { data, error } = await supabase
         .from('applications')
-        .select('*')
+        .select('*, courses(name), course_types(level)')
         .eq('admission_number', admissionNumber)
         .single();
 
@@ -126,7 +126,14 @@ export default function StudentDashboard() {
         return;
       }
 
-      setStudentInfo(data);
+      // Flatten the data for the UI
+      const enrichedData = {
+        ...data,
+        course: data.courses?.name,
+        course_type: data.course_types?.level
+      };
+
+      setStudentInfo(enrichedData);
       
       // Check financial hold status
       setFinancialHold(data.financial_hold || false);
@@ -185,44 +192,77 @@ export default function StudentDashboard() {
   };
 
   const loadCourses = async () => {
-    const { data, error } = await supabase
-      .from('courses')
-      .select(`
-        *,
-        course_types (
-          level,
-          enabled,
-          min_kcse_grade,
-          study_mode,
-          duration_months,
-          modules (
-            module_index,
-            exam_body,
-            semesters (
-              id,
-              semester_index,
-              duration_months,
-              fee,
-              practical_fee,
-              internal_exams,
-              units (
-                name
+    try {
+      const { data, error } = await supabase
+        .from('courses')
+        .select(`
+          *,
+          course_types (
+            level,
+            enabled,
+            min_kcse_grade,
+            study_mode,
+            duration_months,
+            modules (
+              module_index,
+              exam_body,
+              semesters (
+                id,
+                semester_index,
+                duration_months,
+                fee,
+                practical_fee,
+                internal_exams
               )
+            ),
+            short_course_config (
+              fee,
+              payment_type,
+              number_of_months,
+              monthly_fees,
+              practical_fee,
+              has_exams
             )
-          ),
-          short_course_config (
-            fee,
-            payment_type,
-            number_of_months,
-            monthly_fees,
-            practical_fee,
-            has_exams
           )
-        )
-      `);
-    
-    if (data && !error) {
-      setCourses(data);
+        `);
+      
+      if (!error && data) {
+        // Fetch all units separately to avoid PostgREST relationship errors
+        let coursesWithUnits = data || [];
+        try {
+          const { data: unitsData, error: unitsError } = await supabase.from('units').select('*');
+          if (!unitsError && unitsData) {
+            coursesWithUnits = coursesWithUnits.map((course: any) => {
+              const courseUnits = unitsData.filter((u: any) => u.course_id === course.id);
+              
+              // Map units to their respective semesters if needed
+              const enrichedCourseTypes = course.course_types?.map((ct: any) => ({
+                ...ct,
+                modules: ct.modules?.map((m: any) => ({
+                  ...m,
+                  semesters: m.semesters?.map((s: any) => ({
+                    ...s,
+                    units: courseUnits
+                      .filter((u: any) => u.module_index === m.module_index - 1 && u.semester_index === s.semester_index - 1)
+                      .map((u: any) => u.name)
+                  }))
+                }))
+              }));
+
+              return {
+                ...course,
+                course_types: enrichedCourseTypes,
+                units: courseUnits // Keep original units array too
+              };
+            });
+          }
+        } catch (_err) {
+          // Fallback if units fail
+        }
+        setCourses(coursesWithUnits);
+      }
+    } catch (err) {
+      console.error('Error loading courses:', err);
     }
   };
 

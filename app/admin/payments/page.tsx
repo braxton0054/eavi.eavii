@@ -93,7 +93,7 @@ export default function PaymentsPage() {
       .from('fee_payments')
       .select(`
         *,
-        applications (
+        application:applications (
           full_name,
           admission_number,
           course_id

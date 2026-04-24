@@ -142,7 +142,10 @@ export default function ApplicationsPage() {
 
   const loadApplications = async (campusCode: string) => {
     try {
-      let query = supabase.from('applications').select('*').order('application_date', { ascending: false });
+      let query = supabase
+        .from('applications')
+        .select('*, courses(name), course_types(level)')
+        .order('application_date', { ascending: false });
 
       // Filter by campus to show only this campus's applications
       if (campusCode && campusCode !== 'all') {
@@ -157,7 +160,13 @@ export default function ApplicationsPage() {
         setApplications([]);
       } else {
         console.log('Loaded applications:', data);
-        setApplications(data || []);
+        // Flatten the data for the UI
+        const enrichedData = (data || []).map((app: any) => ({
+          ...app,
+          course: app.courses?.name,
+          course_type: app.course_types?.level
+        }));
+        setApplications(enrichedData);
       }
     } catch (err) {
       console.error('Error loading applications:', err);
