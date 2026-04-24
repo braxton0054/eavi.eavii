@@ -133,7 +133,7 @@ ON CONFLICT (course_id, unit_code) DO NOTHING;
 INSERT INTO units (course_id, unit_code, name, module_index, semester_index) VALUES
   ('KNEC-1813', '301', 'Information Technology', 1, 1),
   ('KNEC-1813', '302', 'Information Resources', 1, 1),
-  ('KNEC-1813', '303', 'Reader\'s Services', 1, 1),
+  ('KNEC-1813', '303', 'Reader''s Services', 1, 1),
   ('KNEC-1813', '304', 'Library Operations', 1, 1),
   ('KNEC-1813', '305', 'Archival Operations', 1, 1),
   ('KNEC-1813', '306', 'Course Specialisation & Entrepreneurship Projects', 1, 1)
