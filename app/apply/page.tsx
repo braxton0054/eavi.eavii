@@ -157,12 +157,23 @@ export default function ApplyPage() {
     return GRADE_VALUE[studentGrade] >= GRADE_VALUE[minRequiredGrade];
   };
 
+  // Get exam body for a course from course ID prefix
+  const getExamBodyFromCourseId = (courseId: string): string => {
+    if (courseId.startsWith('KNEC-')) return 'KNEC';
+    if (courseId.startsWith('CDACC-')) return 'CDACC';
+    if (courseId.startsWith('JP-')) return 'JP';
+    return 'internal';
+  };
+
   // Get available course types for a course based on student's grade and exam body
   const getAvailableCourseTypes = (course: any, studentGrade: string, examBody: string): string[] => {
     if (!course || !studentGrade || !examBody) return [];
     
     const availableTypes: string[] = [];
     const courseTypes = course.course_types || [];
+    
+    // Get exam body from course ID prefix as fallback
+    const courseExamBody = getExamBodyFromCourseId(course.id);
     
     // Convert array from relational database to object keyed by level
     const courseTypesObj: any = {};
@@ -180,7 +191,10 @@ export default function ApplyPage() {
       const modules = data.modules || [];
       const hasExamBody = modules.some((m: any) => m.exam_body === examBody);
       
-      if (config?.enabled && compareGrades(studentGrade, config.minKcseGrade) && hasExamBody) {
+      // Fallback: use course ID prefix if no modules exist
+      const matchesByPrefix = !hasExamBody && courseExamBody === examBody;
+      
+      if (config?.enabled && compareGrades(studentGrade, config.minKcseGrade) && (hasExamBody || matchesByPrefix)) {
         availableTypes.push(type);
       }
     });
@@ -663,10 +677,14 @@ export default function ApplyPage() {
                     if (!formData.examBody) return false;
                     // Check if course has any course type with the selected exam body
                     const courseTypes = course.course_types || [];
-                    return courseTypes.some((ct: any) => {
+                    const hasExamBodyInModules = courseTypes.some((ct: any) => {
                       const modules = ct.modules || [];
                       return modules.some((m: any) => m.exam_body === formData.examBody);
                     });
+                    // Fallback: use course ID prefix
+                    const courseExamBody = getExamBodyFromCourseId(course.id);
+                    const matchesByPrefix = courseExamBody === formData.examBody;
+                    return hasExamBodyInModules || matchesByPrefix;
                   })
                   .map(course => (
                     <option key={course.id} value={course.id} className="text-gray-900">{course.name}</option>
@@ -674,10 +692,13 @@ export default function ApplyPage() {
               </select>
               {formData.examBody && courses.filter(course => {
                 const courseTypes = course.course_types || [];
-                return courseTypes.some((ct: any) => {
+                const hasExamBodyInModules = courseTypes.some((ct: any) => {
                   const modules = ct.modules || [];
                   return modules.some((m: any) => m.exam_body === formData.examBody);
                 });
+                const courseExamBody = getExamBodyFromCourseId(course.id);
+                const matchesByPrefix = courseExamBody === formData.examBody;
+                return hasExamBodyInModules || matchesByPrefix;
               }).length === 0 && (
                 <p className="mt-2 text-red-300 text-sm">No courses available for this exam body.</p>
               )}
