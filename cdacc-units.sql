@@ -1,0 +1,10 @@
+-- ============================================================================
+-- CDACC UNITS DATA
+-- Units for CDACC examined courses
+-- ============================================================================
+-- NOTE: Units for CDACC courses will be added through the admin interface.
+-- This file is a placeholder for future unit data if needed.
+--
+-- Current CDACC courses:
+-- (To be added when CDACC courses are created)
+-- ============================================================================

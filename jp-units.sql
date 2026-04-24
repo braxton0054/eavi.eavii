@@ -1,0 +1,32 @@
+-- ============================================================================
+-- JP INTERNATIONAL UNITS DATA
+-- Units for JP International courses
+-- ============================================================================
+-- NOTE: Units for JP International courses will be added through the admin interface.
+-- This file is a placeholder for future unit data if needed.
+--
+-- Current JP courses:
+-- - Teacher Training (JP-TT)
+-- - Caregivers (JP-CG)
+-- - Community Health (JP-CH)
+-- - Phlebotomy (JP-PH)
+-- - Journalism & Mass Communication (JP-JM)
+-- - Web Development (JP-WD)
+-- - Mobile Technology (JP-MT)
+-- - Community Development (JP-CD)
+-- - Purchasing & Supplies (JP-PS)
+-- - Sociology (JP-SO)
+-- - Travel & Tourism (JP-TT)
+-- - Sales & Marketing (JP-SM)
+-- - International Relations (JP-IR)
+-- - English (JP-EN)
+-- - Disaster Management (JP-DM)
+-- - Forensic Criminology (JP-FC)
+-- - CCTV Management (JP-CM)
+-- - Project Management (JP-PM)
+-- - Clearing & Forwarding (JP-CF)
+-- - Hair & Beauty Therapy (JP-HB)
+-- - Fashion Design (JP-FD)
+-- - Graphic Design (JP-GD)
+-- - Barista Course (JP-BC)
+-- ============================================================================
