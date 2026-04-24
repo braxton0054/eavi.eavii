@@ -14,12 +14,15 @@ const GRADE_VALUE: Record<string, number> = {
 
 export default function ApplyPage() {
   const [supabase, setSupabase] = useState<any>(null);
+  const currentYear = new Date().getFullYear();
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '',
     email: '',
     gender: '',
     kcseGrade: '',
+    examBody: '',
+    intake: `September ${currentYear}`,
     course: '',
     courseType: '',
     campus: '',
@@ -76,6 +79,7 @@ export default function ApplyPage() {
               duration_months,
               modules (
                 module_index,
+                exam_body,
                 semesters (
                   semester_index,
                   duration_months,
@@ -94,7 +98,7 @@ export default function ApplyPage() {
               )
             )
           `);
-        
+
         if (error) {
           console.error('Error loading courses:', error);
         } else {
@@ -110,15 +114,52 @@ export default function ApplyPage() {
     loadCourses();
   }, [supabase]);
 
+  // Check if student should be assigned to bridge stream
+  const checkBridgeEligibility = async (intake: string, campus: string) => {
+    if (!supabase) return false;
+
+    try {
+      // Extract month and year from intake (e.g., "ICT September 2026" -> "September 2026")
+      const intakeParts = intake.split(' ');
+      const intakeMonthYear = intakeParts.slice(-2).join(' '); // "September 2026"
+
+      // Get academic calendar for this intake
+      const { data: calendarData } = await supabase
+        .from('academic_calendar')
+        .select('*')
+        .eq('campus', campus)
+        .order('intake_start_date', { ascending: false })
+        .limit(1);
+
+      if (!calendarData || calendarData.length === 0) {
+        return false;
+      }
+
+      const calendar = calendarData[0];
+      const currentDate = new Date();
+      const intakeStartDate = new Date(calendar.intake_start_date);
+      const bridgeTriggerDay = calendar.bridge_trigger_day || 45;
+
+      // Calculate days since intake start
+      const daysSinceIntake = Math.floor((currentDate.getTime() - intakeStartDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      // If past trigger day, student should be in bridge stream
+      return daysSinceIntake >= bridgeTriggerDay;
+    } catch (err) {
+      console.error('Error checking bridge eligibility:', err);
+      return false;
+    }
+  };
+
   // Compare student grade with course minimum grade
   const compareGrades = (studentGrade: string, minRequiredGrade: string): boolean => {
     if (!studentGrade || !minRequiredGrade) return false;
     return GRADE_VALUE[studentGrade] >= GRADE_VALUE[minRequiredGrade];
   };
 
-  // Get available course types for a course based on student's grade
-  const getAvailableCourseTypes = (course: any, studentGrade: string): string[] => {
-    if (!course || !studentGrade) return [];
+  // Get available course types for a course based on student's grade and exam body
+  const getAvailableCourseTypes = (course: any, studentGrade: string, examBody: string): string[] => {
+    if (!course || !studentGrade || !examBody) return [];
     
     const availableTypes: string[] = [];
     const courseTypes = course.course_types || [];
@@ -135,7 +176,11 @@ export default function ApplyPage() {
     
     Object.entries(courseTypesObj).forEach(([type, data]: [string, any]) => {
       const config = getCourseTypeConfig(courseTypesObj, type);
-      if (config?.enabled && compareGrades(studentGrade, config.minKcseGrade)) {
+      // Check if this course type has the selected exam body
+      const modules = data.modules || [];
+      const hasExamBody = modules.some((m: any) => m.exam_body === examBody);
+      
+      if (config?.enabled && compareGrades(studentGrade, config.minKcseGrade) && hasExamBody) {
         availableTypes.push(type);
       }
     });
@@ -143,23 +188,29 @@ export default function ApplyPage() {
     return availableTypes;
   };
 
-  // Find suggested courses based on student's grade
-  const findSuggestedCourses = (studentGrade: string): any[] => {
-    if (!studentGrade || courses.length === 0) return [];
+  // Find suggested courses based on student's grade and exam body
+  const findSuggestedCourses = (studentGrade: string, examBody: string): any[] => {
+    if (!studentGrade || !examBody || courses.length === 0) return [];
     
     return courses.filter(course => {
-      const availableTypes = getAvailableCourseTypes(course, studentGrade);
+      const availableTypes = getAvailableCourseTypes(course, studentGrade, examBody);
       return availableTypes.length > 0;
     });
   };
 
-  // Auto-select course type when course and grade are selected
+  // Auto-select course type when course, grade, and exam body are selected
   useEffect(() => {
-    if (formData.course && formData.kcseGrade) {
+    if (formData.course && formData.kcseGrade && formData.examBody) {
       const selectedCourse = courses.find(c => c.id === formData.course || c.course_id === formData.course);
       if (selectedCourse) {
-        const availableTypes = getAvailableCourseTypes(selectedCourse, formData.kcseGrade);
+        const availableTypes = getAvailableCourseTypes(selectedCourse, formData.kcseGrade, formData.examBody);
         setAvailableCourseTypes(availableTypes);
+        
+        // Update intake to include course name
+        const intakeMonth = formData.intake.split(' ').slice(0, -1).join(' ') || 'September';
+        const intakeYear = formData.intake.split(' ').pop() || currentYear.toString();
+        const updatedIntake = `${selectedCourse.name} ${intakeMonth} ${intakeYear}`;
+        setFormData(prev => ({ ...prev, intake: updatedIntake }));
         
         // Auto-select the first available type
         if (availableTypes.length > 0) {
@@ -167,20 +218,20 @@ export default function ApplyPage() {
         } else {
           setFormData(prev => ({ ...prev, courseType: '' }));
           // Find suggested courses
-          const suggestions = findSuggestedCourses(formData.kcseGrade);
+          const suggestions = findSuggestedCourses(formData.kcseGrade, formData.examBody);
           setSuggestedCourses(suggestions.filter(c => c.id !== formData.course && c.course_id !== formData.course));
         }
       }
     }
-  }, [formData.course, formData.kcseGrade, courses]);
+  }, [formData.course, formData.kcseGrade, formData.examBody, courses]);
 
-  // Update suggested courses when grade changes
+  // Update suggested courses when grade or exam body changes
   useEffect(() => {
-    if (formData.kcseGrade) {
-      const suggestions = findSuggestedCourses(formData.kcseGrade);
+    if (formData.kcseGrade && formData.examBody) {
+      const suggestions = findSuggestedCourses(formData.kcseGrade, formData.examBody);
       setSuggestedCourses(suggestions);
     }
-  }, [formData.kcseGrade, courses]);
+  }, [formData.kcseGrade, formData.examBody, courses]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -228,6 +279,81 @@ export default function ApplyPage() {
         return;
       }
 
+      // Check if student should be in bridge stream
+      const isBridgeEligible = await checkBridgeEligibility(formData.intake, formData.campus);
+      let bridgeGroupId = null;
+      let streamType = 'main';
+      let bridgeStartDate = null;
+      let syncTargetDate = null;
+      let accelerationFactor = 1.0;
+
+      if (isBridgeEligible) {
+        // Get or create bridge group
+        const { data: calendarData } = await supabase
+          .from('academic_calendar')
+          .select('*')
+          .eq('campus', formData.campus)
+          .order('intake_start_date', { ascending: false })
+          .limit(1);
+
+        if (calendarData && calendarData.length > 0) {
+          const calendar = calendarData[0];
+          const bridgeGroupName = `${formData.intake} Bridge`;
+          
+          // Check if bridge group already exists
+          const { data: existingBridgeGroup } = await supabase
+            .from('bridge_groups')
+            .select('*')
+            .eq('group_name', bridgeGroupName)
+            .eq('campus', formData.campus)
+            .eq('status', 'active')
+            .single();
+
+          if (existingBridgeGroup) {
+            bridgeGroupId = existingBridgeGroup.id;
+            syncTargetDate = existingBridgeGroup.sync_target_date;
+            accelerationFactor = existingBridgeGroup.acceleration_factor;
+          } else {
+            // Create new bridge group
+            const intakeStartDate = new Date(calendar.intake_start_date);
+            const intakeEndDate = new Date(calendar.intake_end_date);
+            const bridgeStartDate = new Date();
+            
+            // Calculate sync target date (midpoint of intake)
+            const daysToSync = Math.floor((intakeEndDate.getTime() - intakeStartDate.getTime()) / (1000 * 60 * 60 * 24)) / 2;
+            syncTargetDate = new Date(bridgeStartDate.getTime() + (daysToSync * 24 * 60 * 60 * 1000));
+            
+            // Calculate acceleration factor based on time remaining
+            const daysRemaining = Math.floor((intakeEndDate.getTime() - bridgeStartDate.getTime()) / (1000 * 60 * 60 * 24));
+            accelerationFactor = daysRemaining > 0 ? (90 / daysRemaining) : 1.5;
+            if (accelerationFactor < 1.0) accelerationFactor = 1.0;
+            if (accelerationFactor > 2.0) accelerationFactor = 2.0;
+
+            const { data: newBridgeGroup } = await supabase
+              .from('bridge_groups')
+              .insert([{
+                group_name: bridgeGroupName,
+                intake: formData.intake,
+                academic_calendar_id: calendar.id,
+                campus: formData.campus,
+                start_date: bridgeStartDate.toISOString().split('T')[0],
+                sync_target_date: syncTargetDate.toISOString().split('T')[0],
+                acceleration_factor: accelerationFactor,
+                milestone_module: 1,
+                milestone_semester: 1,
+                status: 'active'
+              }])
+              .select()
+              .single();
+
+            bridgeGroupId = newBridgeGroup?.id;
+          }
+
+          streamType = 'bridge';
+          bridgeStartDate = new Date().toISOString().split('T')[0];
+        }
+      }
+
       // Submit to Supabase
       const { data, error } = await supabase
         .from('applications')
@@ -237,12 +363,19 @@ export default function ApplyPage() {
           email: formData.email || null,
           gender: formData.gender,
           kcse_grade: formData.kcseGrade,
+          exam_body: formData.examBody,
+          intake: formData.intake,
           course_id: formData.course,
           course_type_id: courseTypeId,
           campus: formData.campus,
           admission_number: formData.admissionNumber,
           application_date: currentDate,
           status: 'pending',
+          stream_type: streamType,
+          bridge_group_id: bridgeGroupId,
+          bridge_start_date: bridgeStartDate,
+          sync_target_date: syncTargetDate,
+          acceleration_factor: accelerationFactor,
           current_semester: 1
         }])
         .select()
@@ -459,6 +592,51 @@ export default function ApplyPage() {
               </select>
             </div>
 
+            {/* Exam Body Selection */}
+            <div>
+              <label htmlFor="examBody" className="block text-white font-medium mb-2 text-sm md:text-base">
+                Exam Body *
+              </label>
+              <select
+                id="examBody"
+                name="examBody"
+                value={formData.examBody}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base"
+              >
+                <option value="">Select Exam Body</option>
+                <option value="internal" className="text-gray-900">Internal</option>
+                <option value="JP" className="text-gray-900">JP International Examinations</option>
+                <option value="CDACC" className="text-gray-900">CDACC Examination Body</option>
+                <option value="KNEC" className="text-gray-900">KNEC</option>
+              </select>
+              <p className="mt-2 text-purple-300 text-xs">
+                {formData.examBody === 'CDACC' 
+                  ? 'CDACC uses 6-month semesters.' 
+                  : formData.examBody ? 'Uses 3-month semesters.' : ''}
+              </p>
+            </div>
+
+            {/* Intake Selection */}
+            <div>
+              <label htmlFor="intake" className="block text-white font-medium mb-2 text-sm md:text-base">
+                Intake *
+              </label>
+              <select
+                id="intake"
+                name="intake"
+                value={formData.intake}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base"
+              >
+                <option value={`January ${currentYear}`} className="text-gray-900">January {currentYear} Intake</option>
+                <option value={`May ${currentYear}`} className="text-gray-900">May {currentYear} Intake</option>
+                <option value={`September ${currentYear}`} className="text-gray-900">September {currentYear} Intake</option>
+              </select>
+            </div>
+
             {/* Course Selection */}
             <div>
               <label htmlFor="course" className="block text-white font-medium mb-2 text-sm md:text-base">
@@ -470,18 +648,39 @@ export default function ApplyPage() {
                 value={formData.course}
                 onChange={handleChange}
                 required
-                disabled={loading || courses.length === 0}
+                disabled={loading || courses.length === 0 || !formData.examBody}
                 className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <option value="">{loading ? 'Loading courses...' : courses.length === 0 ? 'No courses available' : 'Select Course'}</option>
-                {courses.map(course => (
-                  <option key={course.id} value={course.id} className="text-gray-900">{course.name}</option>
-                ))}
+                <option value="">
+                  {!formData.examBody ? 'Select exam body first' : loading ? 'Loading courses...' : courses.length === 0 ? 'No courses available' : 'Select Course'}
+                </option>
+                {courses
+                  .filter(course => {
+                    if (!formData.examBody) return false;
+                    // Check if course has any course type with the selected exam body
+                    const courseTypes = course.course_types || [];
+                    return courseTypes.some((ct: any) => {
+                      const modules = ct.modules || [];
+                      return modules.some((m: any) => m.exam_body === formData.examBody);
+                    });
+                  })
+                  .map(course => (
+                    <option key={course.id} value={course.id} className="text-gray-900">{course.name}</option>
+                  ))}
               </select>
+              {formData.examBody && courses.filter(course => {
+                const courseTypes = course.course_types || [];
+                return courseTypes.some((ct: any) => {
+                  const modules = ct.modules || [];
+                  return modules.some((m: any) => m.exam_body === formData.examBody);
+                });
+              }).length === 0 && (
+                <p className="mt-2 text-red-300 text-sm">No courses available for this exam body.</p>
+              )}
             </div>
 
-            {/* Course Type (Auto-selected based on grade) */}
-            {formData.course && formData.kcseGrade && (
+            {/* Course Type (Auto-selected based on grade and exam body) */}
+            {formData.course && formData.kcseGrade && formData.examBody && (
               <div>
                 <label htmlFor="courseType" className="block text-white font-medium mb-2 text-sm md:text-base">
                   Course Type *

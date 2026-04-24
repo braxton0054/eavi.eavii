@@ -19,12 +19,15 @@ interface SemesterConfig {
   units: string[];
 }
 
+type ExamBody = 'JP' | 'CDACC' | 'KNEC' | 'internal';
+
 interface ModuleConfig {
   semesters: SemesterConfig[];
 }
 
 interface CourseTypeConfig {
   enabled: boolean;
+  examBody: ExamBody;
   minKcseGrade: string;
   studyMode: StudyMode;
   durationMonths: number;
@@ -39,8 +42,23 @@ interface CourseTypeConfig {
   shortCourseHasExams: boolean;
 }
 
+const emptyModule = (examBody: ExamBody = 'internal'): ModuleConfig => {
+  const semesterDuration = examBody === 'CDACC' ? 6 : 3;
+  const defaultSemesters = examBody === 'CDACC' ? 1 : 2;
+  return {
+    semesters: Array.from({ length: defaultSemesters }, () => ({
+      durationMonths: semesterDuration,
+      fee: 0,
+      practicalFee: 0,
+      internalExams: 2,
+      units: []
+    }))
+  };
+};
+
 const emptyCourseType = (): CourseTypeConfig => ({
   enabled: false,
+  examBody: 'internal',
   minKcseGrade: '',
   studyMode: 'module',
   durationMonths: 0,
@@ -314,8 +332,12 @@ export default function CoursesPage() {
       existingIds.semesters[level] = semesterIds;
       
 
+      // Get exam body from first module (all modules should have same exam body now)
+      const courseExamBody = (ct.modules && ct.modules[0] && ct.modules[0].exam_body) || 'internal';
+      
       courseTypes[level] = {
         enabled: ct.enabled,
+        examBody: courseExamBody,
         minKcseGrade: ct.min_kcse_grade,
         studyMode: ct.study_mode as StudyMode,
         durationMonths: ct.duration_months,
@@ -432,20 +454,31 @@ export default function CoursesPage() {
     }));
   };
 
+  const handleCourseExamBodyChange = (type: LevelKey, examBody: ExamBody) => {
+    updateCourseType(type, (current) => {
+      const semesterDuration = examBody === 'CDACC' ? 6 : 3;
+      // Update all existing modules' semester durations
+      const updatedModules = current.modules.map((module) => ({
+        ...module,
+        semesters: module.semesters.map((sem) => ({
+          ...sem,
+          durationMonths: semesterDuration
+        }))
+      }));
+      return { ...current, examBody, modules: updatedModules };
+    });
+  };
+
   const handleModuleCountChange = (type: LevelKey, count: number) => {
     updateCourseType(type, (current) => {
       const currentModules = [...current.modules];
-      const semestersPerModule = current.semestersPerModule || 2;
-      console.log('handleModuleCountChange:', type, 'current:', currentModules.length, 'target:', count, 'semesters per module:', semestersPerModule);
+      const examBody = current.examBody;
+      console.log('handleModuleCountChange:', type, 'current:', currentModules.length, 'target:', count, 'examBody:', examBody);
 
       if (count > currentModules.length) {
         for (let i = currentModules.length; i < count; i += 1) {
           console.log('Adding module', i + 1);
-          const semesters = [];
-          for (let s = 0; s < semestersPerModule; s += 1) {
-            semesters.push({ durationMonths: 3, fee: 0, practicalFee: 0, internalExams: 2, units: [] });
-          }
-          currentModules.push({ semesters });
+          currentModules.push(emptyModule(examBody));
         }
       } else if (count < currentModules.length) {
         console.log('Removing modules from', count);
@@ -456,23 +489,26 @@ export default function CoursesPage() {
     });
   };
 
-  const handleSemestersPerModuleChange = (type: LevelKey, count: number) => {
+  const handleModuleSemesterCountChange = (type: LevelKey, moduleIndex: number, count: number) => {
     updateCourseType(type, (current) => {
       const modules = [...current.modules];
-      const updatedModules = modules.map((module) => {
-        const currentSemesters = [...module.semesters];
-        if (count > currentSemesters.length) {
-          for (let i = currentSemesters.length; i < count; i += 1) {
-            currentSemesters.push({ durationMonths: 3, fee: 0, practicalFee: 0, internalExams: 2, units: [] });
-          }
-        } else if (count < currentSemesters.length) {
-          currentSemesters.splice(count);
+      const module = modules[moduleIndex];
+      const currentSemesters = [...module.semesters];
+
+      if (count > currentSemesters.length) {
+        for (let i = currentSemesters.length; i < count; i += 1) {
+          currentSemesters.push({ durationMonths: 3, fee: 0, practicalFee: 0, internalExams: 2, units: [] });
         }
-        return { ...module, semesters: currentSemesters };
-      });
-      return { ...current, modules: updatedModules, semestersPerModule: count, moduleDurationMonths: count * 3 };
+      } else if (count < currentSemesters.length) {
+        currentSemesters.splice(count);
+      }
+
+      modules[moduleIndex] = { ...module, semesters: currentSemesters };
+      return { ...current, modules };
     });
   };
+
+
 
   const handleBulkMigrate = () => {
     const migrations: { from: LevelKey; to: LevelKey }[] = [
@@ -828,7 +864,8 @@ export default function CoursesPage() {
 
             const { data: moduleData, error: moduleError } = await supabase.from('modules').upsert([{
               course_type_id: courseTypeId,
-              module_index: moduleIndex + 1
+              module_index: moduleIndex + 1,
+              exam_body: config.examBody
             }], { onConflict: 'course_type_id,module_index' }).select().single();
 
             if (moduleError) {
@@ -1378,6 +1415,26 @@ export default function CoursesPage() {
 
                           {config.enabled && (
                             <div className="space-y-4 pl-8">
+                              <div className="bg-purple-900/30 rounded-lg p-4 border border-purple-500/30">
+                                <label className="block text-purple-200 text-sm mb-1 font-semibold">Exam Body * (Select First)</label>
+                                <select
+                                  value={config.examBody}
+                                  onChange={(e) => handleCourseExamBodyChange(type, e.target.value as ExamBody)}
+                                  required
+                                  className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm font-medium"
+                                >
+                                  <option value="internal" className="text-gray-900">Internal</option>
+                                  <option value="JP" className="text-gray-900">JP International Examinations</option>
+                                  <option value="CDACC" className="text-gray-900">CDACC Examination Body (6-month semesters)</option>
+                                  <option value="KNEC" className="text-gray-900">KNEC</option>
+                                </select>
+                                <p className="text-purple-300 text-xs mt-2">
+                                  {config.examBody === 'CDACC' 
+                                    ? 'CDACC uses 6-month semesters. Each semester is 6 months.' 
+                                    : 'JP, KNEC, and Internal use 3-month semesters. Each semester is 3 months.'}
+                                </p>
+                              </div>
+
                               <div>
                                 <label className="block text-purple-200 text-sm mb-1">Minimum KCSE Grade *</label>
                                 <select
@@ -1413,27 +1470,31 @@ export default function CoursesPage() {
                                     <p className="text-purple-300 text-xs mt-1">Each module represents 1 year</p>
                                   </div>
 
-                                  <div>
-                                    <label className="block text-purple-200 text-sm mb-1">Semesters per Module *</label>
-                                    <input
-                                      type="number"
-                                      min="1"
-                                      max="6"
-                                      value={config.semestersPerModule || 2}
-                                      onChange={(e) => handleSemestersPerModuleChange(type, Number.parseInt(e.target.value, 10) || 2)}
-                                      required
-                                      className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
-                                    />
-                                    <p className="text-purple-300 text-xs mt-1">Each semester is 3 months. Total semesters = modules × semesters per module</p>
-                                  </div>
-
                                   {config.modules.map((module, moduleIndex) => (
-                                    <div key={moduleIndex} className="bg-white/5 rounded-lg p-3 border border-white/10">
-                                      <h5 className="text-white font-medium mb-2">
+                                    <div key={moduleIndex} className="bg-white/5 rounded-lg p-4 border border-white/10">
+                                      <h5 className="text-white font-medium mb-3">
                                         Module {moduleIndex + 1} (Year {moduleIndex + 1})
                                       </h5>
+
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                                        <div>
+                                          <label className="block text-purple-200 text-xs mb-1">Number of Semesters *</label>
+                                          <input
+                                            type="number"
+                                            min="1"
+                                            max="6"
+                                            value={module.semesters.length || 1}
+                                            onChange={(e) => handleModuleSemesterCountChange(type, moduleIndex, Number.parseInt(e.target.value, 10) || 1)}
+                                            required
+                                            className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                                          />
+                                        </div>
+                                      </div>
+
                                       <div className="space-y-2">
-                                        <h6 className="text-purple-200 text-sm font-medium">Semesters (3 months each)</h6>
+                                        <h6 className="text-purple-200 text-sm font-medium">
+                                          Semesters ({config.examBody === 'CDACC' ? '6' : '3'} months each)
+                                        </h6>
                                         {module.semesters.map((semester, semesterIndex) => (
                                           <div key={semesterIndex} className="bg-white/5 rounded-lg p-3 border border-white/10">
                                             <h6 className="text-white text-sm font-medium mb-2">

@@ -130,12 +130,17 @@ export default function LecturerDashboard() {
             duration_months,
             modules (
               module_index,
+              exam_body,
               semesters (
+                id,
                 semester_index,
                 duration_months,
                 fee,
                 practical_fee,
-                internal_exams
+                internal_exams,
+                units (
+                  name
+                )
               )
             ),
             short_course_config (
@@ -569,9 +574,23 @@ export default function LecturerDashboard() {
                   className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
                 >
                   <option value="">Select Course</option>
-                  {courses.filter(c => c.department === setupData.department).map(course => (
-                    <option key={course.id} value={course.name} className="text-gray-900">{course.name}</option>
-                  ))}
+                  {courses.filter(c => c.department === setupData.department).map(course => {
+                    // Get exam body from course types (raw data)
+                    let examBody = 'internal';
+                    if (course.course_types) {
+                      Object.keys(course.course_types).forEach((type) => {
+                        const rawType = course.course_types[type];
+                        if (rawType && typeof rawType === 'object' && Array.isArray(rawType.modules) && rawType.modules.length > 0) {
+                          examBody = rawType.modules[0].exam_body || 'internal';
+                        }
+                      });
+                    }
+                    return (
+                      <option key={course.id} value={course.name} className="text-gray-900">
+                        {course.name} ({examBody.toUpperCase()})
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 
@@ -608,6 +627,17 @@ export default function LecturerDashboard() {
 
                       return allUnits.length > 0 ? (
                         allUnits.map(({ semester, module, unit }: { semester: number; module: number; unit: string }, index: number) => {
+                          // Get exam body for this unit from raw data
+                          let unitExamBody = 'internal';
+                          if (selectedCourse?.course_types) {
+                            Object.keys(selectedCourse.course_types).forEach((type) => {
+                              const rawType = selectedCourse.course_types[type];
+                              if (rawType && typeof rawType === 'object' && Array.isArray(rawType.modules) && rawType.modules[module - 1]) {
+                                unitExamBody = rawType.modules[module - 1].exam_body || 'internal';
+                              }
+                            });
+                          }
+                          
                           return (
                             <div key={`${semester}-${module}-${unit}-${index}`} className="flex items-center gap-3 bg-white/5 rounded-lg px-4 py-3">
                               <input
@@ -625,9 +655,20 @@ export default function LecturerDashboard() {
                               />
                               <label
                                 htmlFor={`unit-${semester}-${module}-${unit}`}
-                                className="flex-1 text-white"
+                                className="flex-1 text-white flex items-center gap-2"
                               >
-                                <span className="font-semibold">{semester > 0 ? `Sem ${semester} Mod ${module}:` : ''}</span> {unit}
+                                <span className="font-semibold">{semester > 0 ? `Sem ${semester} Mod ${module}:` : ''}</span> 
+                                <span>{unit}</span>
+                                {semester > 0 && (
+                                  <span className={`px-2 py-0.5 rounded text-[10px] ${
+                                    unitExamBody === 'internal' ? 'bg-blue-500/30 text-blue-300' :
+                                    unitExamBody === 'JP' ? 'bg-purple-500/30 text-purple-300' :
+                                    unitExamBody === 'CDACC' ? 'bg-green-500/30 text-green-300' :
+                                    'bg-orange-500/30 text-orange-300'
+                                  }`}>
+                                    {unitExamBody}
+                                  </span>
+                                )}
                               </label>
                             </div>
                           );
@@ -711,62 +752,118 @@ export default function LecturerDashboard() {
 
             {/* Show All Assignments with Units */}
             <div className="space-y-4">
-              {assignments.map((assignment) => (
-                <div key={assignment.id} className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
-                  <div className="mb-4">
-                    <h3 className="text-lg font-semibold text-white">{assignment.course}</h3>
-                    <p className="text-purple-200 text-sm capitalize">{assignment.campus} Campus</p>
-                    <p className="text-purple-200 text-sm capitalize">{assignment.department} Department</p>
-                  </div>
+              {assignments.map((assignment) => {
+                const selectedCourse = courses.find(c => c.name === assignment.course);
+                
+                // Get exam body and intake info from course types
+                let examBody = 'internal';
+                let intake = 'September';
+                let courseType = 'diploma';
+                
+                if (selectedCourse?.course_types) {
+                  Object.keys(selectedCourse.course_types).forEach((type) => {
+                    const rawType = selectedCourse.course_types[type];
+                    if (rawType && typeof rawType === 'object') {
+                      courseType = type;
+                      // Get exam body from first module in raw data
+                      if (Array.isArray(rawType.modules) && rawType.modules.length > 0) {
+                        examBody = rawType.modules[0].exam_body || 'internal';
+                      }
+                    }
+                  });
+                }
 
-                  <div>
-                    <p className="text-purple-200 text-sm font-semibold mb-2">Units You Teach (Click to Input Marks):</p>
-                    <div className="flex flex-wrap gap-2">
-                      {(() => {
-                        const selectedCourse = courses.find(c => c.name === assignment.course);
-                        const unitsWithSemester = assignment.units.map((unit: string) => {
-                          let unitSemester = '1';
-                          if (selectedCourse?.course_types) {
-                            Object.keys(selectedCourse.course_types).forEach((type) => {
-                              const normalized = getCourseTypeConfig(selectedCourse.course_types, type);
-                              if (!normalized || normalized.studyMode === 'short-course') return;
-                              normalized.periods.forEach((period, periodIndex) => {
-                                if (period.units.includes(unit)) {
-                                  unitSemester = String(periodIndex + 1);
-                                }
-                              });
-                            });
-                          }
-                          return { unit, semester: unitSemester };
-                        });
+                return (
+                  <div key={assignment.id} className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+                    <div className="mb-4">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="text-lg font-semibold text-white">{assignment.course}</h3>
+                          <p className="text-purple-200 text-sm capitalize">{assignment.campus} Campus</p>
+                          <p className="text-purple-200 text-sm capitalize">{assignment.department} Department</p>
+                        </div>
+                        <div className="text-right">
+                          <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                            examBody === 'internal' ? 'bg-blue-500/20 text-blue-300' :
+                            examBody === 'JP' ? 'bg-purple-500/20 text-purple-300' :
+                            examBody === 'CDACC' ? 'bg-green-500/20 text-green-300' :
+                            'bg-orange-500/20 text-orange-300'
+                          }`}>
+                            {examBody.toUpperCase()}
+                          </span>
+                          <p className="text-purple-200 text-xs mt-1 capitalize">{courseType}</p>
+                        </div>
+                      </div>
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="text-purple-300 text-sm">Intake: {intake}</span>
+                        <span className="text-white/30">•</span>
+                        <span className="text-purple-300 text-sm">{assignment.units.length} Units</span>
+                      </div>
+                    </div>
 
-                        return unitsWithSemester.map(({ unit, semester }: { unit: string; semester: string }, index: number) => (
-                          <button
-                            key={`${assignment.id}-${semester}-${unit}-${index}`}
-                            onClick={() => {
-                              setMarksData({
-                                selectedAssignmentId: assignment.id,
-                                selectedCourse: assignment.course,
-                                selectedClass: '',
-                                selectedUnit: unit,
-                                semester,
-                                examType: '',
-                                marks: []
+                    <div>
+                      <p className="text-purple-200 text-sm font-semibold mb-2">Units You Teach (Click to Input Marks):</p>
+                      <div className="flex flex-wrap gap-2">
+                        {(() => {
+                          const unitsWithSemester = assignment.units.map((unit: string) => {
+                            let unitSemester = '1';
+                            let unitModule = '1';
+                            let unitExamBody = examBody;
+                            
+                            if (selectedCourse?.course_types) {
+                              Object.keys(selectedCourse.course_types).forEach((type) => {
+                                const normalized = getCourseTypeConfig(selectedCourse.course_types, type);
+                                if (!normalized || normalized.studyMode === 'short-course') return;
+                                normalized.periods.forEach((period, periodIndex) => {
+                                  if (period.units.includes(unit)) {
+                                    unitSemester = String(periodIndex + 1);
+                                    unitModule = String(periodIndex + 1);
+                                  }
+                                });
                               });
-                              setLockSemester(true);
-                              setLockUnit(true);
-                              setViewMode('marks');
-                            }}
-                            className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs cursor-pointer transition-colors"
-                          >
-                            Semester {semester}: {unit}
-                          </button>
-                        ));
-                      })()}
+                            }
+                            return { unit, semester: unitSemester, module: unitModule, examBody: unitExamBody };
+                          });
+
+                          return unitsWithSemester.map(({ unit, semester, module, examBody: unitExamBody }: { unit: string; semester: string; module: string; examBody: string }, index: number) => (
+                            <button
+                              key={`${assignment.id}-${semester}-${unit}-${index}`}
+                              onClick={() => {
+                                setMarksData({
+                                  selectedAssignmentId: assignment.id,
+                                  selectedCourse: assignment.course,
+                                  selectedClass: '',
+                                  selectedUnit: unit,
+                                  semester,
+                                  examType: '',
+                                  marks: []
+                                });
+                                setLockSemester(true);
+                                setLockUnit(true);
+                                setViewMode('marks');
+                              }}
+                              className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-xs cursor-pointer transition-colors flex items-center gap-2"
+                            >
+                              <span className="font-semibold">Sem {semester}</span>
+                              <span className="text-green-200">Mod {module}</span>
+                              <span className="text-green-200">•</span>
+                              <span>{unit}</span>
+                              <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] ${
+                                unitExamBody === 'internal' ? 'bg-blue-500/30' :
+                                unitExamBody === 'JP' ? 'bg-purple-500/30' :
+                                unitExamBody === 'CDACC' ? 'bg-green-500/30' :
+                                'bg-orange-500/30'
+                              }`}>
+                                {unitExamBody}
+                              </span>
+                            </button>
+                          ));
+                        })()}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <button

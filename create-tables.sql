@@ -8,7 +8,13 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- 2. CLEANUP (Ensures new columns like department_id are actually created)
 DROP VIEW IF EXISTS v_semester_map;
 DROP TABLE IF EXISTS 
-    reporting_dates, 
+    reporting_dates,
+    payment_installments,
+    fee_payments,
+    fee_structure,
+    bridge_exam_schedules,
+    holiday_periods,
+    bridge_groups,
     academic_calendar, 
     exam_marks, 
     lecturer_assignment_units, 
@@ -79,6 +85,7 @@ CREATE TABLE modules (
   id              UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
   course_type_id  UUID        NOT NULL REFERENCES course_types(id) ON DELETE CASCADE,
   module_index    INTEGER     NOT NULL CHECK (module_index >= 1),
+  exam_body       TEXT        DEFAULT 'internal' CHECK (exam_body IN ('internal', 'JP', 'CDACC', 'KNEC')),
   created_at      TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(course_type_id, module_index)
 );
@@ -121,7 +128,51 @@ CREATE TABLE short_course_config (
   created_at          TIMESTAMPTZ    DEFAULT NOW()
 );
 
--- 11. APPLICATIONS
+-- 11. ACADEMIC CALENDAR & REPORTING
+CREATE TABLE academic_calendar (
+  id                    UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  academic_year         TEXT        NOT NULL,
+  term                  INTEGER     NOT NULL CHECK (term IN (1, 2, 3)),
+  semester              INTEGER     NOT NULL CHECK (semester >= 1 AND semester <= 6),
+  term_name             TEXT        NOT NULL,
+  term_start_date       DATE        NOT NULL,
+  term_end_date         DATE        NOT NULL,
+  intake_start_date     DATE        NOT NULL,
+  intake_end_date       DATE        NOT NULL,
+  bridge_trigger_day    INTEGER     DEFAULT 45,
+  cat_opening_date      DATE        NOT NULL,
+  cat_closing_date      DATE        NOT NULL,
+  end_term_exam_date    DATE        NOT NULL,
+  mock_exam_available   BOOLEAN     DEFAULT false,
+  mock_exam_date        DATE,
+  campus                TEXT        NOT NULL CHECK (campus IN ('main', 'west')),
+  created_at            TIMESTAMPTZ DEFAULT NOW(),
+  updated_at            TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(academic_year, term, campus)
+);
+
+-- 12. BRIDGE GROUPS
+CREATE TABLE bridge_groups (
+  id                    UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  group_name            TEXT        NOT NULL,
+  intake                TEXT        NOT NULL,
+  academic_calendar_id  UUID        REFERENCES academic_calendar(id) ON DELETE CASCADE,
+  campus                TEXT        NOT NULL CHECK (campus IN ('main', 'west')),
+  start_date            DATE        NOT NULL,
+  sync_target_date      DATE        NOT NULL,
+  acceleration_factor    DECIMAL(3,2) NOT NULL DEFAULT 1.5 CHECK (acceleration_factor >= 1.0),
+  milestone_module      INTEGER     NOT NULL DEFAULT 1,
+  milestone_semester    INTEGER     NOT NULL DEFAULT 1,
+  holiday_bypass_enabled BOOLEAN     DEFAULT true,
+  catch_up_hours_needed INTEGER     DEFAULT 0,
+  catch_up_hours_completed INTEGER   DEFAULT 0,
+  status                TEXT        DEFAULT 'active' CHECK (status IN ('active', 'merged', 'cancelled')),
+  merged_date           DATE,
+  created_at            TIMESTAMPTZ DEFAULT NOW(),
+  updated_at            TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 13. APPLICATIONS
 CREATE TABLE applications (
   id                        UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
   full_name                 TEXT        NOT NULL,
@@ -129,15 +180,26 @@ CREATE TABLE applications (
   email                     TEXT,
   gender                    TEXT        CHECK (gender IN ('male', 'female', 'other')),
   kcse_grade                TEXT        NOT NULL,
+  exam_body                 TEXT        DEFAULT 'internal' CHECK (exam_body IN ('internal', 'JP', 'CDACC', 'KNEC')),
+  intake                    TEXT        DEFAULT 'September',
   course_id                 TEXT        NOT NULL REFERENCES courses(id) ON DELETE RESTRICT,
   course_type_id            UUID        NOT NULL REFERENCES course_types(id) ON DELETE RESTRICT,
   campus                    TEXT        NOT NULL CHECK (campus IN ('main', 'west')),
   admission_number          TEXT        UNIQUE,
   application_date          DATE        NOT NULL,
   status                    TEXT        NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'enrolled', 'rejected')),
+  stream_type               TEXT        DEFAULT 'main' CHECK (stream_type IN ('main', 'bridge')),
+  bridge_group_id           UUID        REFERENCES bridge_groups(id) ON DELETE SET NULL,
+  bridge_start_date         DATE,
+  sync_target_date          DATE,
+  acceleration_factor       DECIMAL(3,2) DEFAULT 1.0 CHECK (acceleration_factor >= 1.0),
   current_module            INTEGER     NOT NULL DEFAULT 1 CHECK (current_module >= 1),
   current_semester          INTEGER     NOT NULL DEFAULT 1 CHECK (current_semester >= 1 AND current_semester <= 6),
   class_name                TEXT,
+  financial_hold            BOOLEAN     DEFAULT false,
+  total_balance             DECIMAL(10,2) DEFAULT 0,
+  last_payment_date         DATE,
+  transcript_unlocked       BOOLEAN     DEFAULT false,
   created_at                TIMESTAMPTZ DEFAULT NOW(),
   updated_at                TIMESTAMPTZ DEFAULT NOW()
 );
@@ -194,23 +256,85 @@ CREATE TABLE exam_marks (
   UNIQUE(application_id, unit_id, semester, exam_type)
 );
 
--- 15. ACADEMIC CALENDAR & REPORTING
-CREATE TABLE academic_calendar (
+-- 15. HOLIDAY PERIODS
+CREATE TABLE holiday_periods (
   id                    UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
-  academic_year         TEXT        NOT NULL,
-  term                  INTEGER     NOT NULL CHECK (term IN (1, 2, 3)),
-  term_name             TEXT        NOT NULL,
-  term_start_date       DATE        NOT NULL,
-  term_end_date         DATE        NOT NULL,
-  cat_opening_date      DATE        NOT NULL,
-  cat_closing_date      DATE        NOT NULL,
-  end_term_exam_date    DATE        NOT NULL,
-  mock_exam_available   BOOLEAN     DEFAULT false,
-  mock_exam_date        DATE,
+  name                  TEXT        NOT NULL,
+  start_date            DATE        NOT NULL,
+  end_date              DATE        NOT NULL,
+  academic_calendar_id  UUID        REFERENCES academic_calendar(id) ON DELETE CASCADE,
   campus                TEXT        NOT NULL CHECK (campus IN ('main', 'west')),
+  is_instructional_for_bridge BOOLEAN DEFAULT false,
+  created_at            TIMESTAMPTZ DEFAULT NOW(),
+  updated_at            TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 16. BRIDGE EXAM SCHEDULES
+CREATE TABLE bridge_exam_schedules (
+  id                    UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  bridge_group_id       UUID        REFERENCES bridge_groups(id) ON DELETE CASCADE,
+  exam_name             TEXT        NOT NULL,
+  exam_type             TEXT        NOT NULL CHECK (exam_type IN ('cat', 'end_term', 'mock', 'milestone')),
+  scheduled_date        DATE        NOT NULL,
+  main_group_exam_date  DATE,
+  units                 TEXT[],
+  status                TEXT        DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'completed', 'cancelled')),
+  created_at            TIMESTAMPTZ DEFAULT NOW(),
+  updated_at            TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 17. FEE STRUCTURE
+CREATE TABLE fee_structure (
+  id                    UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  course_type_id        UUID        REFERENCES course_types(id) ON DELETE CASCADE,
+  exam_body             TEXT        CHECK (exam_body IN ('internal', 'JP', 'CDACC', 'KNEC')),
+  semester              INTEGER     CHECK (semester >= 1 AND semester <= 6),
+  module                INTEGER     CHECK (module >= 1),
+  tuition_fee           DECIMAL(10,2) NOT NULL DEFAULT 0,
+  practical_fee         DECIMAL(10,2) NOT NULL DEFAULT 0,
+  exam_fee              DECIMAL(10,2) NOT NULL DEFAULT 0,
+  registration_fee      DECIMAL(10,2) NOT NULL DEFAULT 0,
+  library_fee           DECIMAL(10,2) NOT NULL DEFAULT 0,
+  lab_fee               DECIMAL(10,2) NOT NULL DEFAULT 0,
+  campus                TEXT        NOT NULL CHECK (campus IN ('main', 'west')),
+  academic_year         TEXT        NOT NULL,
   created_at            TIMESTAMPTZ DEFAULT NOW(),
   updated_at            TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(academic_year, term, campus)
+  UNIQUE(course_type_id, exam_body, semester, module, campus, academic_year)
+);
+
+-- 18. FEE PAYMENTS
+CREATE TABLE fee_payments (
+  id                    UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  application_id        UUID        NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+  payment_type          TEXT        NOT NULL CHECK (payment_type IN ('tuition', 'practical', 'exam', 'registration', 'library', 'lab', 'other')),
+  amount                DECIMAL(10,2) NOT NULL,
+  payment_method        TEXT        NOT NULL CHECK (payment_method IN ('cash', 'bank_transfer', 'card', 'mpesa')),
+  transaction_id        TEXT,
+  payment_date          DATE        NOT NULL,
+  semester              INTEGER     CHECK (semester >= 1 AND semester <= 6),
+  module                INTEGER     CHECK (module >= 1),
+  status                TEXT        NOT NULL DEFAULT 'completed' CHECK (status IN ('pending', 'completed', 'failed', 'refunded')),
+  receipt_number        TEXT        UNIQUE,
+  notes                 TEXT,
+  created_at            TIMESTAMPTZ DEFAULT NOW(),
+  updated_at            TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 19. PAYMENT INSTALLMENTS
+CREATE TABLE payment_installments (
+  id                    UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  application_id        UUID        NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+  installment_number     INTEGER     NOT NULL,
+  due_date              DATE        NOT NULL,
+  amount                DECIMAL(10,2) NOT NULL,
+  status                TEXT        NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'overdue', 'waived')),
+  paid_date             DATE,
+  late_fee              DECIMAL(10,2) DEFAULT 0,
+  waiver_reason         TEXT,
+  created_at            TIMESTAMPTZ DEFAULT NOW(),
+  updated_at            TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(application_id, installment_number)
 );
 
 CREATE TABLE reporting_dates (

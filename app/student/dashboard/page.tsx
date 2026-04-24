@@ -7,6 +7,7 @@ import { createClient } from '@/lib/client';
 import { useRouter } from 'next/navigation';
 import jsPDF from 'jspdf';
 import { getCourseTypeConfig, getPeriodLabel, getUnitsForPeriod } from '@/lib/course-structure';
+import PaymentReceipt from '@/components/PaymentReceipt';
 
 export default function StudentDashboard() {
   const router = useRouter();
@@ -22,6 +23,13 @@ export default function StudentDashboard() {
   const [stampImage, setStampImage] = useState<string>('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [financialHold, setFinancialHold] = useState(false);
+  const [balance, setBalance] = useState(0);
+  const [showResultPreview, setShowResultPreview] = useState(false);
+  const [previewPeriod, setPreviewPeriod] = useState<number | null>(null);
+  const [payments, setPayments] = useState<any[]>([]);
+  const [selectedPayment, setSelectedPayment] = useState<any>(null);
+  const [showReceipt, setShowReceipt] = useState(false);
 
   useEffect(() => {
     setSupabase(createClient());
@@ -79,6 +87,7 @@ export default function StudentDashboard() {
         loadStudentInfo(admissionNumber);
         loadExamMarks(admissionNumber);
         loadCourses();
+        loadPayments(admissionNumber);
       }
     }
   };
@@ -88,6 +97,20 @@ export default function StudentDashboard() {
     if (studentInfo) {
       loadUnitsWithLecturers(studentInfo);
     }
+  }, [studentInfo]);
+
+  // Auto-update financial hold status every 60 seconds
+  useEffect(() => {
+    if (!studentInfo) return;
+
+    const interval = setInterval(async () => {
+      const { checkFinancialHold } = await import('@/lib/fee-calculation');
+      const result = await checkFinancialHold(studentInfo.id);
+      setFinancialHold(result.hasHold);
+      setBalance(result.balance);
+    }, 60000); // 60 seconds
+
+    return () => clearInterval(interval);
   }, [studentInfo]);
 
   const loadStudentInfo = async (admissionNumber: string) => {
@@ -100,9 +123,14 @@ export default function StudentDashboard() {
 
       if (error) {
         setError('Failed to load student information');
-      } else {
-        setStudentInfo(data);
+        return;
       }
+
+      setStudentInfo(data);
+      
+      // Check financial hold status
+      setFinancialHold(data.financial_hold || false);
+      setBalance(data.total_balance || 0);
     } catch (err) {
       setError('An error occurred');
     } finally {
@@ -124,7 +152,35 @@ export default function StudentDashboard() {
         setExamMarks(data || []);
       }
     } catch (err) {
-      setError('An error occurred');
+      setError('An error occurred loading exam marks');
+    }
+  };
+
+  const loadPayments = async (admissionNumber: string) => {
+    try {
+      // First get the application_id from admission_number
+      const { data: application } = await supabase
+        .from('applications')
+        .select('id')
+        .eq('admission_number', admissionNumber)
+        .single();
+
+      if (!application) return;
+
+      const { data, error } = await supabase
+        .from('fee_payments')
+        .select('*')
+        .eq('application_id', application.id)
+        .order('payment_date', { ascending: false })
+        .limit(5);
+
+      if (error) {
+        console.error('Error loading payments:', error);
+      } else {
+        setPayments(data || []);
+      }
+    } catch (err) {
+      console.error('Error loading payments:', err);
     }
   };
 
@@ -141,12 +197,17 @@ export default function StudentDashboard() {
           duration_months,
           modules (
             module_index,
+            exam_body,
             semesters (
+              id,
               semester_index,
               duration_months,
               fee,
               practical_fee,
-              internal_exams
+              internal_exams,
+              units (
+                name
+              )
             )
           ),
           short_course_config (
@@ -185,12 +246,17 @@ export default function StudentDashboard() {
             duration_months,
             modules (
               module_index,
+              exam_body,
               semesters (
+                id,
                 semester_index,
                 duration_months,
                 fee,
                 practical_fee,
-                internal_exams
+                internal_exams,
+                units (
+                  name
+                )
               )
             ),
             short_course_config (
@@ -295,6 +361,12 @@ export default function StudentDashboard() {
 
   // Generate PDF for student results
   const generatePDF = async () => {
+    // Check financial hold before allowing PDF download
+    if (financialHold) {
+      setError(`Your transcript is locked due to outstanding balance of KES ${balance.toLocaleString()}. Please clear your balance to access your results.`);
+      return;
+    }
+
     if (examMarks.length === 0) {
       setError('No exam results to generate PDF');
       return;
@@ -434,6 +506,12 @@ export default function StudentDashboard() {
   };
 
   const generatePeriodResultsPDF = async (periodNumber: number) => {
+    // Check financial hold before allowing PDF download
+    if (financialHold) {
+      setError(`Your transcript is locked due to outstanding balance of KES ${balance.toLocaleString()}. Please clear your balance to access your results.`);
+      return;
+    }
+
     const periodMarks = examMarks.filter((mark) => mark.semester === periodNumber);
     if (periodMarks.length === 0) {
       setError(`No exam results found for ${getPeriodLabel((getCourseTypeConfig(courses.find(c => c.name === studentInfo?.course)?.course_types, studentInfo?.course_type || 'diploma')?.studyMode) || 'semester')} ${periodNumber}.`);
@@ -780,6 +858,32 @@ export default function StudentDashboard() {
 
       {/* Main Content */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 py-8">
+        {/* Financial Hold Banner */}
+        {financialHold && (
+          <div className="mb-6 bg-red-500/20 backdrop-blur-md rounded-xl p-6 border border-red-500/50">
+            <div className="flex items-center gap-4">
+              <div className="text-red-300">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-red-300 font-bold text-lg">Financial Hold Active - Results Locked</h3>
+                <p className="text-white text-sm">
+                  Your transcript and exam results are locked due to outstanding balance of KES {balance.toLocaleString()}.
+                  Please clear your balance to access your academic records and download result slips.
+                </p>
+              </div>
+              <Link
+                href="/student/payments"
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-semibold"
+              >
+                Pay Now
+              </Link>
+            </div>
+          </div>
+        )}
+
         {error && (
           <div className="mb-6 p-4 bg-red-500/20 border border-red-500 rounded-lg text-red-200 text-sm">
             {error}
@@ -897,23 +1001,93 @@ export default function StudentDashboard() {
 
                   {courseTypeConfig && courseTypeConfig.studyMode !== 'short-course' && (
                     <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-                      <h3 className="text-white font-semibold mb-3">Exam Plan & Period Results</h3>
-                      <div className="space-y-2">
+                      <h3 className="text-white font-semibold mb-4">Exam Results by Semester & Module</h3>
+                      <div className="space-y-4">
                         {courseTypeConfig.periods.map((period, index) => {
                           const periodNumber = index + 1;
                           const periodResults = examMarks.filter((mark) => mark.semester === periodNumber);
+                          const hasResults = periodResults.length > 0;
+                          
                           return (
-                            <div key={periodNumber} className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 bg-white/5 rounded px-3 py-2">
-                              <p className="text-purple-200 text-sm">
-                                {getPeriodLabel(courseTypeConfig.studyMode)} {periodNumber}: expected exams <span className="text-white font-semibold">{period.internalExams}</span>
-                              </p>
-                              <button
-                                onClick={() => generatePeriodResultsPDF(periodNumber)}
-                                disabled={periodResults.length === 0}
-                                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded text-xs font-semibold transition-colors"
-                              >
-                                {periodResults.length > 0 ? 'Download Results' : 'No Results Yet'}
-                              </button>
+                            <div key={periodNumber} className="bg-white/5 rounded-lg p-4 border border-white/10">
+                              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-3">
+                                <div>
+                                  <h4 className="text-white font-semibold">
+                                    {getPeriodLabel(courseTypeConfig.studyMode)} {periodNumber}
+                                  </h4>
+                                  <p className="text-purple-200 text-sm">
+                                    Module {studentInfo?.current_module || 1} • {period.internalExams} Expected Exams
+                                  </p>
+                                </div>
+                                <div className="flex gap-2">
+                                  {hasResults && !financialHold && (
+                                    <button
+                                      onClick={() => {
+                                        setPreviewPeriod(periodNumber);
+                                        setShowResultPreview(true);
+                                      }}
+                                      className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-semibold transition-colors"
+                                    >
+                                      View Results
+                                    </button>
+                                  )}
+                                  <div className="relative group">
+                                    <button
+                                      onClick={() => generatePeriodResultsPDF(periodNumber)}
+                                      disabled={!hasResults || financialHold}
+                                      className={`px-3 py-2 text-white rounded text-xs font-semibold transition-colors flex items-center gap-2 ${
+                                        financialHold 
+                                          ? 'bg-gray-600 cursor-not-allowed' 
+                                          : !hasResults 
+                                            ? 'bg-gray-600 cursor-not-allowed'
+                                            : 'bg-blue-600 hover:bg-blue-700'
+                                      }`}
+                                      title={financialHold ? 'Results locked due to outstanding balance' : ''}
+                                    >
+                                      {financialHold && (
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                        </svg>
+                                      )}
+                                      {financialHold ? 'Locked' : !hasResults ? 'No Results' : 'Download PDF'}
+                                    </button>
+                                    {financialHold && (
+                                      <div className="absolute top-full right-0 mt-2 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-50">
+                                        <p className="font-semibold mb-1">Financial Hold Active</p>
+                                        <p>Your results are locked due to outstanding balance of KES {balance.toLocaleString()}.</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              {hasResults && (
+                                <div className="border-t border-white/10 pt-3">
+                                  <p className="text-purple-200 text-xs mb-2">Recent Results:</p>
+                                  <div className="space-y-1">
+                                    {periodResults.slice(0, 3).map((mark, idx) => {
+                                      const gradeInfo = calculateGrade(mark.marks);
+                                      return (
+                                        <div key={idx} className="flex items-center justify-between text-xs">
+                                          <span className="text-white">{mark.unit || 'Unit'}</span>
+                                          <span className="text-purple-200">{mark.marks}%</span>
+                                          <span className={`px-2 py-0.5 rounded ${
+                                            gradeInfo.points <= 2 ? 'bg-green-500/20 text-green-300' :
+                                            gradeInfo.points <= 4 ? 'bg-blue-500/20 text-blue-300' :
+                                            gradeInfo.points <= 6 ? 'bg-yellow-500/20 text-yellow-300' :
+                                            'bg-red-500/20 text-red-300'
+                                          }`}>
+                                            {gradeInfo.grade}
+                                          </span>
+                                        </div>
+                                      );
+                                    })}
+                                    {periodResults.length > 3 && (
+                                      <p className="text-purple-300 text-xs italic">+ {periodResults.length - 3} more results</p>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           );
                         })}
@@ -975,16 +1149,55 @@ export default function StudentDashboard() {
           </div>
         </div>
 
+        {/* Recent Payments Card */}
+        {payments.length > 0 && (
+          <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 md:p-8 border border-white/20 mb-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl md:text-2xl font-bold text-white">Recent Payments</h2>
+              <Link
+                href="/student/payments"
+                className="text-purple-300 text-sm hover:text-white transition-colors"
+              >
+                View All →
+              </Link>
+            </div>
+            <div className="space-y-3">
+              {payments.map((payment) => (
+                <div key={payment.id} className="flex items-center justify-between bg-white/5 rounded-lg p-4">
+                  <div>
+                    <p className="text-white font-medium capitalize">{payment.payment_type}</p>
+                    <p className="text-purple-200 text-sm">
+                      {new Date(payment.payment_date).toLocaleDateString()} • {payment.receipt_number}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-white font-bold">KES {payment.amount.toLocaleString()}</p>
+                    <button
+                      onClick={() => {
+                        setSelectedPayment(payment);
+                        setShowReceipt(true);
+                      }}
+                      className="text-purple-300 text-sm hover:text-white underline"
+                    >
+                      View Receipt
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Exam Results Card */}
         <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 md:p-8 border border-white/20">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
-            <h2 className="text-xl md:text-2xl font-bold text-white">Exam Results</h2>
+            <h2 className="text-xl md:text-2xl font-bold text-white">All Exam Results</h2>
             <button
               onClick={() => generatePDF()}
-              disabled={examMarks.length === 0}
+              disabled={examMarks.length === 0 || financialHold}
               className="w-full md:w-auto px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Download Results PDF
+              {financialHold ? 'Results Locked' : 'Download Results PDF'}
             </button>
           </div>
 
@@ -999,6 +1212,7 @@ export default function StudentDashboard() {
                   <tr className="border-b border-white/20">
                     <th className="text-left py-3 px-2 md:px-4 font-semibold text-xs md:text-sm">Unit</th>
                     <th className="text-left py-3 px-2 md:px-4 font-semibold text-xs md:text-sm">Semester</th>
+                    <th className="text-left py-3 px-2 md:px-4 font-semibold text-xs md:text-sm">Module</th>
                     <th className="text-left py-3 px-2 md:px-4 font-semibold text-xs md:text-sm">Exam Type</th>
                     <th className="text-left py-3 px-2 md:px-4 font-semibold text-xs md:text-sm">Marks</th>
                     <th className="text-left py-3 px-2 md:px-4 font-semibold text-xs md:text-sm">Grade</th>
@@ -1012,6 +1226,7 @@ export default function StudentDashboard() {
                       <tr key={mark.id} className="border-b border-white/10 hover:bg-white/5">
                         <td className="py-3 px-2 md:px-4 text-xs md:text-sm">{mark.unit}</td>
                         <td className="py-3 px-2 md:px-4 text-xs md:text-sm">Semester {mark.semester}</td>
+                        <td className="py-3 px-2 md:px-4 text-xs md:text-sm">Module {mark.module || studentInfo?.current_module || 1}</td>
                         <td className="py-3 px-2 md:px-4 text-xs md:text-sm">{examTypeLabel}</td>
                         <td className="py-3 px-2 md:px-4 font-semibold text-xs md:text-sm">{mark.marks}</td>
                         <td className="py-3 px-2 md:px-4 font-semibold text-xs md:text-sm">{gradeInfo.grade}</td>
@@ -1024,6 +1239,140 @@ export default function StudentDashboard() {
           )}
         </div>
       </div>
+
+      {/* Result Preview Modal */}
+      {showResultPreview && previewPeriod && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-gray-800">
+                {getPeriodLabel(getCourseTypeConfig(courses.find(c => c.name === studentInfo?.course)?.course_types, studentInfo?.course_type || 'diploma')?.studyMode || 'semester')} {previewPeriod} Results
+              </h2>
+              <button
+                onClick={() => {
+                  setShowResultPreview(false);
+                  setPreviewPeriod(null);
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="bg-gray-50 rounded-lg p-6 mb-4">
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <p className="text-gray-600 text-sm">Name</p>
+                  <p className="text-gray-800 font-semibold">{studentInfo?.full_name}</p>
+                </div>
+                <div>
+                  <p className="text-gray-600 text-sm">Admission No</p>
+                  <p className="text-gray-800 font-semibold">{studentInfo?.admission_number}</p>
+                </div>
+                <div>
+                  <p className="text-gray-600 text-sm">Course</p>
+                  <p className="text-gray-800 font-semibold">{studentInfo?.course}</p>
+                </div>
+                <div>
+                  <p className="text-gray-600 text-sm">Module</p>
+                  <p className="text-gray-800 font-semibold">Module {studentInfo?.current_module || 1}</p>
+                </div>
+              </div>
+              
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-300">
+                    <th className="text-left py-2 px-4 font-semibold text-gray-700">Unit</th>
+                    <th className="text-left py-2 px-4 font-semibold text-gray-700">Exam Type</th>
+                    <th className="text-left py-2 px-4 font-semibold text-gray-700">Marks</th>
+                    <th className="text-left py-2 px-4 font-semibold text-gray-700">Grade</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {examMarks.filter((mark) => mark.semester === previewPeriod).map((mark) => {
+                    const gradeInfo = calculateGrade(mark.marks);
+                    const examTypeLabel = mark.exam_type === 'combined' ? 'CAT + End Term' : mark.exam_type === 'mock' ? 'Mock Exam' : mark.exam_type;
+                    return (
+                      <tr key={mark.id} className="border-b border-gray-200">
+                        <td className="py-2 px-4 text-gray-800">{mark.unit}</td>
+                        <td className="py-2 px-4 text-gray-600">{examTypeLabel}</td>
+                        <td className="py-2 px-4 text-gray-800 font-semibold">{mark.marks}%</td>
+                        <td className="py-2 px-4">
+                          <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                            gradeInfo.points <= 2 ? 'bg-green-100 text-green-800' :
+                            gradeInfo.points <= 4 ? 'bg-blue-100 text-blue-800' :
+                            gradeInfo.points <= 6 ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {gradeInfo.grade}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowResultPreview(false);
+                  setPreviewPeriod(null);
+                }}
+                className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg transition-colors font-semibold"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  generatePeriodResultsPDF(previewPeriod);
+                  setShowResultPreview(false);
+                  setPreviewPeriod(null);
+                }}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-semibold"
+              >
+                Download PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Receipt Modal */}
+      {showReceipt && selectedPayment && studentInfo && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-gray-800">Payment Receipt</h2>
+              <button
+                onClick={() => {
+                  setShowReceipt(false);
+                  setSelectedPayment(null);
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <PaymentReceipt
+              receiptNumber={selectedPayment.receipt_number}
+              studentName={studentInfo.full_name}
+              admissionNumber={studentInfo.admission_number}
+              paymentDate={selectedPayment.payment_date}
+              amount={selectedPayment.amount}
+              paymentType={selectedPayment.payment_type}
+              paymentMethod={selectedPayment.payment_method}
+              semester={selectedPayment.semester}
+              module={selectedPayment.module}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

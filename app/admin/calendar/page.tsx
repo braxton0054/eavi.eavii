@@ -12,9 +12,13 @@ interface AcademicCalendar {
   id: string;
   academic_year: string;
   term: number;
+  semester: number;
   term_name: string;
   term_start_date: string;
   term_end_date: string;
+  intake_start_date: string;
+  intake_end_date: string;
+  bridge_trigger_day: number;
   cat_opening_date: string;
   cat_closing_date: string;
   end_term_exam_date: string;
@@ -38,9 +42,13 @@ export default function AcademicCalendar() {
   const [formData, setFormData] = useState({
     academic_year: '',
     term: 1,
+    semester: 1,
     term_name: '',
     term_start_date: '',
     term_end_date: '',
+    intake_start_date: '',
+    intake_end_date: '',
+    bridge_trigger_day: 45,
     cat_opening_date: '',
     cat_closing_date: '',
     end_term_exam_date: '',
@@ -143,9 +151,13 @@ export default function AcademicCalendar() {
     setFormData({
       academic_year: calendar.academic_year,
       term: calendar.term,
+      semester: calendar.semester,
       term_name: calendar.term_name,
       term_start_date: calendar.term_start_date,
       term_end_date: calendar.term_end_date,
+      intake_start_date: calendar.intake_start_date,
+      intake_end_date: calendar.intake_end_date,
+      bridge_trigger_day: calendar.bridge_trigger_day,
       cat_opening_date: calendar.cat_opening_date,
       cat_closing_date: calendar.cat_closing_date,
       end_term_exam_date: calendar.end_term_exam_date,
@@ -177,9 +189,13 @@ export default function AcademicCalendar() {
     setFormData({
       academic_year: '',
       term: 1,
+      semester: 1,
       term_name: '',
       term_start_date: '',
       term_end_date: '',
+      intake_start_date: '',
+      intake_end_date: '',
+      bridge_trigger_day: 45,
       cat_opening_date: '',
       cat_closing_date: '',
       end_term_exam_date: '',
@@ -288,6 +304,22 @@ export default function AcademicCalendar() {
                       </select>
                     </div>
                     <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Semester</label>
+                      <select
+                        value={formData.semester}
+                        onChange={(e) => setFormData({ ...formData, semester: parseInt(e.target.value) })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        required
+                      >
+                        <option value={1}>Semester 1</option>
+                        <option value={2}>Semester 2</option>
+                        <option value={3}>Semester 3</option>
+                        <option value={4}>Semester 4</option>
+                        <option value={5}>Semester 5</option>
+                        <option value={6}>Semester 6</option>
+                      </select>
+                    </div>
+                    <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Term Name</label>
                       <input
                         type="text"
@@ -329,6 +361,38 @@ export default function AcademicCalendar() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                         required
                       />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Intake Start Date</label>
+                      <input
+                        type="date"
+                        value={formData.intake_start_date}
+                        onChange={(e) => setFormData({ ...formData, intake_start_date: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Intake End Date</label>
+                      <input
+                        type="date"
+                        value={formData.intake_end_date}
+                        onChange={(e) => setFormData({ ...formData, intake_end_date: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Bridge Trigger Day</label>
+                      <input
+                        type="number"
+                        value={formData.bridge_trigger_day}
+                        onChange={(e) => setFormData({ ...formData, bridge_trigger_day: parseInt(e.target.value) })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        min="1"
+                        required
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Day number when bridge stream opens (e.g., 45)</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">CAT Opening Date</label>
