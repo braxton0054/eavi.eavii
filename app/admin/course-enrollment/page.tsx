@@ -36,6 +36,7 @@ export default function CourseEnrollmentPage() {
   // Selection state
   const [selectedCourseId, setSelectedCourseId] = useState('');
   const [selectedLevel, setSelectedLevel] = useState<LevelKey | ''>('');
+  const [selectedExamBody, setSelectedExamBody] = useState<'KNEC' | 'CDACC' | 'JP' | 'internal' | ''>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'assign' | 'view'>('assign');
   
@@ -111,6 +112,12 @@ export default function CourseEnrollmentPage() {
     }
   }, [selectedCourseId]);
 
+  useEffect(() => {
+    // Reset selections when exam body changes
+    setSelectedCourseId('');
+    setSelectedLevel('');
+  }, [selectedExamBody]);
+
   const loadCourseTypes = async (courseId: string) => {
     try {
       const { data, error } = await supabase
@@ -181,10 +188,22 @@ export default function CourseEnrollmentPage() {
   const currentCourseType = courseTypes.find(ct => ct.level === selectedLevel);
   const isShortCourse = currentCourseType?.study_mode === 'short-course';
 
-  const filteredCourses = courses.filter(course =>
-    course.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (course.departments?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const getExamBodyFromCourseId = (courseId: string): 'KNEC' | 'CDACC' | 'JP' | 'internal' => {
+    if (courseId.startsWith('KNEC-')) return 'KNEC';
+    if (courseId.startsWith('CDACC-')) return 'CDACC';
+    if (courseId.startsWith('JP-')) return 'JP';
+    return 'internal';
+  };
+
+  const filteredCourses = courses.filter(course => {
+    const matchesSearch = 
+      course.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (course.departments?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesExamBody = !selectedExamBody || getExamBodyFromCourseId(course.id) === selectedExamBody;
+    
+    return matchesSearch && matchesExamBody;
+  });
 
   const [allCoursesData, setAllCoursesData] = useState<any[]>([]);
   const [loadingAllCourses, setLoadingAllCourses] = useState(false);
@@ -428,7 +447,22 @@ export default function CourseEnrollmentPage() {
                 </div>
               )}
 
-            <div className="grid grid-cols-1 gap-4 md:gap-6 md:grid-cols-2 mb-8">
+            <div className="grid grid-cols-1 gap-4 md:gap-6 md:grid-cols-3 mb-8">
+              <div>
+                <label className="block text-purple-200 text-xs md:text-sm font-medium mb-2">Exam Body</label>
+                <select
+                  value={selectedExamBody}
+                  onChange={(e) => setSelectedExamBody(e.target.value as 'KNEC' | 'CDACC' | 'JP' | 'internal' | '')}
+                  className="w-full px-3 py-2 md:px-4 md:py-3 bg-white/5 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all text-sm md:text-base"
+                >
+                  <option value="" className="text-gray-900">All Exam Bodies</option>
+                  <option value="KNEC" className="text-gray-900">KNEC</option>
+                  <option value="CDACC" className="text-gray-900">CDACC</option>
+                  <option value="JP" className="text-gray-900">JP International</option>
+                  <option value="internal" className="text-gray-900">Internal</option>
+                </select>
+              </div>
+
               <div>
                 <label className="block text-purple-200 text-xs md:text-sm font-medium mb-2">Select Course *</label>
                 <input
