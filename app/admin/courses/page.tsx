@@ -1452,6 +1452,12 @@ export default function CoursesPage() {
                                       {grade}
                                     </option>
                                   ))}
+                                  <option value="ID/Birth Cert" className="text-gray-900 font-bold">
+                                    ID/Birth Cert
+                                  </option>
+                                  <option value="Open" className="text-gray-900 font-bold">
+                                    Open
+                                  </option>
                                 </select>
                               </div>
 
