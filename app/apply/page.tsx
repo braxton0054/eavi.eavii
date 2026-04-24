@@ -267,14 +267,17 @@ export default function ApplyPage() {
 
       // Get course and course_type_id from courses array
       const selectedCourse = courses.find(c => c.id === formData.course);
-      const courseName = selectedCourse?.name || formData.course;
       
-      // Get course_type_id from the selected course type
-      const courseTypeData = selectedCourse?.course_types?.find((ct: any) => ct.level === formData.courseType);
+      // Professionally find the course_type_id regardless of how the nested array is shaped
+      const courseTypeData = selectedCourse?.course_types?.find((ct: any) => 
+        ct.level.toLowerCase() === formData.courseType.toLowerCase()
+      );
       const courseTypeId = courseTypeData?.id;
 
+      // Add a professional guard clause
       if (!courseTypeId) {
-        alert('Invalid course type selection. Please try again.');
+        console.error("Link Failure: Could not resolve course_type_id for:", formData.courseType, "in", selectedCourse);
+        alert('System Error: Unable to link your selected course level. Please refresh and try again.');
         setSubmitting(false);
         return;
       }
