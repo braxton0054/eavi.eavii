@@ -155,14 +155,14 @@ INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode,
 ON CONFLICT (course_id, level) DO NOTHING;
 
 INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-TT', 'Travel & Tourism', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1))
+  ('JP-TR', 'Travel & Tourism', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1))
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('JP-TT', 'diploma', true, 'C-', 'module', 18),
-  ('JP-TT', 'certificate', true, 'D', 'module', 9),
-  ('JP-TT', 'craft', true, 'D-', 'module', 6),
-  ('JP-TT', 'artisan', true, 'ID/Birth Cert', 'module', 3)
+  ('JP-TR', 'diploma', true, 'C-', 'module', 18),
+  ('JP-TR', 'certificate', true, 'D', 'module', 9),
+  ('JP-TR', 'craft', true, 'D-', 'module', 6),
+  ('JP-TR', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 INSERT INTO courses (id, name, department_id) VALUES 

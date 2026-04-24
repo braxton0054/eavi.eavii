@@ -16,7 +16,7 @@
 -- - Community Development (JP-CD)
 -- - Purchasing & Supplies (JP-PS)
 -- - Sociology (JP-SO)
--- - Travel & Tourism (JP-TT)
+-- - Travel & Tourism (JP-TR)
 -- - Sales & Marketing (JP-SM)
 -- - International Relations (JP-IR)
 -- - English (JP-EN)
