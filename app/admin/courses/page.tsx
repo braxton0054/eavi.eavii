@@ -343,9 +343,9 @@ export default function CoursesPage() {
         durationMonths: ct.duration_months,
         modules: (ct.modules || []).sort((a: any, b: any) => a.module_index - b.module_index).map((m: any) => ({
           semesters: (m.semesters || []).sort((a: any, b: any) => a.semester_index - b.semester_index).map((s: any) => {
-            // Load units for this semester
+            // Load units for this semester using course_id, module_index, and semester_index
             const semesterUnits = (unitsData || [])
-              .filter((u: any) => u.semester_id === s.id)
+              .filter((u: any) => u.course_id === course.id && u.module_index === m.module_index && u.semester_index === s.semester_index)
               .map((u: any) => u.name);
             
             return {
