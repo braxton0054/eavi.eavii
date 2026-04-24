@@ -187,7 +187,7 @@ export default function LecturerDashboard() {
       const { data: assignmentsData } = await supabase
         .from('lecturer_assignments')
         .select('*')
-        .eq('lecturer_number', userMetadata.lecturer_number);
+        .eq('lecturer_id', lecturerInfo.id);
       
       if (assignmentsData && assignmentsData.length > 0) {
         setAssignments(assignmentsData);
@@ -206,13 +206,15 @@ export default function LecturerDashboard() {
     setLoading(true);
 
     try {
+      // Extract unit codes from unit names (e.g., "201- TYPEWRITING" -> "201")
+      const unitCodes = setupData.units.map(unit => unit.split('-')[0].trim());
+      
       // Save lecturer assignment
       const { error } = await supabase.from('lecturer_assignments').insert([{
-        lecturer_number: lecturerInfo.lecturer_number,
+        lecturer_id: lecturerInfo.id,
         campus: setupData.campus,
-        department: setupData.department,
-        course: setupData.course,
-        units: setupData.units
+        course_id: setupData.course,
+        units: unitCodes
       }]);
 
       if (error) {
@@ -225,7 +227,7 @@ export default function LecturerDashboard() {
       const { data: assignmentsData } = await supabase
         .from('lecturer_assignments')
         .select('*')
-        .eq('lecturer_number', lecturerInfo.lecturer_number);
+        .eq('lecturer_id', lecturerInfo.id);
       
       if (assignmentsData) {
         setAssignments(assignmentsData);
@@ -328,8 +330,8 @@ export default function LecturerDashboard() {
       const { data: existingExamRows, error: existingExamRowsError } = await supabase
         .from('exam_marks')
         .select('admission_number, exam_type')
-        .eq('course', marksData.selectedCourse)
-        .eq('unit', marksData.selectedUnit)
+        .eq('course_id', marksData.selectedCourse)
+        .eq('unit_code', marksData.selectedUnit)
         .eq('semester', parseInt(marksData.semester))
         .in('admission_number', admissionNumbers);
 
@@ -386,13 +388,14 @@ export default function LecturerDashboard() {
       // Get campus from the selected assignment
       const selectedAssignment = assignments.find(a => a.id === marksData.selectedAssignmentId);
       const campus = selectedAssignment?.campus || '';
+      const courseId = selectedAssignment?.course_id || '';
 
       // Save marks per student: update existing record first, insert if missing
       for (const mark of marksData.marks) {
         const payload = {
           campus: campus,
-          course: marksData.selectedCourse,
-          unit: marksData.selectedUnit,
+          course_id: courseId,
+          unit_code: marksData.selectedUnit,
           semester: parseInt(marksData.semester),
           admission_number: mark.admission_number,
           exam_type: marksData.examType,
@@ -405,8 +408,8 @@ export default function LecturerDashboard() {
           .from('exam_marks')
           .select('id')
           .eq('admission_number', mark.admission_number)
-          .eq('course', marksData.selectedCourse)
-          .eq('unit', marksData.selectedUnit)
+          .eq('course_id', courseId)
+          .eq('unit_code', marksData.selectedUnit)
           .eq('semester', parseInt(marksData.semester))
           .eq('exam_type', marksData.examType)
           .maybeSingle();
@@ -744,7 +747,7 @@ export default function LecturerDashboard() {
                 <option value="">Select Course</option>
                 {assignments.map((assignment) => (
                   <option key={assignment.id} value={assignment.id} className="text-gray-900">
-                    {assignment.course} - {assignment.campus} Campus
+                    {assignment.course_id} - {assignment.campus} Campus
                   </option>
                 ))}
               </select>
@@ -753,7 +756,8 @@ export default function LecturerDashboard() {
             {/* Show All Assignments with Units */}
             <div className="space-y-4">
               {assignments.map((assignment) => {
-                const selectedCourse = courses.find(c => c.name === assignment.course);
+                const course = assignment?.course_id || '';
+                const selectedCourse = courses.find(c => c.name === course);
                 
                 // Get exam body and intake info from course types
                 let examBody = 'internal';
@@ -778,7 +782,7 @@ export default function LecturerDashboard() {
                     <div className="mb-4">
                       <div className="flex items-start justify-between">
                         <div>
-                          <h3 className="text-lg font-semibold text-white">{assignment.course}</h3>
+                          <h3 className="text-lg font-semibold text-white">{assignment.course_id}</h3>
                           <p className="text-purple-200 text-sm capitalize">{assignment.campus} Campus</p>
                           <p className="text-purple-200 text-sm capitalize">{assignment.department} Department</p>
                         </div>
@@ -831,7 +835,7 @@ export default function LecturerDashboard() {
                               onClick={() => {
                                 setMarksData({
                                   selectedAssignmentId: assignment.id,
-                                  selectedCourse: assignment.course,
+                                  selectedCourse: assignment.course_id,
                                   selectedClass: '',
                                   selectedUnit: unit,
                                   semester,
@@ -961,7 +965,7 @@ export default function LecturerDashboard() {
                 <option value="">Select Unit</option>
                 {(() => {
                   const selectedCourse = courses.find(c => c.name === marksData.selectedCourse);
-                  const selectedAssignment = assignments.find(a => a.course === marksData.selectedCourse);
+                  const selectedAssignment = assignments.find(a => a.course_id === marksData.selectedCourse);
 
                   let allUnits: string[] = [];
 

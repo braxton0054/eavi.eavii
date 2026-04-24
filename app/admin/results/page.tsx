@@ -132,7 +132,7 @@ export default function ResultsPage() {
   const uniqueStudents = [...new Set(filteredMarks.map(m => m.admission_number))];
   
   // Get unique units from filtered marks
-  const uniqueUnits = [...new Set(filteredMarks.map(m => m.unit))].sort();
+  const uniqueUnits = [...new Set(filteredMarks.map(m => m.unit_code))].sort();
 
   // Get student names from applications
   const [studentNames, setStudentNames] = useState<Record<string, string>>({});
@@ -271,7 +271,7 @@ export default function ResultsPage() {
       let unitCount = 0;
       
       uniqueUnits.forEach(unit => {
-        const mark = studentMarks.find(m => m.unit === unit);
+        const mark = studentMarks.find(m => m.unit_code === unit);
         const total = mark ? mark.marks : '-';
         doc.text(String(total), xPos, yPos, { align: 'center' });
         xPos += colWidths[2];
@@ -552,7 +552,7 @@ export default function ResultsPage() {
                         <td className="py-3 px-4">{admissionNumber}</td>
                         <td className="py-3 px-4">{studentNames[admissionNumber] || 'Unknown'}</td>
                         {uniqueUnits.map(unit => {
-                          const mark = studentMarks.find(m => m.unit === unit);
+                          const mark = studentMarks.find(m => m.unit_code === unit);
                           const total = mark ? mark.marks : '-';
                           return (
                             <td key={unit} className="py-3 px-4 text-center font-semibold">

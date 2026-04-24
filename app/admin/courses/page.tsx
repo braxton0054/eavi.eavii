@@ -279,16 +279,16 @@ export default function CoursesPage() {
       units: {}
     };
 
-    // Store unit IDs for updates
-    const unitIds: any = {};
+    // Store unit codes for updates (using unit_code instead of id)
+    const unitCodes: any = {};
     for (const u of unitsData || []) {
       const level = courseTypesData?.find((ct: any) => ct.id === u.course_id)?.level;
       if (level) {
-        if (!unitIds[level]) unitIds[level] = {};
-        unitIds[level][`${u.module_index}_${u.semester_index}_${u.name}`] = u.id;
+        if (!unitCodes[level]) unitCodes[level] = {};
+        unitCodes[level][`${u.module_index}_${u.semester_index}_${u.name}`] = u.unit_code;
       }
     }
-    existingIds.units = unitIds;
+    existingIds.units = unitCodes;
 
     // Build courseTypes object from relational data with IDs
     const courseTypes: Record<LevelKey, CourseTypeConfig> = {
@@ -903,16 +903,17 @@ export default function CoursesPage() {
               if (semester.units && semester.units.length > 0) {
                 console.log('Saving', semester.units.length, 'units for semester:', semesterId);
                 for (const unitName of semester.units) {
-                  const existingUnitId = existingIds.units?.[level]?.[`${moduleIndex}_${semesterIndex}_${unitName}`];
+                  // Generate unit code from paper code (e.g., "201" from "201- TYPEWRITING")
+                  const unitCode = unitName.split('-')[0].trim();
+                  const existingUnitCode = existingIds.units?.[level]?.[`${moduleIndex}_${semesterIndex}_${unitName}`];
                   
-                  if (editingCourse && existingUnitId) {
+                  if (editingCourse && existingUnitCode) {
                     // Update existing unit
                     const { error: unitError } = await supabase.from('units').update([{
-                      semester_id: semesterId,
                       name: unitName,
                       module_index: moduleIndex,
                       semester_index: semesterIndex
-                    }]).eq('id', existingUnitId);
+                    }]).eq('course_id', courseId).eq('unit_code', existingUnitCode);
                     
                     if (unitError) {
                       console.error('Unit update error:', unitError);
@@ -922,10 +923,10 @@ export default function CoursesPage() {
                     }
                     console.log('Updated unit:', unitName);
                   } else {
-                    // Insert new unit
+                    // Insert new unit with unit_code
                     const { error: unitError } = await supabase.from('units').insert([{
                       course_id: courseId,
-                      semester_id: semesterId,
+                      unit_code: unitCode,
                       name: unitName,
                       module_index: moduleIndex,
                       semester_index: semesterIndex

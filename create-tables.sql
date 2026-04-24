@@ -105,14 +105,14 @@ CREATE TABLE IF NOT EXISTS semesters (
 
 -- 9. UNITS
 CREATE TABLE units (
-  id              UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
   course_id       TEXT        NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-  semester_id     UUID        REFERENCES semesters(id) ON DELETE CASCADE,
-  module_index    INTEGER     NOT NULL DEFAULT -1,
-  semester_index  INTEGER     NOT NULL DEFAULT -1,
+  unit_code       TEXT        NOT NULL,
   name            TEXT        NOT NULL,
+  module_index    INTEGER     NOT NULL DEFAULT 1,
+  semester_index  INTEGER     NOT NULL DEFAULT 1,
   created_at      TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(course_id, module_index, semester_index, name)
+  updated_at      TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (course_id, unit_code)
 );
 
 -- 10. SHORT COURSE CONFIG
@@ -228,6 +228,7 @@ CREATE TABLE lecturer_assignments (
   campus           TEXT        NOT NULL CHECK (campus IN ('main', 'west')),
   course_id        TEXT        NOT NULL REFERENCES courses(id) ON DELETE RESTRICT,
   class_name       TEXT,
+  units            TEXT[]      DEFAULT ARRAY[]::TEXT[],
   created_at       TIMESTAMPTZ DEFAULT NOW(),
   updated_at       TIMESTAMPTZ DEFAULT NOW()
 );
@@ -235,17 +236,19 @@ CREATE TABLE lecturer_assignments (
 CREATE TABLE lecturer_assignment_units (
   id             UUID  DEFAULT gen_random_uuid() PRIMARY KEY,
   assignment_id  UUID  NOT NULL REFERENCES lecturer_assignments(id) ON DELETE CASCADE,
-  unit_id        UUID  NOT NULL REFERENCES units(id) ON DELETE CASCADE,
-  UNIQUE(assignment_id, unit_id)
+  course_id      TEXT  NOT NULL,
+  unit_code      TEXT  NOT NULL,
+  UNIQUE(assignment_id, course_id, unit_code),
+  FOREIGN KEY (course_id, unit_code) REFERENCES units(course_id, unit_code) ON DELETE CASCADE
 );
 
--- 14. EXAM MARKS
+-- 13. EXAM MARKS
 CREATE TABLE exam_marks (
   id               UUID           DEFAULT gen_random_uuid() PRIMARY KEY,
   application_id   UUID           NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
   campus           TEXT           NOT NULL CHECK (campus IN ('main', 'west')),
   course_id        TEXT           NOT NULL REFERENCES courses(id) ON DELETE RESTRICT,
-  unit_id          UUID           NOT NULL REFERENCES units(id) ON DELETE RESTRICT,
+  unit_code        TEXT           NOT NULL,
   semester         INTEGER        NOT NULL CHECK (semester >= 1),
   exam_type        TEXT           NOT NULL CHECK (exam_type IN ('cat', 'end_term', 'mock', 'combined')),
   cat_marks        DECIMAL(5,2)   CHECK (cat_marks >= 0 AND cat_marks <= 30),
@@ -253,7 +256,8 @@ CREATE TABLE exam_marks (
   marks            INTEGER        CHECK (marks >= 0 AND marks <= 100),
   created_at       TIMESTAMPTZ    DEFAULT NOW(),
   updated_at       TIMESTAMPTZ    DEFAULT NOW(),
-  UNIQUE(application_id, unit_id, semester, exam_type)
+  UNIQUE(application_id, unit_code, semester, exam_type),
+  FOREIGN KEY (course_id, unit_code) REFERENCES units(course_id, unit_code) ON DELETE RESTRICT
 );
 
 -- 15. HOLIDAY PERIODS

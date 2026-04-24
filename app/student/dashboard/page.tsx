@@ -432,7 +432,7 @@ export default function StudentDashboard() {
       const gradeInfo = calculateGrade(mark.marks);
       const examTypeLabel = mark.exam_type === 'combined' ? 'CAT + End Term' : mark.exam_type === 'mock' ? 'Mock Exam' : mark.exam_type;
       
-      doc.text(mark.unit, xPos, yPos);
+      doc.text(mark.unit_code, xPos, yPos);
       xPos += colWidths[0];
       
       doc.text(`Sem ${mark.semester}`, xPos, yPos);
@@ -565,7 +565,7 @@ export default function StudentDashboard() {
       const gradeInfo = calculateGrade(mark.marks);
       const examTypeLabel = mark.exam_type === 'combined' ? 'CAT + End Term' : mark.exam_type === 'mock' ? 'Mock' : mark.exam_type;
 
-      doc.text(mark.unit, xPos, yPos);
+      doc.text(mark.unit_code, xPos, yPos);
       xPos += colWidths[0];
       doc.text(examTypeLabel, xPos, yPos);
       xPos += colWidths[1];
@@ -1069,7 +1069,7 @@ export default function StudentDashboard() {
                                       const gradeInfo = calculateGrade(mark.marks);
                                       return (
                                         <div key={idx} className="flex items-center justify-between text-xs">
-                                          <span className="text-white">{mark.unit || 'Unit'}</span>
+                                          <span className="text-white">{mark.unit_code || 'Unit'}</span>
                                           <span className="text-purple-200">{mark.marks}%</span>
                                           <span className={`px-2 py-0.5 rounded ${
                                             gradeInfo.points <= 2 ? 'bg-green-500/20 text-green-300' :
@@ -1224,7 +1224,7 @@ export default function StudentDashboard() {
                     const examTypeLabel = mark.exam_type === 'combined' ? 'CAT + End Term' : mark.exam_type === 'mock' ? 'Mock Exam' : mark.exam_type;
                     return (
                       <tr key={mark.id} className="border-b border-white/10 hover:bg-white/5">
-                        <td className="py-3 px-2 md:px-4 text-xs md:text-sm">{mark.unit}</td>
+                        <td className="py-3 px-2 md:px-4 text-xs md:text-sm">{mark.unit_code}</td>
                         <td className="py-3 px-2 md:px-4 text-xs md:text-sm">Semester {mark.semester}</td>
                         <td className="py-3 px-2 md:px-4 text-xs md:text-sm">Module {mark.module || studentInfo?.current_module || 1}</td>
                         <td className="py-3 px-2 md:px-4 text-xs md:text-sm">{examTypeLabel}</td>
@@ -1296,7 +1296,7 @@ export default function StudentDashboard() {
                     const examTypeLabel = mark.exam_type === 'combined' ? 'CAT + End Term' : mark.exam_type === 'mock' ? 'Mock Exam' : mark.exam_type;
                     return (
                       <tr key={mark.id} className="border-b border-gray-200">
-                        <td className="py-2 px-4 text-gray-800">{mark.unit}</td>
+                        <td className="py-2 px-4 text-gray-800">{mark.unit_code}</td>
                         <td className="py-2 px-4 text-gray-600">{examTypeLabel}</td>
                         <td className="py-2 px-4 text-gray-800 font-semibold">{mark.marks}%</td>
                         <td className="py-2 px-4">
