@@ -94,6 +94,8 @@ export default function CourseEnrollmentPage() {
         
       if (error) throw error;
       
+      console.log('Loaded courses:', data);
+      
       // Determine exam body from course ID prefix
       const examBodyMap: Record<string, string> = {};
       (data || []).forEach((course: any) => {
@@ -102,6 +104,8 @@ export default function CourseEnrollmentPage() {
         else if (course.id.startsWith('JP-')) examBodyMap[course.id] = 'JP';
         else examBodyMap[course.id] = 'internal';
       });
+      
+      console.log('Exam body map:', examBodyMap);
       
       setCourseExamBodies(examBodyMap);
       setCourses(data || []);
@@ -217,7 +221,10 @@ export default function CourseEnrollmentPage() {
       course.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (course.departments?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesExamBody = !selectedExamBody || getExamBodyFromCourseId(course.id) === selectedExamBody;
+    const courseExamBody = getExamBodyFromCourseId(course.id);
+    const matchesExamBody = !selectedExamBody || courseExamBody === selectedExamBody;
+    
+    console.log(`Course: ${course.id}, ExamBody: ${courseExamBody}, Selected: ${selectedExamBody}, Matches: ${matchesExamBody}`);
     
     return matchesSearch && matchesExamBody;
   });
