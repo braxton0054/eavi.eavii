@@ -7,7 +7,8 @@
 INSERT INTO departments (name) VALUES 
   ('Business & Management'),
   ('Information Technology'),
-  ('Library & Information Studies')
+  ('Library & Information Studies'),
+  ('Hospitality & Creative Arts')
 ON CONFLICT (name) DO NOTHING;
 
 -- ============================================================================
@@ -212,6 +213,15 @@ ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
   ('KNEC-1922', 'certificate', true, 'D', 'module', 12, 'monthly', 5000, 12, ARRAY[5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000,5000]::DECIMAL(10,2)[], 2000, true)
+ON CONFLICT (course_id, level) DO NOTHING;
+
+-- 22. Craft Certificate in Fashion Design and Garment Making Technology (Modular)
+INSERT INTO courses (id, name, department_id) VALUES 
+  ('CFDG-2500', 'Craft Certificate in Fashion Design and Garment Making Technology', (SELECT id FROM departments WHERE name = 'Hospitality & Creative Arts' LIMIT 1))
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
+  ('CFDG-2500', 'certificate', true, 'D', 'module', 24, 'monthly', 6000, 24, ARRAY[6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000]::DECIMAL(10,2)[], 4000, true)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- ============================================================================
