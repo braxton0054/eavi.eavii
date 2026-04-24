@@ -4,6 +4,136 @@
 -- ============================================================================
 
 -- ============================================================================
+-- ENSURE COURSES EXIST (for foreign key constraint)
+-- These course inserts ensure the courses exist before units are added
+-- ============================================================================
+
+-- Insert Departments
+INSERT INTO departments (name) VALUES 
+  ('Business & Management'),
+  ('Information Technology'),
+  ('Library & Information Studies'),
+  ('Hospitality & Creative Arts')
+ON CONFLICT (name) DO NOTHING;
+
+-- Artisan Level Courses
+INSERT INTO courses (id, name, department_id) VALUES 
+  ('KNEC-0801', 'Artisan Certificate in Clerk-Typist', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-0802', 'Artisan Certificate in Salesmanship', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-0803', 'Artisan Certificate in Storekeeping', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1))
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('KNEC-0801', 'artisan', true, 'D', 'module', 6),
+  ('KNEC-0802', 'artisan', true, 'D', 'module', 6),
+  ('KNEC-0803', 'artisan', true, 'D', 'module', 6)
+ON CONFLICT (course_id, level) DO NOTHING;
+
+-- Craft Level Courses
+INSERT INTO courses (id, name, department_id) VALUES 
+  ('KNEC-1801', 'Craft Certificate in Secretarial Studies - Module I', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-1802', 'Craft Certificate in Sales & Marketing - Module I', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-1803', 'Craft Certificate in Accounting - Module I', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-1804', 'Craft Certificate in Accounting - Module II', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-1805', 'Craft Certificate in Banking - Module I', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-1806', 'Craft Certificate in Banking - Module II', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-1807', 'Craft Certificate in Human Resource Management - Module I', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-1808', 'Craft Certificate in Human Resource Management - Module II', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-1809', 'Craft Certificate in Clearing & Forwarding', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-1813', 'Craft Certificate in Library, Archives & Information Studies', (SELECT id FROM departments WHERE name = 'Library & Information Studies' LIMIT 1))
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('KNEC-1801', 'certificate', true, 'D', 'module', 12),
+  ('KNEC-1802', 'certificate', true, 'D', 'module', 12),
+  ('KNEC-1803', 'certificate', true, 'D', 'module', 12),
+  ('KNEC-1804', 'certificate', true, 'D', 'module', 12),
+  ('KNEC-1805', 'certificate', true, 'D', 'module', 12),
+  ('KNEC-1806', 'certificate', true, 'D', 'module', 12),
+  ('KNEC-1807', 'certificate', true, 'D', 'module', 12),
+  ('KNEC-1808', 'certificate', true, 'D', 'module', 12),
+  ('KNEC-1809', 'certificate', true, 'D', 'module', 12),
+  ('KNEC-1813', 'certificate', true, 'D', 'module', 12)
+ON CONFLICT (course_id, level) DO NOTHING;
+
+-- Craft Level Modular Courses
+INSERT INTO courses (id, name, department_id) VALUES 
+  ('KNEC-1901', 'Craft Certificate in Secretarial Studies - Module I', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-1902', 'Craft Certificate in Sales & Marketing - Module I', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-1903', 'Craft Certificate in Supply Chain Management - Module I', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-1906', 'Craft Certificate in Business Management - Module I', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-1908', 'Craft Certificate in Human Resource Management - Module I', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-1913', 'Craft Certificate in Records & Information Management - Module I', (SELECT id FROM departments WHERE name = 'Library & Information Studies' LIMIT 1)),
+  ('KNEC-1920', 'Craft Certificate in Information Communication Technology - Module I', (SELECT id FROM departments WHERE name = 'Information Technology' LIMIT 1)),
+  ('KNEC-1922', 'Craft Certificate in Project Management - Module I', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('CFDG-2500', 'Craft Certificate in Fashion Design & Garment Making', (SELECT id FROM departments WHERE name = 'Hospitality & Creative Arts' LIMIT 1))
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('KNEC-1901', 'certificate', true, 'D', 'module', 12),
+  ('KNEC-1902', 'certificate', true, 'D', 'module', 12),
+  ('KNEC-1903', 'certificate', true, 'D', 'module', 12),
+  ('KNEC-1906', 'certificate', true, 'D', 'module', 12),
+  ('KNEC-1908', 'certificate', true, 'D', 'module', 12),
+  ('KNEC-1913', 'certificate', true, 'D', 'module', 12),
+  ('KNEC-1920', 'certificate', true, 'D', 'module', 12),
+  ('KNEC-1922', 'certificate', true, 'D', 'module', 12),
+  ('CFDG-2500', 'certificate', true, 'D', 'module', 12)
+ON CONFLICT (course_id, level) DO NOTHING;
+
+-- Diploma Level Courses
+INSERT INTO courses (id, name, department_id) VALUES 
+  ('KNEC-2801', 'Diploma in Secretarial Studies - Module I', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-2802', 'Diploma in Sales & Marketing - Module I', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-2803', 'Diploma in Purchasing & Supplies - Module I', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-2804', 'Diploma in Accounting - Module I', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-2805', 'Diploma in Banking - Module I', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-2806', 'Diploma in Banking - Module II', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-2807', 'Diploma in Cooperative Management - Module I', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-2808', 'Diploma in Human Resource Management - Module I', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-2813', 'Diploma in Library, Archives & Information Studies', (SELECT id FROM departments WHERE name = 'Library & Information Studies' LIMIT 1)),
+  ('KNEC-2814', 'Diploma in Small Business Management', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1))
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('KNEC-2801', 'diploma', true, 'C', 'module', 24),
+  ('KNEC-2802', 'diploma', true, 'C', 'module', 24),
+  ('KNEC-2803', 'diploma', true, 'C', 'module', 24),
+  ('KNEC-2804', 'diploma', true, 'C', 'module', 24),
+  ('KNEC-2805', 'diploma', true, 'C', 'module', 24),
+  ('KNEC-2806', 'diploma', true, 'C', 'module', 24),
+  ('KNEC-2807', 'diploma', true, 'C', 'module', 24),
+  ('KNEC-2808', 'diploma', true, 'C', 'module', 24),
+  ('KNEC-2813', 'diploma', true, 'C', 'module', 24),
+  ('KNEC-2814', 'diploma', true, 'C', 'module', 24)
+ON CONFLICT (course_id, level) DO NOTHING;
+
+-- Diploma Level Modular Courses
+INSERT INTO courses (id, name, department_id) VALUES 
+  ('KNEC-2901', 'Diploma in Secretarial Studies - Module I', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-2902', 'Diploma in Sales & Marketing - Module I', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-2903', 'Diploma in Supply Chain Management - Module I', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-2906', 'Diploma in Business Management - Module I', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-2908', 'Diploma in Human Resource Management - Module I', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-2920', 'Diploma in Information Communication Technology - Module I', (SELECT id FROM departments WHERE name = 'Information Technology' LIMIT 1)),
+  ('KNEC-2922', 'Diploma in Project Management - Module I', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-3806', 'Diploma in Sales & Marketing - Module II', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-3814', 'Diploma in Small Business Management - Module II', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1))
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('KNEC-2901', 'diploma', true, 'C', 'module', 24),
+  ('KNEC-2902', 'diploma', true, 'C', 'module', 24),
+  ('KNEC-2903', 'diploma', true, 'C', 'module', 24),
+  ('KNEC-2906', 'diploma', true, 'C', 'module', 24),
+  ('KNEC-2908', 'diploma', true, 'C', 'module', 24),
+  ('KNEC-2920', 'diploma', true, 'C', 'module', 24),
+  ('KNEC-2922', 'diploma', true, 'C', 'module', 24),
+  ('KNEC-3806', 'diploma', true, 'C', 'module', 24),
+  ('KNEC-3814', 'diploma', true, 'C', 'module', 24)
+ON CONFLICT (course_id, level) DO NOTHING;
+
+-- ============================================================================
 -- ARTISAN LEVEL COURSES (0801-0803) - Module 1, Semester 1
 -- ============================================================================
 
