@@ -636,23 +636,19 @@ export default function ApplyPage() {
               </p>
             </div>
 
-            {/* Intake Selection */}
+            {/* Intake Tiles */}
             <div>
-              <label htmlFor="intake" className="block text-white font-medium mb-2 text-sm md:text-base">
+              <label className="block text-white font-medium mb-2 text-sm md:text-base">
                 Intake *
               </label>
-              <select
-                id="intake"
-                name="intake"
-                value={formData.intake}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base"
-              >
-                <option value={`January ${currentYear}`} className="text-gray-900">January {currentYear} Intake</option>
-                <option value={`May ${currentYear}`} className="text-gray-900">May {currentYear} Intake</option>
-                <option value={`September ${currentYear}`} className="text-gray-900">September {currentYear} Intake</option>
-              </select>
+              <div className="grid grid-cols-3 gap-2">
+                {['January', 'May', 'September'].map(m => (
+                  <button type="button" key={m} onClick={() => setFormData(p => ({...p, intake: `${m} ${currentYear}`}))}
+                    className={`p-3 rounded-lg border text-xs text-center transition-all ${formData.intake.includes(m) ? 'border-purple-500 bg-purple-900/50 text-white' : 'border-white/30 bg-white/10 text-purple-200'}`}>
+                    {m} <br/> {currentYear}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Course Selection */}
@@ -751,23 +747,17 @@ export default function ApplyPage() {
               </div>
             )}
 
-            {/* Campus Selection */}
+            {/* Campus Radio Pills */}
             <div>
-              <label htmlFor="campus" className="block text-white font-medium mb-2 text-sm md:text-base">
-                Campus *
-              </label>
-              <select
-                id="campus"
-                name="campus"
-                value={formData.campus}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-3 bg-purple-900/50 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base"
-              >
-                <option value="" className="text-gray-400">Select Campus</option>
-                <option value="west" className="text-gray-900">West Campus</option>
-                <option value="main" className="text-gray-900">Main Campus</option>
-              </select>
+              <label className="block text-white font-medium mb-2 text-sm md:text-base">Campus *</label>
+              <div className="grid grid-cols-2 gap-2">
+                {['west', 'main'].map(c => (
+                  <button type="button" key={c} onClick={() => setFormData(p => ({...p, campus: c}))}
+                    className={`p-3 rounded-lg border capitalize transition-all ${formData.campus === c ? 'border-purple-500 bg-purple-900/50 text-white' : 'border-white/30 bg-white/10 text-purple-200'}`}>
+                    {c} Campus
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Submit Button */}
