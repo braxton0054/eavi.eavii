@@ -29,6 +29,19 @@ INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode,
   ('KNEC-0803', 'artisan', true, 'D', 'module', 6)
 ON CONFLICT (course_id, level) DO NOTHING;
 
+-- Artisan Level Modules and Semesters
+INSERT INTO modules (course_type_id, module_index, exam_body) VALUES
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-0801' AND level = 'artisan' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-0802' AND level = 'artisan' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-0803' AND level = 'artisan' LIMIT 1), 1, 'KNEC')
+ON CONFLICT (course_type_id, module_index) DO NOTHING;
+
+INSERT INTO semesters (module_id, semester_index, duration_months, fee, practical_fee, internal_exams) VALUES
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-0801' AND level = 'artisan' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-0802' AND level = 'artisan' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-0803' AND level = 'artisan' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2)
+ON CONFLICT DO NOTHING;
+
 -- Craft Level Courses
 INSERT INTO courses (id, name, department_id) VALUES 
   ('KNEC-1801', 'Craft Certificate in Secretarial Studies - Module I', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
@@ -56,6 +69,43 @@ INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode,
   ('KNEC-1813', 'certificate', true, 'D', 'module', 12)
 ON CONFLICT (course_id, level) DO NOTHING;
 
+-- Craft Level Modules and Semesters
+INSERT INTO modules (course_type_id, module_index, exam_body) VALUES
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-1801' AND level = 'certificate' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-1802' AND level = 'certificate' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-1803' AND level = 'certificate' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-1804' AND level = 'certificate' LIMIT 1), 2, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-1805' AND level = 'certificate' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-1806' AND level = 'certificate' LIMIT 1), 2, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-1807' AND level = 'certificate' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-1808' AND level = 'certificate' LIMIT 1), 2, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-1809' AND level = 'certificate' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-1813' AND level = 'certificate' LIMIT 1), 1, 'KNEC')
+ON CONFLICT (course_type_id, module_index) DO NOTHING;
+
+INSERT INTO semesters (module_id, semester_index, duration_months, fee, practical_fee, internal_exams) VALUES
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1801' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1801' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1802' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1802' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1803' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1803' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1804' AND level = 'certificate' LIMIT 1) AND module_index = 2 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1804' AND level = 'certificate' LIMIT 1) AND module_index = 2 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1805' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1805' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1806' AND level = 'certificate' LIMIT 1) AND module_index = 2 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1806' AND level = 'certificate' LIMIT 1) AND module_index = 2 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1807' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1807' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1808' AND level = 'certificate' LIMIT 1) AND module_index = 2 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1808' AND level = 'certificate' LIMIT 1) AND module_index = 2 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1809' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1809' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1813' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1813' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2)
+ON CONFLICT DO NOTHING;
+
 -- Craft Level Modular Courses
 INSERT INTO courses (id, name, department_id) VALUES 
   ('KNEC-1901', 'Craft Certificate in Secretarial Studies - Module I', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
@@ -80,6 +130,40 @@ INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode,
   ('KNEC-1922', 'certificate', true, 'D', 'module', 12),
   ('CFDG-2500', 'certificate', true, 'D', 'module', 12)
 ON CONFLICT (course_id, level) DO NOTHING;
+
+-- Craft Level Modular Courses - Modules and Semesters
+INSERT INTO modules (course_type_id, module_index, exam_body) VALUES
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-1901' AND level = 'certificate' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-1902' AND level = 'certificate' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-1903' AND level = 'certificate' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-1906' AND level = 'certificate' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-1908' AND level = 'certificate' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-1913' AND level = 'certificate' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-1920' AND level = 'certificate' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-1922' AND level = 'certificate' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'CFDG-2500' AND level = 'certificate' LIMIT 1), 1, 'KNEC')
+ON CONFLICT (course_type_id, module_index) DO NOTHING;
+
+INSERT INTO semesters (module_id, semester_index, duration_months, fee, practical_fee, internal_exams) VALUES
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1901' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1901' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1902' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1902' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1903' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1903' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1906' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1906' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1908' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1908' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1913' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1913' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1920' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1920' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1922' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-1922' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CFDG-2500' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'CFDG-2500' AND level = 'certificate' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2)
+ON CONFLICT DO NOTHING;
 
 -- Diploma Level Courses
 INSERT INTO courses (id, name, department_id) VALUES 
@@ -108,6 +192,63 @@ INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode,
   ('KNEC-2814', 'diploma', true, 'C', 'module', 24)
 ON CONFLICT (course_id, level) DO NOTHING;
 
+-- Diploma Level Courses - Modules and Semesters
+INSERT INTO modules (course_type_id, module_index, exam_body) VALUES
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-2801' AND level = 'diploma' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-2802' AND level = 'diploma' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-2803' AND level = 'diploma' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-2804' AND level = 'diploma' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-2805' AND level = 'diploma' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-2806' AND level = 'diploma' LIMIT 1), 2, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-2807' AND level = 'diploma' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-2808' AND level = 'diploma' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-2813' AND level = 'diploma' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-2814' AND level = 'diploma' LIMIT 1), 1, 'KNEC')
+ON CONFLICT (course_type_id, module_index) DO NOTHING;
+
+INSERT INTO semesters (module_id, semester_index, duration_months, fee, practical_fee, internal_exams) VALUES
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2801' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2801' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2801' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 3, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2801' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 4, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2802' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2802' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2802' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 3, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2802' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 4, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2803' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2803' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2803' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 3, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2803' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 4, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2804' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2804' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2804' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 3, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2804' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 4, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2805' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2805' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2805' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 3, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2805' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 4, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2806' AND level = 'diploma' LIMIT 1) AND module_index = 2 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2806' AND level = 'diploma' LIMIT 1) AND module_index = 2 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2806' AND level = 'diploma' LIMIT 1) AND module_index = 2 LIMIT 1), 3, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2806' AND level = 'diploma' LIMIT 1) AND module_index = 2 LIMIT 1), 4, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2807' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2807' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2807' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 3, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2807' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 4, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2808' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2808' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2808' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 3, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2808' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 4, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2813' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2813' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2813' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 3, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2813' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 4, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2814' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2814' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2814' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 3, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2814' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 4, 6, 0, 0, 2)
+ON CONFLICT DO NOTHING;
+
 -- Diploma Level Modular Courses
 INSERT INTO courses (id, name, department_id) VALUES 
   ('KNEC-2901', 'Diploma in Secretarial Studies - Module I', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
@@ -130,10 +271,61 @@ INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode,
   ('KNEC-2908', 'diploma', true, 'C', 'module', 24),
   ('KNEC-2920', 'diploma', true, 'C', 'module', 24),
   ('KNEC-2922', 'diploma', true, 'C', 'module', 24),
-  ('KNEC-3806', 'diploma', true, 'C', 'module', 24),
+  ('KNEC-3806', 'level6', true, 'C', 'module', 12),
   ('KNEC-3808', 'level6', true, 'C', 'module', 12),
   ('KNEC-3814', 'level6', true, 'C', 'module', 12)
 ON CONFLICT (course_id, level) DO NOTHING;
+
+-- Diploma Level Modular Courses - Modules and Semesters
+INSERT INTO modules (course_type_id, module_index, exam_body) VALUES
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-2901' AND level = 'diploma' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-2902' AND level = 'diploma' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-2903' AND level = 'diploma' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-2906' AND level = 'diploma' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-2908' AND level = 'diploma' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-2920' AND level = 'diploma' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-2922' AND level = 'diploma' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-3806' AND level = 'level6' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-3808' AND level = 'level6' LIMIT 1), 1, 'KNEC'),
+  ((SELECT id FROM course_types WHERE course_id = 'KNEC-3814' AND level = 'level6' LIMIT 1), 1, 'KNEC')
+ON CONFLICT (course_type_id, module_index) DO NOTHING;
+
+INSERT INTO semesters (module_id, semester_index, duration_months, fee, practical_fee, internal_exams) VALUES
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2901' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2901' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2901' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 3, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2901' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 4, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2902' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2902' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2902' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 3, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2902' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 4, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2903' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2903' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2903' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 3, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2903' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 4, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2906' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2906' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2906' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 3, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2906' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 4, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2908' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2908' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2908' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 3, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2908' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 4, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2920' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2920' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2920' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 3, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2920' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 4, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2922' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2922' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2922' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 3, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-2922' AND level = 'diploma' LIMIT 1) AND module_index = 1 LIMIT 1), 4, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-3806' AND level = 'level6' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-3806' AND level = 'level6' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-3808' AND level = 'level6' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-3808' AND level = 'level6' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-3814' AND level = 'level6' LIMIT 1) AND module_index = 1 LIMIT 1), 1, 6, 0, 0, 2),
+  ((SELECT id FROM modules WHERE course_type_id = (SELECT id FROM course_types WHERE course_id = 'KNEC-3814' AND level = 'level6' LIMIT 1) AND module_index = 1 LIMIT 1), 2, 6, 0, 0, 2)
+ON CONFLICT DO NOTHING;
 
 -- ============================================================================
 -- ARTISAN LEVEL COURSES (0801-0803) - Module 1, Semester 1
