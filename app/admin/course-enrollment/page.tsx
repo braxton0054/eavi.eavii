@@ -32,6 +32,7 @@ export default function CourseEnrollmentPage() {
   const [modules, setModules] = useState<any[]>([]);
   const [semesters, setSemesters] = useState<any[]>([]);
   const [units, setUnits] = useState<any[]>([]);
+  const [courseExamBodies, setCourseExamBodies] = useState<Record<string, string>>({});
   
   // Selection state
   const [selectedCourseId, setSelectedCourseId] = useState('');
@@ -87,11 +88,38 @@ export default function CourseEnrollmentPage() {
           id,
           name,
           department_id,
-          departments(name)
+          departments(name),
+          course_types(
+            id,
+            level,
+            enabled,
+            modules(
+              exam_body
+            )
+          )
         `)
         .order('name');
         
       if (error) throw error;
+      
+      // Extract exam bodies from modules for each course
+      const examBodyMap: Record<string, string> = {};
+      (data || []).forEach((course: any) => {
+        course.course_types?.forEach((ct: any) => {
+          if (ct.modules && ct.modules.length > 0) {
+            examBodyMap[course.id] = ct.modules[0].exam_body || 'internal';
+          }
+        });
+        // Fallback to prefix detection if no modules
+        if (!examBodyMap[course.id]) {
+          if (course.id.startsWith('KNEC-')) examBodyMap[course.id] = 'KNEC';
+          else if (course.id.startsWith('CDACC-')) examBodyMap[course.id] = 'CDACC';
+          else if (course.id.startsWith('JP-')) examBodyMap[course.id] = 'JP';
+          else examBodyMap[course.id] = 'internal';
+        }
+      });
+      
+      setCourseExamBodies(examBodyMap);
       setCourses(data || []);
     } catch (err: any) {
       console.error('Error loading courses:', err);
@@ -189,6 +217,11 @@ export default function CourseEnrollmentPage() {
   const isShortCourse = currentCourseType?.study_mode === 'short-course';
 
   const getExamBodyFromCourseId = (courseId: string): 'KNEC' | 'CDACC' | 'JP' | 'internal' => {
+    // Use exam body from database if available
+    if (courseExamBodies[courseId]) {
+      return courseExamBodies[courseId] as 'KNEC' | 'CDACC' | 'JP' | 'internal';
+    }
+    // Fallback to prefix detection
     if (courseId.startsWith('KNEC-')) return 'KNEC';
     if (courseId.startsWith('CDACC-')) return 'CDACC';
     if (courseId.startsWith('JP-')) return 'JP';
