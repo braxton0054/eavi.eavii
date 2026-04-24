@@ -142,174 +142,67 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950">
-      <div className="relative z-10 w-full max-w-md mx-auto px-4 md:px-6 py-8 md:py-12 flex items-center justify-center min-h-screen">
+    <div className="min-h-screen w-full bg-[#1e0f3a] text-white">
+      <div className="relative z-10 w-full max-w-md mx-auto px-4 py-12 flex items-center justify-center min-h-screen">
         <div className="w-full">
           <div className="text-center mb-8">
-            <Link href="/" className="inline-block mb-6">
-              <div className="relative w-32 h-32 md:w-40 md:h-40 mx-auto">
-                <Image
-                  src="/logo.webp"
-                  alt="East Africa Vision Institute Logo"
-                  fill
-                  className="object-contain"
-                  sizes="(max-width: 768px) 128px, 160px"
-                  loading="eager"
-                />
-              </div>
-            </Link>
-            <h1 className="text-2xl md:text-4xl font-bold text-white mb-2">
-              {resetMode === 'login' ? 'Admin Login' : 'Reset Password'}
+            <div className="inline-block p-2 bg-[#8b5cf6]/20 rounded-2xl mb-4">
+              <Image src="/logo.webp" alt="EAVI" width={60} height={60} className="object-contain" />
+            </div>
+            <h1 className="text-3xl font-serif font-bold text-white mb-2">
+              {resetMode === 'login' ? 'Admin Portal' : 'Reset Access'}
             </h1>
-            <p className="text-purple-200 text-sm md:text-base">
-              {resetMode === 'login' ? 'Login to access admin' : 'Reset your admin password'}
-            </p>
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#8b5cf6]/30 border border-[#8b5cf6]/50 rounded-full text-xs text-[#a78bfa] tracking-wider uppercase font-semibold">
+              <span className="w-2 h-2 rounded-full bg-[#a78bfa]"></span> Secure Portal
+            </div>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 md:p-8 border border-white/20">
-            {error && (
-              <div className="mb-4 p-3 rounded-lg bg-red-500/20 border border-red-500/50">
-                <p className="text-sm text-center text-red-200">{error}</p>
-              </div>
-            )}
-            {success && (
-              <div className="mb-4 p-3 rounded-lg bg-green-500/20 border border-green-500/50">
-                <p className="text-sm text-center text-green-200">{success}</p>
-              </div>
-            )}
-            <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="bg-[#1e0f3a]/80 backdrop-blur-md rounded-2xl p-8 border border-[#8b5cf6]/30 shadow-2xl">
+            {error && <div className="mb-4 p-3 rounded-lg bg-red-900/30 border border-red-500/50 text-sm text-center text-red-200">{error}</div>}
+            {success && <div className="mb-4 p-3 rounded-lg bg-green-900/30 border border-green-500/50 text-sm text-center text-green-200">{success}</div>}
+            
+            <form onSubmit={handleSubmit} className="space-y-5">
               {resetMode === 'login' ? (
                 <>
                   <div>
-                    <label htmlFor="email" className="block text-white font-medium mb-2 text-sm md:text-base">
-                      Email *
-                    </label>
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base"
-                    />
+                    <label className="block text-sm font-medium text-[#a78bfa] mb-1.5">Email Address</label>
+                    <input type="email" name="email" value={formData.email} onChange={handleChange} required 
+                      className="w-full px-4 py-3 bg-[#130920] border border-[#8b5cf6]/30 rounded-xl focus:border-[#8b5cf6] focus:ring-1 focus:ring-[#8b5cf6] outline-none" />
                   </div>
 
                   <div>
-                    <label htmlFor="password" className="block text-white font-medium mb-2 text-sm md:text-base">
-                      Password *
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        id="password"
-                        name="password"
-                        value={formData.password}
-                        onChange={handleChange}
-                        required
-                        className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base pr-12"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-purple-300 hover:text-white"
-                      >
-                        {showPassword ? (
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                          </svg>
-                        ) : (
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        )}
-                      </button>
+                    <label className="block text-sm font-medium text-[#a78bfa] mb-1.5">Password</label>
+                    <input type="password" name="password" value={formData.password} onChange={handleChange} required 
+                      className="w-full px-4 py-3 bg-[#130920] border border-[#8b5cf6]/30 rounded-xl focus:border-[#8b5cf6] focus:ring-1 focus:ring-[#8b5cf6] outline-none" />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-[#a78bfa] mb-2">Select Campus</label>
+                    <div className="grid grid-cols-2 gap-2 bg-[#130920] p-1 rounded-xl border border-[#8b5cf6]/30">
+                      {['west', 'main'].map(c => (
+                        <button type="button" key={c} onClick={() => setFormData(p => ({...p, campus: c}))}
+                          className={`py-2 px-4 rounded-lg text-sm font-semibold capitalize transition-all ${formData.campus === c ? 'bg-gradient-to-r from-[#6d28d9] to-[#8b5cf6] text-white shadow-lg' : 'text-[#a78bfa]'}`}>
+                          {c} Campus
+                        </button>
+                      ))}
                     </div>
                   </div>
 
-                  <div>
-                    <label htmlFor="campus" className="block text-white font-medium mb-2 text-sm md:text-base">
-                      Campus *
-                    </label>
-                    <select
-                      id="campus"
-                      name="campus"
-                      value={formData.campus}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base"
-                    >
-                      <option value="west" className="bg-purple-900">West Campus</option>
-                      <option value="main" className="bg-purple-900">Main Campus</option>
-                    </select>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors duration-300 text-base font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loading ? 'Signing in...' : 'Login'}
+                  <button type="submit" disabled={loading} className="w-full py-4 bg-gradient-to-r from-[#6d28d9] to-[#8b5cf6] text-white rounded-xl font-bold shadow-lg shadow-[#8b5cf6]/20">
+                    {loading ? 'Authenticating...' : 'Sign In'}
                   </button>
 
-                  <div className="text-center mt-4">
-                    <button
-                      type="button"
-                      onClick={() => setResetMode('reset')}
-                      className="text-purple-300 hover:text-purple-200 text-sm underline"
-                    >
-                      Forgot Password?
-                    </button>
-                  </div>
+                  <button type="button" onClick={() => setResetMode('reset')} className="w-full text-center text-[#a78bfa] text-sm hover:text-white">Forgot Password?</button>
                 </>
               ) : (
                 <>
-                  <p className="text-purple-200 text-sm mb-4">Enter your email address and we'll send you a password reset link.</p>
-                  <div>
-                    <label htmlFor="email" className="block text-white font-medium mb-2 text-sm md:text-base">
-                      Email *
-                    </label>
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors duration-300 text-base font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loading ? 'Sending...' : 'Send Reset Email'}
-                  </button>
-
-                  <div className="text-center mt-4">
-                    <button
-                      type="button"
-                      onClick={() => setResetMode('login')}
-                      className="text-purple-300 hover:text-purple-200 text-sm underline"
-                    >
-                      Back to Login
-                    </button>
-                  </div>
+                  <p className="text-[#a78bfa] text-sm mb-4">Enter your email and we'll send a reset link.</p>
+                  <input type="email" name="email" value={formData.email} onChange={handleChange} required className="w-full px-4 py-3 bg-[#130920] border border-[#8b5cf6]/30 rounded-xl" />
+                  <button type="submit" className="w-full py-4 bg-gradient-to-r from-[#6d28d9] to-[#8b5cf6] text-white rounded-xl font-bold">Send Reset Link</button>
+                  <button type="button" onClick={() => setResetMode('login')} className="w-full text-center text-[#a78bfa] text-sm">Back to Login</button>
                 </>
               )}
             </form>
-
-            <div className="text-center mt-6">
-              <Link
-                href="/"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/30 hover:border-white/50 text-white rounded-xl transition-all duration-300 text-sm md:text-base font-medium backdrop-blur-sm"
-              >
-                ← Back to Home
-              </Link>
-            </div>
           </div>
         </div>
       </div>
