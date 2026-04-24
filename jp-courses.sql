@@ -1,7 +1,7 @@
 -- ============================================================================
 -- JP INTERNATIONAL COURSES DATA
--- Internationally recognized courses awarded and examined by JP International
--- Qualifications are benchmarked to global standards
+-- Complete course structure with basic course information
+-- Fee structure for module-based courses to be configured in admin via semesters
 -- ============================================================================
 
 -- Insert Departments
@@ -15,428 +15,298 @@ INSERT INTO departments (name) VALUES
 ON CONFLICT (name) DO NOTHING;
 
 -- ============================================================================
--- TEACHER TRAINING
+-- TEACHER TRAINING COURSES
+-- Module-based courses - fees configured via semesters
 -- ============================================================================
 
--- 1. Teacher Training - Diploma
 INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-TT-DIP', 'Teacher Training (Diploma)', (SELECT id FROM departments WHERE name = 'Education' LIMIT 1))
+  ('JP-TT', 'Teacher Training', (SELECT id FROM departments WHERE name = 'Education' LIMIT 1))
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-TT-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 7000, 18, ARRAY[7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000]::DECIMAL(10,2)[], 4000, true)
-ON CONFLICT (course_id, level) DO NOTHING;
-
--- 2. Teacher Training - Certificate
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-TT-CERT', 'Teacher Training (Certificate)', (SELECT id FROM departments WHERE name = 'Education' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-TT-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 6000, 9, ARRAY[6000,6000,6000,6000,6000,6000,6000,6000,6000]::DECIMAL(10,2)[], 3000, true)
-ON CONFLICT (course_id, level) DO NOTHING;
-
--- 3. Teacher Training - Craft Certificate
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-TT-CRAFT', 'Teacher Training (Craft)', (SELECT id FROM departments WHERE name = 'Education' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-TT-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 25000, 0, ARRAY[]::DECIMAL(10,2)[], 2000, true)
-ON CONFLICT (course_id, level) DO NOTHING;
-
--- 4. Teacher Training - Artisan
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-TT-ART', 'Teacher Training (Artisan)', (SELECT id FROM departments WHERE name = 'Education' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-TT-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('JP-TT', 'diploma', true, 'C-', 'module', 18),
+  ('JP-TT', 'certificate', true, 'D', 'module', 9),
+  ('JP-TT', 'craft', true, 'D-', 'module', 6),
+  ('JP-TT', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- ============================================================================
--- CAREGIVERS
+-- CAREGIVERS COURSES
+-- Module-based courses - fees configured via semesters
 -- ============================================================================
 
--- 5. Caregivers - Diploma
 INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-CG-DIP', 'Caregivers (Diploma)', (SELECT id FROM departments WHERE name = 'Healthcare' LIMIT 1))
+  ('JP-CG', 'Caregivers', (SELECT id FROM departments WHERE name = 'Healthcare' LIMIT 1))
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-CG-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 7000, 18, ARRAY[7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000]::DECIMAL(10,2)[], 5000, true)
-ON CONFLICT (course_id, level) DO NOTHING;
-
--- 6. Caregivers - Certificate
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-CG-CERT', 'Caregivers (Certificate)', (SELECT id FROM departments WHERE name = 'Healthcare' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-CG-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 6000, 9, ARRAY[6000,6000,6000,6000,6000,6000,6000,6000,6000]::DECIMAL(10,2)[], 4000, true)
-ON CONFLICT (course_id, level) DO NOTHING;
-
--- 7. Caregivers - Craft Certificate
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-CG-CRAFT', 'Caregivers (Craft)', (SELECT id FROM departments WHERE name = 'Healthcare' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-CG-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 25000, 0, ARRAY[]::DECIMAL(10,2)[], 3000, true)
-ON CONFLICT (course_id, level) DO NOTHING;
-
--- 8. Caregivers - Artisan
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-CG-ART', 'Caregivers (Artisan)', (SELECT id FROM departments WHERE name = 'Healthcare' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-CG-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 2000, true)
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('JP-CG', 'diploma', true, 'C-', 'module', 18),
+  ('JP-CG', 'certificate', true, 'D', 'module', 9),
+  ('JP-CG', 'craft', true, 'D-', 'module', 6),
+  ('JP-CG', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- ============================================================================
--- HEALTHCARE COURSES
+-- HEALTH & CARE COURSES
+-- Module-based courses - fees configured via semesters
 -- ============================================================================
 
--- 9-12. Community Health
 INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-CH-DIP', 'Community Health (Diploma)', (SELECT id FROM departments WHERE name = 'Healthcare' LIMIT 1)),
-  ('JP-CH-CERT', 'Community Health (Certificate)', (SELECT id FROM departments WHERE name = 'Healthcare' LIMIT 1)),
-  ('JP-CH-CRAFT', 'Community Health (Craft)', (SELECT id FROM departments WHERE name = 'Healthcare' LIMIT 1)),
-  ('JP-CH-ART', 'Community Health (Artisan)', (SELECT id FROM departments WHERE name = 'Healthcare' LIMIT 1))
+  ('JP-CH', 'Community Health', (SELECT id FROM departments WHERE name = 'Healthcare' LIMIT 1))
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-CH-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 7000, 18, ARRAY[7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000]::DECIMAL(10,2)[], 5000, true),
-  ('JP-CH-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 6000, 9, ARRAY[6000,6000,6000,6000,6000,6000,6000,6000,6000]::DECIMAL(10,2)[], 4000, true),
-  ('JP-CH-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 25000, 0, ARRAY[]::DECIMAL(10,2)[], 3000, true),
-  ('JP-CH-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 2000, true)
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('JP-CH', 'diploma', true, 'C-', 'module', 18),
+  ('JP-CH', 'certificate', true, 'D', 'module', 9),
+  ('JP-CH', 'craft', true, 'D-', 'module', 6),
+  ('JP-CH', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
--- 13-16. Phlebotomy
 INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-PH-DIP', 'Phlebotomy (Diploma)', (SELECT id FROM departments WHERE name = 'Healthcare' LIMIT 1)),
-  ('JP-PH-CERT', 'Phlebotomy (Certificate)', (SELECT id FROM departments WHERE name = 'Healthcare' LIMIT 1)),
-  ('JP-PH-CRAFT', 'Phlebotomy (Craft)', (SELECT id FROM departments WHERE name = 'Healthcare' LIMIT 1)),
-  ('JP-PH-ART', 'Phlebotomy (Artisan)', (SELECT id FROM departments WHERE name = 'Healthcare' LIMIT 1))
+  ('JP-PH', 'Phlebotomy', (SELECT id FROM departments WHERE name = 'Healthcare' LIMIT 1))
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-PH-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 7000, 18, ARRAY[7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000]::DECIMAL(10,2)[], 5000, true),
-  ('JP-PH-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 6000, 9, ARRAY[6000,6000,6000,6000,6000,6000,6000,6000,6000]::DECIMAL(10,2)[], 4000, true),
-  ('JP-PH-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 25000, 0, ARRAY[]::DECIMAL(10,2)[], 3000, true),
-  ('JP-PH-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 2000, true)
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('JP-PH', 'diploma', true, 'C-', 'module', 18),
+  ('JP-PH', 'certificate', true, 'D', 'module', 9),
+  ('JP-PH', 'craft', true, 'D-', 'module', 6),
+  ('JP-PH', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- ============================================================================
--- MEDIA & COMMUNICATION
+-- JOURNALISM & MASS COMMUNICATION
+-- Module-based courses - fees configured via semesters
 -- ============================================================================
 
--- 17-20. Journalism & Mass Communication
 INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-JM-DIP', 'Journalism & Mass Communication (Diploma)', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
-  ('JP-JM-CERT', 'Journalism & Mass Communication (Certificate)', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
-  ('JP-JM-CRAFT', 'Journalism & Mass Communication (Craft)', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
-  ('JP-JM-ART', 'Journalism & Mass Communication (Artisan)', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1))
+  ('JP-JM', 'Journalism & Mass Communication', (SELECT id FROM departments WHERE name = 'Creative Arts' LIMIT 1))
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-JM-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 6500, 18, ARRAY[6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500]::DECIMAL(10,2)[], 3000, true),
-  ('JP-JM-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 5500, 9, ARRAY[5500,5500,5500,5500,5500,5500,5500,5500,5500]::DECIMAL(10,2)[], 2000, true),
-  ('JP-JM-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 20000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true),
-  ('JP-JM-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('JP-JM', 'diploma', true, 'C-', 'module', 18),
+  ('JP-JM', 'certificate', true, 'D', 'module', 9),
+  ('JP-JM', 'craft', true, 'D-', 'module', 6),
+  ('JP-JM', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- ============================================================================
 -- TECHNOLOGY COURSES
+-- Module-based courses - fees configured via semesters
 -- ============================================================================
 
--- 21-24. Web Development
 INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-WD-DIP', 'Web Development (Diploma)', (SELECT id FROM departments WHERE name = 'Technology' LIMIT 1)),
-  ('JP-WD-CERT', 'Web Development (Certificate)', (SELECT id FROM departments WHERE name = 'Technology' LIMIT 1)),
-  ('JP-WD-CRAFT', 'Web Development (Craft)', (SELECT id FROM departments WHERE name = 'Technology' LIMIT 1)),
-  ('JP-WD-ART', 'Web Development (Artisan)', (SELECT id FROM departments WHERE name = 'Technology' LIMIT 1))
+  ('JP-WD', 'Web Development', (SELECT id FROM departments WHERE name = 'Technology' LIMIT 1))
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-WD-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 7000, 18, ARRAY[7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000]::DECIMAL(10,2)[], 4000, true),
-  ('JP-WD-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 6000, 9, ARRAY[6000,6000,6000,6000,6000,6000,6000,6000,6000]::DECIMAL(10,2)[], 3000, true),
-  ('JP-WD-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 25000, 0, ARRAY[]::DECIMAL(10,2)[], 2000, true),
-  ('JP-WD-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('JP-WD', 'diploma', true, 'C-', 'module', 18),
+  ('JP-WD', 'certificate', true, 'D', 'module', 9),
+  ('JP-WD', 'craft', true, 'D-', 'module', 6),
+  ('JP-WD', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
--- 25-28. Mobile Technology
 INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-MT-DIP', 'Mobile Technology (Diploma)', (SELECT id FROM departments WHERE name = 'Technology' LIMIT 1)),
-  ('JP-MT-CERT', 'Mobile Technology (Certificate)', (SELECT id FROM departments WHERE name = 'Technology' LIMIT 1)),
-  ('JP-MT-CRAFT', 'Mobile Technology (Craft)', (SELECT id FROM departments WHERE name = 'Technology' LIMIT 1)),
-  ('JP-MT-ART', 'Mobile Technology (Artisan)', (SELECT id FROM departments WHERE name = 'Technology' LIMIT 1))
+  ('JP-MT', 'Mobile Technology', (SELECT id FROM departments WHERE name = 'Technology' LIMIT 1))
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-MT-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 7000, 18, ARRAY[7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000]::DECIMAL(10,2)[], 4000, true),
-  ('JP-MT-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 6000, 9, ARRAY[6000,6000,6000,6000,6000,6000,6000,6000,6000]::DECIMAL(10,2)[], 3000, true),
-  ('JP-MT-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 25000, 0, ARRAY[]::DECIMAL(10,2)[], 2000, true),
-  ('JP-MT-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('JP-MT', 'diploma', true, 'C-', 'module', 18),
+  ('JP-MT', 'certificate', true, 'D', 'module', 9),
+  ('JP-MT', 'craft', true, 'D-', 'module', 6),
+  ('JP-MT', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- ============================================================================
--- BUSINESS & MANAGEMENT
+-- SOCIAL SCIENCES COURSES
+-- Module-based courses - fees configured via semesters
 -- ============================================================================
 
--- 29-32. Community Development
 INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-CD-DIP', 'Community Development (Diploma)', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
-  ('JP-CD-CERT', 'Community Development (Certificate)', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
-  ('JP-CD-CRAFT', 'Community Development (Craft)', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
-  ('JP-CD-ART', 'Community Development (Artisan)', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1))
+  ('JP-CD', 'Community Development', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1))
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-CD-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 6500, 18, ARRAY[6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500]::DECIMAL(10,2)[], 3000, true),
-  ('JP-CD-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 5500, 9, ARRAY[5500,5500,5500,5500,5500,5500,5500,5500,5500]::DECIMAL(10,2)[], 2000, true),
-  ('JP-CD-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 20000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true),
-  ('JP-CD-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('JP-CD', 'diploma', true, 'C-', 'module', 18),
+  ('JP-CD', 'certificate', true, 'D', 'module', 9),
+  ('JP-CD', 'craft', true, 'D-', 'module', 6),
+  ('JP-CD', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
--- 33-36. Purchasing & Supplies
 INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-PS-DIP', 'Purchasing & Supplies (Diploma)', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
-  ('JP-PS-CERT', 'Purchasing & Supplies (Certificate)', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
-  ('JP-PS-CRAFT', 'Purchasing & Supplies (Craft)', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
-  ('JP-PS-ART', 'Purchasing & Supplies (Artisan)', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1))
+  ('JP-PS', 'Purchasing & Supplies', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1))
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-PS-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 6500, 18, ARRAY[6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500]::DECIMAL(10,2)[], 3000, true),
-  ('JP-PS-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 5500, 9, ARRAY[5500,5500,5500,5500,5500,5500,5500,5500,5500]::DECIMAL(10,2)[], 2000, true),
-  ('JP-PS-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 20000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true),
-  ('JP-PS-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('JP-PS', 'diploma', true, 'C-', 'module', 18),
+  ('JP-PS', 'certificate', true, 'D', 'module', 9),
+  ('JP-PS', 'craft', true, 'D-', 'module', 6),
+  ('JP-PS', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
--- 37-40. Sales & Marketing
 INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-SM-DIP', 'Sales & Marketing (Diploma)', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
-  ('JP-SM-CERT', 'Sales & Marketing (Certificate)', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
-  ('JP-SM-CRAFT', 'Sales & Marketing (Craft)', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
-  ('JP-SM-ART', 'Sales & Marketing (Artisan)', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1))
+  ('JP-SO', 'Sociology', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1))
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-SM-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 6500, 18, ARRAY[6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500]::DECIMAL(10,2)[], 3000, true),
-  ('JP-SM-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 5500, 9, ARRAY[5500,5500,5500,5500,5500,5500,5500,5500,5500]::DECIMAL(10,2)[], 2000, true),
-  ('JP-SM-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 20000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true),
-  ('JP-SM-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('JP-SO', 'diploma', true, 'C-', 'module', 18),
+  ('JP-SO', 'certificate', true, 'D', 'module', 9),
+  ('JP-SO', 'craft', true, 'D-', 'module', 6),
+  ('JP-SO', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
--- 41-44. International Relations
 INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-IR-DIP', 'International Relations (Diploma)', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
-  ('JP-IR-CERT', 'International Relations (Certificate)', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
-  ('JP-IR-CRAFT', 'International Relations (Craft)', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
-  ('JP-IR-ART', 'International Relations (Artisan)', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1))
+  ('JP-TT', 'Travel & Tourism', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1))
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-IR-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 7000, 18, ARRAY[7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000]::DECIMAL(10,2)[], 3000, true),
-  ('JP-IR-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 6000, 9, ARRAY[6000,6000,6000,6000,6000,6000,6000,6000,6000]::DECIMAL(10,2)[], 2000, true),
-  ('JP-IR-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 25000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true),
-  ('JP-IR-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('JP-TT', 'diploma', true, 'C-', 'module', 18),
+  ('JP-TT', 'certificate', true, 'D', 'module', 9),
+  ('JP-TT', 'craft', true, 'D-', 'module', 6),
+  ('JP-TT', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
--- 45-48. Project Management
 INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-PM-DIP', 'Project Management (Diploma)', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
-  ('JP-PM-CERT', 'Project Management (Certificate)', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
-  ('JP-PM-CRAFT', 'Project Management (Craft)', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
-  ('JP-PM-ART', 'Project Management (Artisan)', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1))
+  ('JP-SM', 'Sales & Marketing', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1))
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-PM-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 7000, 18, ARRAY[7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000]::DECIMAL(10,2)[], 3000, true),
-  ('JP-PM-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 6000, 9, ARRAY[6000,6000,6000,6000,6000,6000,6000,6000,6000]::DECIMAL(10,2)[], 2000, true),
-  ('JP-PM-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 25000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true),
-  ('JP-PM-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('JP-SM', 'diploma', true, 'C-', 'module', 18),
+  ('JP-SM', 'certificate', true, 'D', 'module', 9),
+  ('JP-SM', 'craft', true, 'D-', 'module', 6),
+  ('JP-SM', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
--- 49-52. Clearing & Forwarding
 INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-CF-DIP', 'Clearing & Forwarding (Diploma)', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
-  ('JP-CF-CERT', 'Clearing & Forwarding (Certificate)', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
-  ('JP-CF-CRAFT', 'Clearing & Forwarding (Craft)', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
-  ('JP-CF-ART', 'Clearing & Forwarding (Artisan)', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1))
+  ('JP-IR', 'International Relations', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1))
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-CF-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 6500, 18, ARRAY[6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500]::DECIMAL(10,2)[], 3000, true),
-  ('JP-CF-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 5500, 9, ARRAY[5500,5500,5500,5500,5500,5500,5500,5500,5500]::DECIMAL(10,2)[], 2000, true),
-  ('JP-CF-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 20000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true),
-  ('JP-CF-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('JP-IR', 'diploma', true, 'C-', 'module', 18),
+  ('JP-IR', 'certificate', true, 'D', 'module', 9),
+  ('JP-IR', 'craft', true, 'D-', 'module', 6),
+  ('JP-IR', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
--- ============================================================================
--- CREATIVE ARTS
--- ============================================================================
-
--- 53-56. Hair & Beauty Therapy
 INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-HB-DIP', 'Hair & Beauty Therapy (Diploma)', (SELECT id FROM departments WHERE name = 'Creative Arts' LIMIT 1)),
-  ('JP-HB-CERT', 'Hair & Beauty Therapy (Certificate)', (SELECT id FROM departments WHERE name = 'Creative Arts' LIMIT 1)),
-  ('JP-HB-CRAFT', 'Hair & Beauty Therapy (Craft)', (SELECT id FROM departments WHERE name = 'Creative Arts' LIMIT 1)),
-  ('JP-HB-ART', 'Hair & Beauty Therapy (Artisan)', (SELECT id FROM departments WHERE name = 'Creative Arts' LIMIT 1))
+  ('JP-EN', 'English', (SELECT id FROM departments WHERE name = 'Education' LIMIT 1))
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-HB-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 6500, 18, ARRAY[6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500]::DECIMAL(10,2)[], 4000, true),
-  ('JP-HB-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 5500, 9, ARRAY[5500,5500,5500,5500,5500,5500,5500,5500,5500]::DECIMAL(10,2)[], 3000, true),
-  ('JP-HB-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 20000, 0, ARRAY[]::DECIMAL(10,2)[], 2000, true),
-  ('JP-HB-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true)
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('JP-EN', 'diploma', true, 'C-', 'module', 18),
+  ('JP-EN', 'certificate', true, 'D', 'module', 9),
+  ('JP-EN', 'craft', true, 'D-', 'module', 6),
+  ('JP-EN', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
--- 57-60. Fashion Design
 INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-FD-DIP', 'Fashion Design (Diploma)', (SELECT id FROM departments WHERE name = 'Creative Arts' LIMIT 1)),
-  ('JP-FD-CERT', 'Fashion Design (Certificate)', (SELECT id FROM departments WHERE name = 'Creative Arts' LIMIT 1)),
-  ('JP-FD-CRAFT', 'Fashion Design (Craft)', (SELECT id FROM departments WHERE name = 'Creative Arts' LIMIT 1)),
-  ('JP-FD-ART', 'Fashion Design (Artisan)', (SELECT id FROM departments WHERE name = 'Creative Arts' LIMIT 1))
+  ('JP-DM', 'Disaster Management', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1))
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-FD-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 6500, 18, ARRAY[6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500]::DECIMAL(10,2)[], 4000, true),
-  ('JP-FD-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 5500, 9, ARRAY[5500,5500,5500,5500,5500,5500,5500,5500,5500]::DECIMAL(10,2)[], 3000, true),
-  ('JP-FD-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 20000, 0, ARRAY[]::DECIMAL(10,2)[], 2000, true),
-  ('JP-FD-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true)
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('JP-DM', 'diploma', true, 'C-', 'module', 18),
+  ('JP-DM', 'certificate', true, 'D', 'module', 9),
+  ('JP-DM', 'craft', true, 'D-', 'module', 6),
+  ('JP-DM', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
--- 61-64. Graphic Design
 INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-GD-DIP', 'Graphic Design (Diploma)', (SELECT id FROM departments WHERE name = 'Creative Arts' LIMIT 1)),
-  ('JP-GD-CERT', 'Graphic Design (Certificate)', (SELECT id FROM departments WHERE name = 'Creative Arts' LIMIT 1)),
-  ('JP-GD-CRAFT', 'Graphic Design (Craft)', (SELECT id FROM departments WHERE name = 'Creative Arts' LIMIT 1)),
-  ('JP-GD-ART', 'Graphic Design (Artisan)', (SELECT id FROM departments WHERE name = 'Creative Arts' LIMIT 1))
+  ('JP-FC', 'Forensic Criminology', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1))
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-GD-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 6500, 18, ARRAY[6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500]::DECIMAL(10,2)[], 3000, true),
-  ('JP-GD-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 5500, 9, ARRAY[5500,5500,5500,5500,5500,5500,5500,5500,5500]::DECIMAL(10,2)[], 2000, true),
-  ('JP-GD-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 20000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true),
-  ('JP-GD-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('JP-FC', 'diploma', true, 'C-', 'module', 18),
+  ('JP-FC', 'certificate', true, 'D', 'module', 9),
+  ('JP-FC', 'craft', true, 'D-', 'module', 6),
+  ('JP-FC', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
--- 65-68. Barista Course
 INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-BAR-DIP', 'Barista Course (Diploma)', (SELECT id FROM departments WHERE name = 'Creative Arts' LIMIT 1)),
-  ('JP-BAR-CERT', 'Barista Course (Certificate)', (SELECT id FROM departments WHERE name = 'Creative Arts' LIMIT 1)),
-  ('JP-BAR-CRAFT', 'Barista Course (Craft)', (SELECT id FROM departments WHERE name = 'Creative Arts' LIMIT 1)),
-  ('JP-BAR-ART', 'Barista Course (Artisan)', (SELECT id FROM departments WHERE name = 'Creative Arts' LIMIT 1))
+  ('JP-CM', 'CCTV Management', (SELECT id FROM departments WHERE name = 'Technology' LIMIT 1))
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-BAR-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 6000, 18, ARRAY[6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000]::DECIMAL(10,2)[], 4000, true),
-  ('JP-BAR-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 5000, 9, ARRAY[5000,5000,5000,5000,5000,5000,5000,5000,5000]::DECIMAL(10,2)[], 3000, true),
-  ('JP-BAR-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 18000, 0, ARRAY[]::DECIMAL(10,2)[], 2000, true),
-  ('JP-BAR-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 10000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true)
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('JP-CM', 'diploma', true, 'C-', 'module', 18),
+  ('JP-CM', 'certificate', true, 'D', 'module', 9),
+  ('JP-CM', 'craft', true, 'D-', 'module', 6),
+  ('JP-CM', 'artisan', true, 'ID/Birth Cert', 'module', 3)
+ON CONFLICT (course_id, level) DO NOTHING;
+
+INSERT INTO courses (id, name, department_id) VALUES 
+  ('JP-PM', 'Project Management', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1))
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('JP-PM', 'diploma', true, 'C-', 'module', 18),
+  ('JP-PM', 'certificate', true, 'D', 'module', 9),
+  ('JP-PM', 'craft', true, 'D-', 'module', 6),
+  ('JP-PM', 'artisan', true, 'ID/Birth Cert', 'module', 3)
+ON CONFLICT (course_id, level) DO NOTHING;
+
+INSERT INTO courses (id, name, department_id) VALUES 
+  ('JP-CF', 'Clearing & Forwarding', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1))
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('JP-CF', 'diploma', true, 'C-', 'module', 18),
+  ('JP-CF', 'certificate', true, 'D', 'module', 9),
+  ('JP-CF', 'craft', true, 'D-', 'module', 6),
+  ('JP-CF', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- ============================================================================
--- SOCIAL SCIENCES
+-- CREATIVE ARTS COURSES
+-- Module-based courses - fees configured via semesters
 -- ============================================================================
 
--- 69-72. Sociology
 INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-SOC-DIP', 'Sociology (Diploma)', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1)),
-  ('JP-SOC-CERT', 'Sociology (Certificate)', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1)),
-  ('JP-SOC-CRAFT', 'Sociology (Craft)', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1)),
-  ('JP-SOC-ART', 'Sociology (Artisan)', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1))
+  ('JP-HB', 'Hair & Beauty Therapy', (SELECT id FROM departments WHERE name = 'Creative Arts' LIMIT 1))
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-SOC-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 6000, 18, ARRAY[6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000]::DECIMAL(10,2)[], 2000, true),
-  ('JP-SOC-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 5000, 9, ARRAY[5000,5000,5000,5000,5000,5000,5000,5000,5000]::DECIMAL(10,2)[], 1500, true),
-  ('JP-SOC-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 18000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true),
-  ('JP-SOC-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 10000, 0, ARRAY[]::DECIMAL(10,2)[], 500, true)
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('JP-HB', 'diploma', true, 'C-', 'module', 18),
+  ('JP-HB', 'certificate', true, 'D', 'module', 9),
+  ('JP-HB', 'craft', true, 'D-', 'module', 6),
+  ('JP-HB', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
--- 73-76. Travel & Tourism
 INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-TT-TRV-DIP', 'Travel & Tourism (Diploma)', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1)),
-  ('JP-TT-TRV-CERT', 'Travel & Tourism (Certificate)', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1)),
-  ('JP-TT-TRV-CRAFT', 'Travel & Tourism (Craft)', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1)),
-  ('JP-TT-TRV-ART', 'Travel & Tourism (Artisan)', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1))
+  ('JP-FD', 'Fashion Design', (SELECT id FROM departments WHERE name = 'Creative Arts' LIMIT 1))
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-TT-TRV-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 6500, 18, ARRAY[6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500]::DECIMAL(10,2)[], 3000, true),
-  ('JP-TT-TRV-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 5500, 9, ARRAY[5500,5500,5500,5500,5500,5500,5500,5500,5500]::DECIMAL(10,2)[], 2000, true),
-  ('JP-TT-TRV-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 20000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true),
-  ('JP-TT-TRV-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('JP-FD', 'diploma', true, 'C-', 'module', 18),
+  ('JP-FD', 'certificate', true, 'D', 'module', 9),
+  ('JP-FD', 'craft', true, 'D-', 'module', 6),
+  ('JP-FD', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
--- 77-80. English
 INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-ENG-DIP', 'English (Diploma)', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1)),
-  ('JP-ENG-CERT', 'English (Certificate)', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1)),
-  ('JP-ENG-CRAFT', 'English (Craft)', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1)),
-  ('JP-ENG-ART', 'English (Artisan)', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1))
+  ('JP-GD', 'Graphic Design', (SELECT id FROM departments WHERE name = 'Creative Arts' LIMIT 1))
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-ENG-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 6000, 18, ARRAY[6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000]::DECIMAL(10,2)[], 2000, true),
-  ('JP-ENG-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 5000, 9, ARRAY[5000,5000,5000,5000,5000,5000,5000,5000,5000]::DECIMAL(10,2)[], 1500, true),
-  ('JP-ENG-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 18000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true),
-  ('JP-ENG-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 10000, 0, ARRAY[]::DECIMAL(10,2)[], 500, true)
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('JP-GD', 'diploma', true, 'C-', 'module', 18),
+  ('JP-GD', 'certificate', true, 'D', 'module', 9),
+  ('JP-GD', 'craft', true, 'D-', 'module', 6),
+  ('JP-GD', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
--- 81-84. Disaster Management
 INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-DM-DIP', 'Disaster Management (Diploma)', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1)),
-  ('JP-DM-CERT', 'Disaster Management (Certificate)', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1)),
-  ('JP-DM-CRAFT', 'Disaster Management (Craft)', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1)),
-  ('JP-DM-ART', 'Disaster Management (Artisan)', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1))
+  ('JP-BC', 'Barista Course', (SELECT id FROM departments WHERE name = 'Creative Arts' LIMIT 1))
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-DM-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 6500, 18, ARRAY[6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500]::DECIMAL(10,2)[], 3000, true),
-  ('JP-DM-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 5500, 9, ARRAY[5500,5500,5500,5500,5500,5500,5500,5500,5500]::DECIMAL(10,2)[], 2000, true),
-  ('JP-DM-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 20000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true),
-  ('JP-DM-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
-ON CONFLICT (course_id, level) DO NOTHING;
-
--- 85-88. Forensic Criminology
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-FC-DIP', 'Forensic Criminology (Diploma)', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1)),
-  ('JP-FC-CERT', 'Forensic Criminology (Certificate)', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1)),
-  ('JP-FC-CRAFT', 'Forensic Criminology (Craft)', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1)),
-  ('JP-FC-ART', 'Forensic Criminology (Artisan)', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-FC-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 7000, 18, ARRAY[7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000]::DECIMAL(10,2)[], 3000, true),
-  ('JP-FC-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 6000, 9, ARRAY[6000,6000,6000,6000,6000,6000,6000,6000,6000]::DECIMAL(10,2)[], 2000, true),
-  ('JP-FC-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 25000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true),
-  ('JP-FC-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
-ON CONFLICT (course_id, level) DO NOTHING;
-
--- 89-92. CCTV Management
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-CCTV-DIP', 'CCTV Management (Diploma)', (SELECT id FROM departments WHERE name = 'Technology' LIMIT 1)),
-  ('JP-CCTV-CERT', 'CCTV Management (Certificate)', (SELECT id FROM departments WHERE name = 'Technology' LIMIT 1)),
-  ('JP-CCTV-CRAFT', 'CCTV Management (Craft)', (SELECT id FROM departments WHERE name = 'Technology' LIMIT 1)),
-  ('JP-CCTV-ART', 'CCTV Management (Artisan)', (SELECT id FROM departments WHERE name = 'Technology' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-CCTV-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 7000, 18, ARRAY[7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000]::DECIMAL(10,2)[], 4000, true),
-  ('JP-CCTV-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 6000, 9, ARRAY[6000,6000,6000,6000,6000,6000,6000,6000,6000]::DECIMAL(10,2)[], 3000, true),
-  ('JP-CCTV-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 25000, 0, ARRAY[]::DECIMAL(10,2)[], 2000, true),
-  ('JP-CCTV-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
+INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
+  ('JP-BC', 'diploma', true, 'C-', 'module', 18),
+  ('JP-BC', 'certificate', true, 'D', 'module', 9),
+  ('JP-BC', 'craft', true, 'D-', 'module', 6),
+  ('JP-BC', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- ============================================================================
 -- NOTE: This file adds the basic course structure for JP International courses.
--- Details like fee structure can be edited in the admin course management interface.
--- All courses are internationally recognized and examined by JP International.
--- Exam body will be set to 'JP' when courses are configured in the system.
--- Total: 23 courses with 4 levels each = 92 course types
+-- Fee structure for module-based courses (study_mode='module') should be configured
+-- in the admin interface via the semesters table.
+-- Units and modules can be configured in the admin course management interface.
+-- Total: 23 JP International courses with 4 levels each.
+-- Artisan courses use 'ID/Birth Cert' as minimum KCSE grade requirement.
 -- ============================================================================
