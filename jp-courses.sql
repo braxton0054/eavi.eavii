@@ -26,7 +26,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
   ('JP-TT', 'diploma', true, 'C-', 'module', 18),
   ('JP-TT', 'certificate', true, 'D', 'module', 9),
-  ('JP-TT', 'craft', true, 'D-', 'module', 6),
+  ('JP-TT', 'level4', true, 'D-', 'module', 6),
   ('JP-TT', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
@@ -42,7 +42,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
   ('JP-CG', 'diploma', true, 'C-', 'module', 18),
   ('JP-CG', 'certificate', true, 'D', 'module', 9),
-  ('JP-CG', 'craft', true, 'D-', 'module', 6),
+  ('JP-CG', 'level4', true, 'D-', 'module', 6),
   ('JP-CG', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
@@ -58,7 +58,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
   ('JP-CH', 'diploma', true, 'C-', 'module', 18),
   ('JP-CH', 'certificate', true, 'D', 'module', 9),
-  ('JP-CH', 'craft', true, 'D-', 'module', 6),
+  ('JP-CH', 'level4', true, 'D-', 'module', 6),
   ('JP-CH', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
@@ -69,7 +69,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
   ('JP-PH', 'diploma', true, 'C-', 'module', 18),
   ('JP-PH', 'certificate', true, 'D', 'module', 9),
-  ('JP-PH', 'craft', true, 'D-', 'module', 6),
+  ('JP-PH', 'level4', true, 'D-', 'module', 6),
   ('JP-PH', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
@@ -85,7 +85,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
   ('JP-JM', 'diploma', true, 'C-', 'module', 18),
   ('JP-JM', 'certificate', true, 'D', 'module', 9),
-  ('JP-JM', 'craft', true, 'D-', 'module', 6),
+  ('JP-JM', 'level4', true, 'D-', 'module', 6),
   ('JP-JM', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
@@ -101,7 +101,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
   ('JP-WD', 'diploma', true, 'C-', 'module', 18),
   ('JP-WD', 'certificate', true, 'D', 'module', 9),
-  ('JP-WD', 'craft', true, 'D-', 'module', 6),
+  ('JP-WD', 'level4', true, 'D-', 'module', 6),
   ('JP-WD', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
@@ -112,7 +112,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
   ('JP-MT', 'diploma', true, 'C-', 'module', 18),
   ('JP-MT', 'certificate', true, 'D', 'module', 9),
-  ('JP-MT', 'craft', true, 'D-', 'module', 6),
+  ('JP-MT', 'level4', true, 'D-', 'module', 6),
   ('JP-MT', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
@@ -128,7 +128,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
   ('JP-CD', 'diploma', true, 'C-', 'module', 18),
   ('JP-CD', 'certificate', true, 'D', 'module', 9),
-  ('JP-CD', 'craft', true, 'D-', 'module', 6),
+  ('JP-CD', 'level4', true, 'D-', 'module', 6),
   ('JP-CD', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
@@ -139,7 +139,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
   ('JP-PS', 'diploma', true, 'C-', 'module', 18),
   ('JP-PS', 'certificate', true, 'D', 'module', 9),
-  ('JP-PS', 'craft', true, 'D-', 'module', 6),
+  ('JP-PS', 'level4', true, 'D-', 'module', 6),
   ('JP-PS', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
@@ -150,7 +150,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
   ('JP-SO', 'diploma', true, 'C-', 'module', 18),
   ('JP-SO', 'certificate', true, 'D', 'module', 9),
-  ('JP-SO', 'craft', true, 'D-', 'module', 6),
+  ('JP-SO', 'level4', true, 'D-', 'module', 6),
   ('JP-SO', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
@@ -161,7 +161,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
   ('JP-TR', 'diploma', true, 'C-', 'module', 18),
   ('JP-TR', 'certificate', true, 'D', 'module', 9),
-  ('JP-TR', 'craft', true, 'D-', 'module', 6),
+  ('JP-TR', 'level4', true, 'D-', 'module', 6),
   ('JP-TR', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
@@ -172,7 +172,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
   ('JP-SM', 'diploma', true, 'C-', 'module', 18),
   ('JP-SM', 'certificate', true, 'D', 'module', 9),
-  ('JP-SM', 'craft', true, 'D-', 'module', 6),
+  ('JP-SM', 'level4', true, 'D-', 'module', 6),
   ('JP-SM', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
@@ -183,7 +183,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
   ('JP-IR', 'diploma', true, 'C-', 'module', 18),
   ('JP-IR', 'certificate', true, 'D', 'module', 9),
-  ('JP-IR', 'craft', true, 'D-', 'module', 6),
+  ('JP-IR', 'level4', true, 'D-', 'module', 6),
   ('JP-IR', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
@@ -194,7 +194,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
   ('JP-EN', 'diploma', true, 'C-', 'module', 18),
   ('JP-EN', 'certificate', true, 'D', 'module', 9),
-  ('JP-EN', 'craft', true, 'D-', 'module', 6),
+  ('JP-EN', 'level4', true, 'D-', 'module', 6),
   ('JP-EN', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
@@ -205,7 +205,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
   ('JP-DM', 'diploma', true, 'C-', 'module', 18),
   ('JP-DM', 'certificate', true, 'D', 'module', 9),
-  ('JP-DM', 'craft', true, 'D-', 'module', 6),
+  ('JP-DM', 'level4', true, 'D-', 'module', 6),
   ('JP-DM', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
@@ -216,7 +216,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
   ('JP-FC', 'diploma', true, 'C-', 'module', 18),
   ('JP-FC', 'certificate', true, 'D', 'module', 9),
-  ('JP-FC', 'craft', true, 'D-', 'module', 6),
+  ('JP-FC', 'level4', true, 'D-', 'module', 6),
   ('JP-FC', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
@@ -227,7 +227,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
   ('JP-CM', 'diploma', true, 'C-', 'module', 18),
   ('JP-CM', 'certificate', true, 'D', 'module', 9),
-  ('JP-CM', 'craft', true, 'D-', 'module', 6),
+  ('JP-CM', 'level4', true, 'D-', 'module', 6),
   ('JP-CM', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
@@ -238,7 +238,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
   ('JP-PM', 'diploma', true, 'C-', 'module', 18),
   ('JP-PM', 'certificate', true, 'D', 'module', 9),
-  ('JP-PM', 'craft', true, 'D-', 'module', 6),
+  ('JP-PM', 'level4', true, 'D-', 'module', 6),
   ('JP-PM', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
@@ -249,7 +249,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
   ('JP-CF', 'diploma', true, 'C-', 'module', 18),
   ('JP-CF', 'certificate', true, 'D', 'module', 9),
-  ('JP-CF', 'craft', true, 'D-', 'module', 6),
+  ('JP-CF', 'level4', true, 'D-', 'module', 6),
   ('JP-CF', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
@@ -265,7 +265,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
   ('JP-HB', 'diploma', true, 'C-', 'module', 18),
   ('JP-HB', 'certificate', true, 'D', 'module', 9),
-  ('JP-HB', 'craft', true, 'D-', 'module', 6),
+  ('JP-HB', 'level4', true, 'D-', 'module', 6),
   ('JP-HB', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
@@ -276,7 +276,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
   ('JP-FD', 'diploma', true, 'C-', 'module', 18),
   ('JP-FD', 'certificate', true, 'D', 'module', 9),
-  ('JP-FD', 'craft', true, 'D-', 'module', 6),
+  ('JP-FD', 'level4', true, 'D-', 'module', 6),
   ('JP-FD', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
@@ -287,7 +287,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
   ('JP-GD', 'diploma', true, 'C-', 'module', 18),
   ('JP-GD', 'certificate', true, 'D', 'module', 9),
-  ('JP-GD', 'craft', true, 'D-', 'module', 6),
+  ('JP-GD', 'level4', true, 'D-', 'module', 6),
   ('JP-GD', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
@@ -298,7 +298,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
   ('JP-BC', 'diploma', true, 'C-', 'module', 18),
   ('JP-BC', 'certificate', true, 'D', 'module', 9),
-  ('JP-BC', 'craft', true, 'D-', 'module', 6),
+  ('JP-BC', 'level4', true, 'D-', 'module', 6),
   ('JP-BC', 'artisan', true, 'ID/Birth Cert', 'module', 3)
 ON CONFLICT (course_id, level) DO NOTHING;
 
