@@ -88,35 +88,19 @@ export default function CourseEnrollmentPage() {
           id,
           name,
           department_id,
-          departments(name),
-          course_types(
-            id,
-            level,
-            enabled,
-            modules(
-              exam_body
-            )
-          )
+          departments(name)
         `)
         .order('name');
         
       if (error) throw error;
       
-      // Extract exam bodies from modules for each course
+      // Determine exam body from course ID prefix
       const examBodyMap: Record<string, string> = {};
       (data || []).forEach((course: any) => {
-        course.course_types?.forEach((ct: any) => {
-          if (ct.modules && ct.modules.length > 0) {
-            examBodyMap[course.id] = ct.modules[0].exam_body || 'internal';
-          }
-        });
-        // Fallback to prefix detection if no modules
-        if (!examBodyMap[course.id]) {
-          if (course.id.startsWith('KNEC-')) examBodyMap[course.id] = 'KNEC';
-          else if (course.id.startsWith('CDACC-')) examBodyMap[course.id] = 'CDACC';
-          else if (course.id.startsWith('JP-')) examBodyMap[course.id] = 'JP';
-          else examBodyMap[course.id] = 'internal';
-        }
+        if (course.id.startsWith('KNEC-')) examBodyMap[course.id] = 'KNEC';
+        else if (course.id.startsWith('CDACC-')) examBodyMap[course.id] = 'CDACC';
+        else if (course.id.startsWith('JP-')) examBodyMap[course.id] = 'JP';
+        else examBodyMap[course.id] = 'internal';
       });
       
       setCourseExamBodies(examBodyMap);
