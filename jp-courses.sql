@@ -51,7 +51,7 @@ INSERT INTO courses (id, name, department_id) VALUES
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-TT-ART', 'artisan', true, 'Open', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
+  ('JP-TT-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- ============================================================================
@@ -91,7 +91,7 @@ INSERT INTO courses (id, name, department_id) VALUES
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months, payment_type, fee, number_of_months, monthly_fees, practical_fee, has_exams) VALUES 
-  ('JP-CG-ART', 'artisan', true, 'Open', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 2000, true)
+  ('JP-CG-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 2000, true)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- ============================================================================
@@ -110,7 +110,7 @@ INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode,
   ('JP-CH-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 7000, 18, ARRAY[7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000]::DECIMAL(10,2)[], 5000, true),
   ('JP-CH-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 6000, 9, ARRAY[6000,6000,6000,6000,6000,6000,6000,6000,6000]::DECIMAL(10,2)[], 4000, true),
   ('JP-CH-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 25000, 0, ARRAY[]::DECIMAL(10,2)[], 3000, true),
-  ('JP-CH-ART', 'artisan', true, 'Open', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 2000, true)
+  ('JP-CH-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 2000, true)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- 13-16. Phlebotomy
@@ -125,7 +125,7 @@ INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode,
   ('JP-PH-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 7000, 18, ARRAY[7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000]::DECIMAL(10,2)[], 5000, true),
   ('JP-PH-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 6000, 9, ARRAY[6000,6000,6000,6000,6000,6000,6000,6000,6000]::DECIMAL(10,2)[], 4000, true),
   ('JP-PH-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 25000, 0, ARRAY[]::DECIMAL(10,2)[], 3000, true),
-  ('JP-PH-ART', 'artisan', true, 'Open', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 2000, true)
+  ('JP-PH-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 2000, true)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- ============================================================================
@@ -144,7 +144,7 @@ INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode,
   ('JP-JM-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 6500, 18, ARRAY[6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500]::DECIMAL(10,2)[], 3000, true),
   ('JP-JM-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 5500, 9, ARRAY[5500,5500,5500,5500,5500,5500,5500,5500,5500]::DECIMAL(10,2)[], 2000, true),
   ('JP-JM-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 20000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true),
-  ('JP-JM-ART', 'artisan', true, 'Open', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
+  ('JP-JM-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- ============================================================================
@@ -163,7 +163,7 @@ INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode,
   ('JP-WD-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 7000, 18, ARRAY[7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000]::DECIMAL(10,2)[], 4000, true),
   ('JP-WD-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 6000, 9, ARRAY[6000,6000,6000,6000,6000,6000,6000,6000,6000]::DECIMAL(10,2)[], 3000, true),
   ('JP-WD-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 25000, 0, ARRAY[]::DECIMAL(10,2)[], 2000, true),
-  ('JP-WD-ART', 'artisan', true, 'Open', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
+  ('JP-WD-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- 25-28. Mobile Technology
@@ -178,7 +178,7 @@ INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode,
   ('JP-MT-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 7000, 18, ARRAY[7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000]::DECIMAL(10,2)[], 4000, true),
   ('JP-MT-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 6000, 9, ARRAY[6000,6000,6000,6000,6000,6000,6000,6000,6000]::DECIMAL(10,2)[], 3000, true),
   ('JP-MT-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 25000, 0, ARRAY[]::DECIMAL(10,2)[], 2000, true),
-  ('JP-MT-ART', 'artisan', true, 'Open', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
+  ('JP-MT-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- ============================================================================
@@ -197,7 +197,7 @@ INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode,
   ('JP-CD-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 6500, 18, ARRAY[6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500]::DECIMAL(10,2)[], 3000, true),
   ('JP-CD-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 5500, 9, ARRAY[5500,5500,5500,5500,5500,5500,5500,5500,5500]::DECIMAL(10,2)[], 2000, true),
   ('JP-CD-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 20000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true),
-  ('JP-CD-ART', 'artisan', true, 'Open', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
+  ('JP-CD-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- 33-36. Purchasing & Supplies
@@ -212,7 +212,7 @@ INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode,
   ('JP-PS-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 6500, 18, ARRAY[6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500]::DECIMAL(10,2)[], 3000, true),
   ('JP-PS-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 5500, 9, ARRAY[5500,5500,5500,5500,5500,5500,5500,5500,5500]::DECIMAL(10,2)[], 2000, true),
   ('JP-PS-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 20000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true),
-  ('JP-PS-ART', 'artisan', true, 'Open', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
+  ('JP-PS-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- 37-40. Sales & Marketing
@@ -227,7 +227,7 @@ INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode,
   ('JP-SM-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 6500, 18, ARRAY[6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500]::DECIMAL(10,2)[], 3000, true),
   ('JP-SM-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 5500, 9, ARRAY[5500,5500,5500,5500,5500,5500,5500,5500,5500]::DECIMAL(10,2)[], 2000, true),
   ('JP-SM-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 20000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true),
-  ('JP-SM-ART', 'artisan', true, 'Open', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
+  ('JP-SM-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- 41-44. International Relations
@@ -242,7 +242,7 @@ INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode,
   ('JP-IR-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 7000, 18, ARRAY[7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000]::DECIMAL(10,2)[], 3000, true),
   ('JP-IR-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 6000, 9, ARRAY[6000,6000,6000,6000,6000,6000,6000,6000,6000]::DECIMAL(10,2)[], 2000, true),
   ('JP-IR-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 25000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true),
-  ('JP-IR-ART', 'artisan', true, 'Open', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
+  ('JP-IR-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- 45-48. Project Management
@@ -257,7 +257,7 @@ INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode,
   ('JP-PM-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 7000, 18, ARRAY[7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000]::DECIMAL(10,2)[], 3000, true),
   ('JP-PM-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 6000, 9, ARRAY[6000,6000,6000,6000,6000,6000,6000,6000,6000]::DECIMAL(10,2)[], 2000, true),
   ('JP-PM-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 25000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true),
-  ('JP-PM-ART', 'artisan', true, 'Open', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
+  ('JP-PM-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- 49-52. Clearing & Forwarding
@@ -272,7 +272,7 @@ INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode,
   ('JP-CF-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 6500, 18, ARRAY[6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500]::DECIMAL(10,2)[], 3000, true),
   ('JP-CF-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 5500, 9, ARRAY[5500,5500,5500,5500,5500,5500,5500,5500,5500]::DECIMAL(10,2)[], 2000, true),
   ('JP-CF-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 20000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true),
-  ('JP-CF-ART', 'artisan', true, 'Open', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
+  ('JP-CF-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- ============================================================================
@@ -291,7 +291,7 @@ INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode,
   ('JP-HB-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 6500, 18, ARRAY[6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500]::DECIMAL(10,2)[], 4000, true),
   ('JP-HB-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 5500, 9, ARRAY[5500,5500,5500,5500,5500,5500,5500,5500,5500]::DECIMAL(10,2)[], 3000, true),
   ('JP-HB-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 20000, 0, ARRAY[]::DECIMAL(10,2)[], 2000, true),
-  ('JP-HB-ART', 'artisan', true, 'Open', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true)
+  ('JP-HB-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- 57-60. Fashion Design
@@ -306,7 +306,7 @@ INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode,
   ('JP-FD-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 6500, 18, ARRAY[6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500]::DECIMAL(10,2)[], 4000, true),
   ('JP-FD-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 5500, 9, ARRAY[5500,5500,5500,5500,5500,5500,5500,5500,5500]::DECIMAL(10,2)[], 3000, true),
   ('JP-FD-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 20000, 0, ARRAY[]::DECIMAL(10,2)[], 2000, true),
-  ('JP-FD-ART', 'artisan', true, 'Open', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true)
+  ('JP-FD-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- 61-64. Graphic Design
@@ -321,7 +321,7 @@ INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode,
   ('JP-GD-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 6500, 18, ARRAY[6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500]::DECIMAL(10,2)[], 3000, true),
   ('JP-GD-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 5500, 9, ARRAY[5500,5500,5500,5500,5500,5500,5500,5500,5500]::DECIMAL(10,2)[], 2000, true),
   ('JP-GD-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 20000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true),
-  ('JP-GD-ART', 'artisan', true, 'Open', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
+  ('JP-GD-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- 65-68. Barista Course
@@ -336,7 +336,7 @@ INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode,
   ('JP-BAR-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 6000, 18, ARRAY[6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000]::DECIMAL(10,2)[], 4000, true),
   ('JP-BAR-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 5000, 9, ARRAY[5000,5000,5000,5000,5000,5000,5000,5000,5000]::DECIMAL(10,2)[], 3000, true),
   ('JP-BAR-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 18000, 0, ARRAY[]::DECIMAL(10,2)[], 2000, true),
-  ('JP-BAR-ART', 'artisan', true, 'Open', 'module', 3, 'one-time', 10000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true)
+  ('JP-BAR-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 10000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- ============================================================================
@@ -355,7 +355,7 @@ INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode,
   ('JP-SOC-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 6000, 18, ARRAY[6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000]::DECIMAL(10,2)[], 2000, true),
   ('JP-SOC-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 5000, 9, ARRAY[5000,5000,5000,5000,5000,5000,5000,5000,5000]::DECIMAL(10,2)[], 1500, true),
   ('JP-SOC-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 18000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true),
-  ('JP-SOC-ART', 'artisan', true, 'Open', 'module', 3, 'one-time', 10000, 0, ARRAY[]::DECIMAL(10,2)[], 500, true)
+  ('JP-SOC-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 10000, 0, ARRAY[]::DECIMAL(10,2)[], 500, true)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- 73-76. Travel & Tourism
@@ -370,7 +370,7 @@ INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode,
   ('JP-TT-TRV-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 6500, 18, ARRAY[6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500]::DECIMAL(10,2)[], 3000, true),
   ('JP-TT-TRV-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 5500, 9, ARRAY[5500,5500,5500,5500,5500,5500,5500,5500,5500]::DECIMAL(10,2)[], 2000, true),
   ('JP-TT-TRV-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 20000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true),
-  ('JP-TT-TRV-ART', 'artisan', true, 'Open', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
+  ('JP-TT-TRV-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- 77-80. English
@@ -385,7 +385,7 @@ INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode,
   ('JP-ENG-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 6000, 18, ARRAY[6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000,6000]::DECIMAL(10,2)[], 2000, true),
   ('JP-ENG-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 5000, 9, ARRAY[5000,5000,5000,5000,5000,5000,5000,5000,5000]::DECIMAL(10,2)[], 1500, true),
   ('JP-ENG-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 18000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true),
-  ('JP-ENG-ART', 'artisan', true, 'Open', 'module', 3, 'one-time', 10000, 0, ARRAY[]::DECIMAL(10,2)[], 500, true)
+  ('JP-ENG-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 10000, 0, ARRAY[]::DECIMAL(10,2)[], 500, true)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- 81-84. Disaster Management
@@ -400,7 +400,7 @@ INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode,
   ('JP-DM-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 6500, 18, ARRAY[6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500,6500]::DECIMAL(10,2)[], 3000, true),
   ('JP-DM-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 5500, 9, ARRAY[5500,5500,5500,5500,5500,5500,5500,5500,5500]::DECIMAL(10,2)[], 2000, true),
   ('JP-DM-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 20000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true),
-  ('JP-DM-ART', 'artisan', true, 'Open', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
+  ('JP-DM-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 12000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- 85-88. Forensic Criminology
@@ -415,7 +415,7 @@ INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode,
   ('JP-FC-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 7000, 18, ARRAY[7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000]::DECIMAL(10,2)[], 3000, true),
   ('JP-FC-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 6000, 9, ARRAY[6000,6000,6000,6000,6000,6000,6000,6000,6000]::DECIMAL(10,2)[], 2000, true),
   ('JP-FC-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 25000, 0, ARRAY[]::DECIMAL(10,2)[], 1500, true),
-  ('JP-FC-ART', 'artisan', true, 'Open', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
+  ('JP-FC-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- 89-92. CCTV Management
@@ -430,7 +430,7 @@ INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode,
   ('JP-CCTV-DIP', 'diploma', true, 'C-', 'module', 18, 'monthly', 7000, 18, ARRAY[7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000,7000]::DECIMAL(10,2)[], 4000, true),
   ('JP-CCTV-CERT', 'certificate', true, 'D', 'module', 9, 'monthly', 6000, 9, ARRAY[6000,6000,6000,6000,6000,6000,6000,6000,6000]::DECIMAL(10,2)[], 3000, true),
   ('JP-CCTV-CRAFT', 'artisan', true, 'D-', 'module', 6, 'one-time', 25000, 0, ARRAY[]::DECIMAL(10,2)[], 2000, true),
-  ('JP-CCTV-ART', 'artisan', true, 'Open', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
+  ('JP-CCTV-ART', 'artisan', true, 'ID/Birth Cert', 'module', 3, 'one-time', 15000, 0, ARRAY[]::DECIMAL(10,2)[], 1000, true)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- ============================================================================
