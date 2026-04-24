@@ -261,17 +261,21 @@ export default function LoadingScreen() {
           <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 md:p-8 border border-white/10">
             <h2 className="text-white font-semibold text-xl mb-4 text-center">About East Africa Vision Institute</h2>
             <p className="text-purple-200 text-sm md:text-base text-center leading-relaxed mb-4">
-              East Africa Vision Institute is accredited internationally and is registered with the Ministry of Education and TVETA.{' '}
+              East Africa Vision Institute is accredited internationally and is registered with the Ministry of Education and TVETA. We are dedicated to equipping students with real-world skills for today's competitive job market. We offer Diploma, Certificate, Artisan, and Short Courses across diverse fields including healthcare, beauty, engineering, ICT, fashion, business, and community development.
+            </p>
+            <div className="text-center mb-6">
               <a
                 href="https://www.tveta.go.ke/institution-details/?details=TVETA/PRIVATE/TVC/0062/2017"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-400 hover:text-blue-300 underline transition-colors"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-all duration-300 text-sm font-medium shadow-lg hover:shadow-blue-500/50 transform hover:scale-105"
               >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
                 View TVETA/CDACC Registration
               </a>
-              {' '}We are dedicated to equipping students with real-world skills for today's competitive job market. We offer Diploma, Certificate, Artisan, and Short Courses across diverse fields including healthcare, beauty, engineering, ICT, fashion, business, and community development.
-            </p>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
               <div className="text-center">
                 <h3 className="text-white font-semibold text-base mb-2">Our Mission</h3>
