@@ -388,9 +388,10 @@ export default function ApplyPage() {
         console.error('Error submitting application:', error);
         alert('Error submitting application. Please try again.');
       } else {
+        const selectedCourse = courses.find(c => c.id === formData.course);
         const enrichedData = {
           ...data,
-          course: courseName,
+          course: selectedCourse?.name || formData.course,
           course_type: formData.courseType
         };
         setSubmittedData(enrichedData);
