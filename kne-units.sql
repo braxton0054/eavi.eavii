@@ -117,8 +117,9 @@ INSERT INTO courses (id, name, department_id) VALUES
   ('KNEC-2908', 'Diploma in Human Resource Management - Module I', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
   ('KNEC-2920', 'Diploma in Information Communication Technology - Module I', (SELECT id FROM departments WHERE name = 'Information Technology' LIMIT 1)),
   ('KNEC-2922', 'Diploma in Project Management - Module I', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
-  ('KNEC-3806', 'Diploma in Sales & Marketing - Module II', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
-  ('KNEC-3814', 'Diploma in Small Business Management - Module II', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1))
+  ('KNEC-3806', 'Higher Diploma in Business Management', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-3808', 'Higher Diploma in Human Resource Management', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1)),
+  ('KNEC-3814', 'Higher Diploma in Entrepreneurship Development', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1))
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
@@ -130,7 +131,8 @@ INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode,
   ('KNEC-2920', 'diploma', true, 'C', 'module', 24),
   ('KNEC-2922', 'diploma', true, 'C', 'module', 24),
   ('KNEC-3806', 'diploma', true, 'C', 'module', 24),
-  ('KNEC-3814', 'diploma', true, 'C', 'module', 24)
+  ('KNEC-3808', 'level6', true, 'C', 'module', 12),
+  ('KNEC-3814', 'level6', true, 'C', 'module', 12)
 ON CONFLICT (course_id, level) DO NOTHING;
 
 -- ============================================================================
