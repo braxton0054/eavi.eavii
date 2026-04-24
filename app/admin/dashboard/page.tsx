@@ -61,9 +61,14 @@ export default function AdminDashboard() {
 
       // Load revenue this month
       const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
-      let revenueQuery = supabase.from('fee_payments').select('amount, payment_method').eq('status', 'completed').gte('payment_date', monthStart);
+      let revenueQuery = supabase
+        .from('fee_payments')
+        .select('amount, payment_method, applications!inner(campus)')
+        .eq('status', 'completed')
+        .gte('payment_date', monthStart);
+
       if (campusCode && campusCode !== 'all') {
-        revenueQuery = revenueQuery.eq('campus', campusCode);
+        revenueQuery = revenueQuery.eq('applications.campus', campusCode);
       }
       const { data: revenueData } = await revenueQuery;
 
@@ -84,12 +89,12 @@ export default function AdminDashboard() {
       // Load recent payments
       let recentPaymentsQuery = supabase
         .from('fee_payments')
-        .select('*, applications(full_name)')
+        .select('*, applications!inner(full_name, campus)')
         .order('payment_date', { ascending: false })
         .limit(5);
       
       if (campusCode && campusCode !== 'all') {
-        recentPaymentsQuery = recentPaymentsQuery.eq('campus', campusCode);
+        recentPaymentsQuery = recentPaymentsQuery.eq('applications.campus', campusCode);
       }
       const { data: recentPaymentsData } = await recentPaymentsQuery;
       setRecentPayments(recentPaymentsData || []);

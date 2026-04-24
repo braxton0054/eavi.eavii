@@ -89,18 +89,24 @@ export default function PaymentsPage() {
   }, [supabase, router]);
 
   const loadPayments = async (campusFilter: string) => {
-    const { data, error } = await supabase
+    let query = supabase
       .from('fee_payments')
       .select(`
         *,
-        application:applications (
+        application:applications!inner (
           full_name,
           admission_number,
-          course_id
+          course_id,
+          campus
         )
       `)
-      .eq('campus', campusFilter)
       .order('payment_date', { ascending: false });
+
+    if (campusFilter && campusFilter !== 'all') {
+      query = query.eq('applications.campus', campusFilter);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error loading payments:', error);

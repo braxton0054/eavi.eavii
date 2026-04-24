@@ -91,8 +91,8 @@ export default function FinancialReportsPage() {
     // Total revenue today
     const { data: todayPayments } = await supabase
       .from('fee_payments')
-      .select('amount')
-      .eq('campus', campusFilter)
+      .select('amount, applications!inner(campus)')
+      .eq('applications.campus', campusFilter)
       .eq('status', 'completed')
       .eq('payment_date', today);
 
@@ -101,8 +101,8 @@ export default function FinancialReportsPage() {
     // Total revenue this week
     const { data: weekPayments } = await supabase
       .from('fee_payments')
-      .select('amount')
-      .eq('campus', campusFilter)
+      .select('amount, applications!inner(campus)')
+      .eq('applications.campus', campusFilter)
       .eq('status', 'completed')
       .gte('payment_date', weekAgo);
 
@@ -111,8 +111,8 @@ export default function FinancialReportsPage() {
     // Total revenue this month
     const { data: monthPayments } = await supabase
       .from('fee_payments')
-      .select('amount')
-      .eq('campus', campusFilter)
+      .select('amount, applications!inner(campus)')
+      .eq('applications.campus', campusFilter)
       .eq('status', 'completed')
       .gte('payment_date', monthStart);
 
@@ -121,8 +121,8 @@ export default function FinancialReportsPage() {
     // Pending payments
     const { data: pendingInstallments } = await supabase
       .from('payment_installments')
-      .select('amount')
-      .eq('campus', campusFilter)
+      .select('amount, applications!inner(campus)')
+      .eq('applications.campus', campusFilter)
       .eq('status', 'pending');
 
     const pendingPayments = pendingInstallments?.reduce((sum: number, i: any) => sum + i.amount, 0) || 0;
@@ -131,8 +131,8 @@ export default function FinancialReportsPage() {
     const todayDate = new Date().toISOString().split('T')[0];
     const { data: overdueInstallments } = await supabase
       .from('payment_installments')
-      .select('amount')
-      .eq('campus', campusFilter)
+      .select('amount, applications!inner(campus)')
+      .eq('applications.campus', campusFilter)
       .eq('status', 'overdue');
 
     const overduePayments = overdueInstallments?.reduce((sum: number, i: any) => sum + i.amount, 0) || 0;
@@ -140,8 +140,8 @@ export default function FinancialReportsPage() {
     // Payment success rate
     const { data: allPayments } = await supabase
       .from('fee_payments')
-      .select('status')
-      .eq('campus', campusFilter);
+      .select('status, applications!inner(campus)')
+      .eq('applications.campus', campusFilter);
 
     const completedPayments = allPayments?.filter((p: any) => p.status === 'completed').length || 0;
     const totalPaymentCount = allPayments?.length || 0;
@@ -166,8 +166,8 @@ export default function FinancialReportsPage() {
 
     const { data: payments } = await supabase
       .from('fee_payments')
-      .select('payment_method, amount')
-      .eq('campus', campusFilter)
+      .select('payment_method, amount, applications!inner(campus)')
+      .eq('applications.campus', campusFilter)
       .eq('status', 'completed')
       .gte('payment_date', monthStart);
 
@@ -205,14 +205,15 @@ export default function FinancialReportsPage() {
       .from('fee_payments')
       .select(`
         amount,
-        applications (
+        applications!inner (
           course_id,
+          campus,
           courses (
             name
           )
         )
       `)
-      .eq('campus', campusFilter)
+      .eq('applications.campus', campusFilter)
       .eq('status', 'completed')
       .gte('payment_date', monthStart);
 
@@ -248,11 +249,12 @@ export default function FinancialReportsPage() {
       .from('fee_payments')
       .select(`
         amount,
-        applications (
-          exam_body
+        applications!inner (
+          exam_body,
+          campus
         )
       `)
-      .eq('campus', campusFilter)
+      .eq('applications.campus', campusFilter)
       .eq('status', 'completed')
       .gte('payment_date', monthStart);
 
