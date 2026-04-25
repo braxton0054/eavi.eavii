@@ -159,9 +159,9 @@ export default function LandingPage() {
             <Link href="/apply" className="bg-white text-green-700 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition-colors shadow-lg">
               Apply Now
             </Link>
-            <Link href="/bursary-form.pdf" className="border-2 border-white text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-white/10 transition-colors">
+            <a href="/bursary-form.pdf" target="_blank" rel="noopener noreferrer" className="border-2 border-white text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-white/10 transition-colors">
               Download Bursary Form
-            </Link>
+            </a>
           </div>
         </div>
       </section>
@@ -182,7 +182,7 @@ export default function LandingPage() {
               <ul className="space-y-2 text-gray-400 text-sm">
                 <li><Link href="/apply" className="hover:text-white transition-colors">Apply Now</Link></li>
                 <li><Link href="/login/student" className="hover:text-white transition-colors">Student Portal</Link></li>
-                <li><Link href="/bursary-form.pdf" className="hover:text-white transition-colors">Bursary Form</Link></li>
+                <li><a href="/bursary-form.pdf" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Bursary Form</a></li>
               </ul>
             </div>
             <div>

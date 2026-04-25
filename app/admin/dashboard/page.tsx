@@ -497,6 +497,23 @@ export default function AdminDashboard() {
             </Link>
 
             <Link
+              href="/admin/fee-structure"
+              className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-colors duration-300"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-indigo-500 rounded-lg flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Manage Fees</h3>
+                  <p className="text-purple-200 text-sm">Create and edit fee structures</p>
+                </div>
+              </div>
+            </Link>
+
+            <Link
               href="/admin/fee-structures"
               className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-colors duration-300"
             >
@@ -507,7 +524,7 @@ export default function AdminDashboard() {
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-white">Fee Structures</h3>
+                  <h3 className="text-lg font-semibold text-white">Generate Fee PDFs</h3>
                   <p className="text-purple-200 text-sm">Generate course fee structures</p>
                 </div>
               </div>

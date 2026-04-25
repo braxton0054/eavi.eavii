@@ -142,68 +142,185 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#1e0f3a] text-white">
+    <div className="min-h-screen w-full bg-gradient-to-br from-[#0a1628] via-[#0d1e36] to-[#112244] text-white font-sans">
+      {/* Back Button */}
+      <Link href="/" className="fixed top-6 left-6 z-50 flex items-center gap-2 px-4 py-2 bg-[#c4a050]/10 border border-[#c4a050]/30 rounded-full text-[#c4a050] hover:bg-[#c4a050]/20 transition-all">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        <span className="text-sm font-medium">Back to Home</span>
+      </Link>
+
       <div className="relative z-10 w-full max-w-md mx-auto px-4 py-12 flex items-center justify-center min-h-screen">
         <div className="w-full">
+          {/* Header */}
           <div className="text-center mb-8">
-            <div className="inline-block p-2 bg-[#8b5cf6]/20 rounded-2xl mb-4">
-              <Image src="/logo.webp" alt="EAVI" width={60} height={60} className="object-contain" />
+            <div className="inline-block p-3 bg-[#c4a050]/10 border border-[#c4a050]/30 rounded-2xl mb-4">
+              <Image src="/logo.webp" alt="EAVI" width={70} height={70} className="object-contain" />
             </div>
-            <h1 className="text-3xl font-serif font-bold text-white mb-2">
-              {resetMode === 'login' ? 'Admin Portal' : 'Reset Access'}
+            <h1 className="text-4xl font-serif font-bold text-white mb-2" style={{ fontFamily: 'Playfair Display, serif' }}>
+              {resetMode === 'login' ? 'Admin Portal' : 'Reset Password'}
             </h1>
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#8b5cf6]/30 border border-[#8b5cf6]/50 rounded-full text-xs text-[#a78bfa] tracking-wider uppercase font-semibold">
-              <span className="w-2 h-2 rounded-full bg-[#a78bfa]"></span> Secure Portal
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#c4a050]/10 border border-[#c4a050]/30 rounded-full text-xs text-[#c4a050] tracking-wider uppercase font-semibold">
+              <span className="w-2 h-2 rounded-full bg-[#c4a050] animate-pulse"></span> Secure Portal
             </div>
           </div>
 
-          <div className="bg-[#1e0f3a]/80 backdrop-blur-md rounded-2xl p-8 border border-[#8b5cf6]/30 shadow-2xl">
-            {error && <div className="mb-4 p-3 rounded-lg bg-red-900/30 border border-red-500/50 text-sm text-center text-red-200">{error}</div>}
-            {success && <div className="mb-4 p-3 rounded-lg bg-green-900/30 border border-green-500/50 text-sm text-center text-green-200">{success}</div>}
+          {/* Mode Tabs */}
+          <div className="flex justify-center mb-6">
+            <div className="bg-[#0a1628]/80 backdrop-blur-sm p-1 rounded-xl border border-[#c4a050]/20">
+              {['login', 'reset'].map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setResetMode(m as any)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    resetMode === m
+                      ? 'bg-gradient-to-r from-[#c4a050] to-[#d4b060] text-[#0a1628]'
+                      : 'text-[#c4a050]/70 hover:text-[#c4a050]'
+                  }`}
+                >
+                  {m.charAt(0).toUpperCase() + m.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Card */}
+          <div className="bg-[#0d1e36]/60 backdrop-blur-xl rounded-2xl p-8 border border-[#c4a050]/20 shadow-2xl shadow-black/30">
+            {error && (
+              <div className="mb-4 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-sm text-center text-red-300">
+                {error}
+              </div>
+            )}
+            {success && (
+              <div className="mb-4 p-4 rounded-xl bg-green-500/10 border border-green-500/30 text-sm text-center text-green-300">
+                {success}
+              </div>
+            )}
             
             <form onSubmit={handleSubmit} className="space-y-5">
               {resetMode === 'login' ? (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-[#a78bfa] mb-1.5">Email Address</label>
-                    <input type="email" name="email" value={formData.email} onChange={handleChange} required 
-                      className="w-full px-4 py-3 bg-[#130920] border border-[#8b5cf6]/30 rounded-xl focus:border-[#8b5cf6] focus:ring-1 focus:ring-[#8b5cf6] outline-none" />
+                    <label className="block text-sm font-medium text-[#c4a050] mb-2">Email Address</label>
+                    <input 
+                      type="email" 
+                      name="email" 
+                      value={formData.email} 
+                      onChange={handleChange} 
+                      required 
+                      className="w-full px-4 py-3.5 bg-[#0a1628]/80 border border-[#c4a050]/30 rounded-xl focus:border-[#c4a050] focus:ring-2 focus:ring-[#c4a050]/20 outline-none transition-all text-white placeholder-gray-500" 
+                      placeholder="admin@eavi.ac.ke"
+                    />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#a78bfa] mb-1.5">Password</label>
-                    <input type="password" name="password" value={formData.password} onChange={handleChange} required 
-                      className="w-full px-4 py-3 bg-[#130920] border border-[#8b5cf6]/30 rounded-xl focus:border-[#8b5cf6] focus:ring-1 focus:ring-[#8b5cf6] outline-none" />
+                    <label className="block text-sm font-medium text-[#c4a050] mb-2">Password</label>
+                    <input 
+                      type="password" 
+                      name="password" 
+                      value={formData.password} 
+                      onChange={handleChange} 
+                      required 
+                      className="w-full px-4 py-3.5 bg-[#0a1628]/80 border border-[#c4a050]/30 rounded-xl focus:border-[#c4a050] focus:ring-2 focus:ring-[#c4a050]/20 outline-none transition-all text-white placeholder-gray-500" 
+                      placeholder="Enter your password"
+                    />
                   </div>
 
+                  {/* Campus Selector */}
                   <div>
-                    <label className="block text-sm font-medium text-[#a78bfa] mb-2">Select Campus</label>
-                    <div className="grid grid-cols-2 gap-2 bg-[#130920] p-1 rounded-xl border border-[#8b5cf6]/30">
-                      {['west', 'main'].map(c => (
-                        <button type="button" key={c} onClick={() => setFormData(p => ({...p, campus: c}))}
-                          className={`py-2 px-4 rounded-lg text-sm font-semibold capitalize transition-all ${formData.campus === c ? 'bg-gradient-to-r from-[#6d28d9] to-[#8b5cf6] text-white shadow-lg' : 'text-[#a78bfa]'}`}>
-                          {c} Campus
+                    <label className="block text-sm font-medium text-[#c4a050] mb-3">Select Campus</label>
+                    <div className="flex gap-3">
+                      {['main', 'west'].map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setFormData(p => ({...p, campus: c}))}
+                          className={`flex-1 py-3 px-4 rounded-xl text-sm font-semibold capitalize transition-all ${
+                            formData.campus === c
+                              ? 'bg-gradient-to-r from-[#c4a050] to-[#d4b060] text-[#0a1628] shadow-lg shadow-[#c4a050]/20'
+                              : 'bg-[#0a1628]/80 border border-[#c4a050]/30 text-gray-400 hover:text-[#c4a050] hover:border-[#c4a050]/50'
+                          }`}
+                        >
+                          <span className="flex items-center justify-center gap-2">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                            {c} Campus
+                          </span>
                         </button>
                       ))}
                     </div>
                   </div>
 
-                  <button type="submit" disabled={loading} className="w-full py-4 bg-gradient-to-r from-[#6d28d9] to-[#8b5cf6] text-white rounded-xl font-bold shadow-lg shadow-[#8b5cf6]/20">
-                    {loading ? 'Authenticating...' : 'Sign In'}
+                  <button 
+                    type="submit" 
+                    disabled={loading} 
+                    className="w-full py-4 bg-gradient-to-r from-[#c4a050] to-[#d4b060] text-[#0a1628] rounded-xl font-bold text-lg shadow-lg shadow-[#c4a050]/20 hover:shadow-[#c4a050]/30 hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
+                        Authenticating...
+                      </span>
+                    ) : 'Sign In'}
                   </button>
 
-                  <button type="button" onClick={() => setResetMode('reset')} className="w-full text-center text-[#a78bfa] text-sm hover:text-white">Forgot Password?</button>
+                  <button 
+                    type="button" 
+                    onClick={() => setResetMode('reset')} 
+                    className="w-full text-center text-sm text-[#c4a050]/70 hover:text-[#c4a050] transition-colors"
+                  >
+                    Forgot your password?
+                  </button>
                 </>
               ) : (
                 <>
-                  <p className="text-[#a78bfa] text-sm mb-4">Enter your email and we'll send a reset link.</p>
-                  <input type="email" name="email" value={formData.email} onChange={handleChange} required className="w-full px-4 py-3 bg-[#130920] border border-[#8b5cf6]/30 rounded-xl" />
-                  <button type="submit" className="w-full py-4 bg-gradient-to-r from-[#6d28d9] to-[#8b5cf6] text-white rounded-xl font-bold">Send Reset Link</button>
-                  <button type="button" onClick={() => setResetMode('login')} className="w-full text-center text-[#a78bfa] text-sm">Back to Login</button>
+                  {/* Step Indicator */}
+                  <div className="flex items-center justify-center gap-2 mb-6">
+                    {[1, 2, 3].map((step) => (
+                      <div key={step} className="flex items-center">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                          step === 1 
+                            ? 'bg-[#c4a050] text-[#0a1628]' 
+                            : 'bg-[#0a1628] border border-[#c4a050]/30 text-gray-500'
+                        }`}>
+                          {step}
+                        </div>
+                        {step < 3 && (
+                          <div className="w-8 h-0.5 bg-[#c4a050]/20" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <p className="text-gray-400 text-sm text-center mb-6">
+                    Enter your email address and we'll send you a link to reset your password.
+                  </p>
+                  <input 
+                    type="email" 
+                    name="email" 
+                    value={formData.email} 
+                    onChange={handleChange} 
+                    required 
+                    className="w-full px-4 py-3.5 bg-[#0a1628]/80 border border-[#c4a050]/30 rounded-xl focus:border-[#c4a050] focus:ring-2 focus:ring-[#c4a050]/20 outline-none transition-all text-white placeholder-gray-500" 
+                    placeholder="Enter your email"
+                  />
+                  <button 
+                    type="submit" 
+                    className="w-full py-4 bg-gradient-to-r from-[#c4a050] to-[#d4b060] text-[#0a1628] rounded-xl font-bold text-lg shadow-lg shadow-[#c4a050]/20 hover:shadow-[#c4a050]/30 hover:scale-[1.02] transition-all"
+                  >
+                    Send Reset Link
+                  </button>
                 </>
               )}
             </form>
           </div>
+
+          {/* Footer Text */}
+          <p className="text-center text-gray-500 text-sm mt-6">
+            © 2026 East Africa Vision Institute. All rights reserved.
+          </p>
         </div>
       </div>
     </div>
