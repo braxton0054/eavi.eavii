@@ -92,7 +92,7 @@ const generateCourseId = () => {
 };
 
 const getInitialFormData = () => ({
-  courseId: generateCourseId(),
+  courseId: '', // Allow manual entry of course ID (e.g., KNEC-2801, CDACC-001, JP-101)
   department: '',
   courseName: '',
   courseStudyMode: 'module' as StudyMode,
@@ -118,12 +118,65 @@ export default function CoursesPage() {
   const [editingCourse, setEditingCourse] = useState<string | null>(null);
   const [formData, setFormData] = useState(getInitialFormData);
   const [searchTerm, setSearchTerm] = useState('');
+  const [levelFilter, setLevelFilter] = useState('all');
+  const [expandedUnits, setExpandedUnits] = useState<Record<string, boolean>>({});
 
-  const filteredCourses = courses.filter(course => 
-    searchTerm === '' || 
-    course.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    course.department?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredCourses = courses.filter(course => {
+    const matchesSearch = searchTerm === '' || 
+      course.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      course.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      course.departments?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    if (!matchesSearch) return false;
+    
+    if (levelFilter === 'all') return true;
+    
+    const hasLevel = course.course_types?.some((ct: any) => 
+      ct.enabled && ct.level === levelFilter
+    );
+    return hasLevel;
+  });
+
+  // Calculate stats
+  const stats = {
+    total: filteredCourses.length,
+    diploma: filteredCourses.filter((c: any) => c.course_types?.some((ct: any) => ct.enabled && ct.level === 'diploma')).length,
+    certificate: filteredCourses.filter((c: any) => c.course_types?.some((ct: any) => ct.enabled && ct.level === 'certificate')).length,
+    artisan: filteredCourses.filter((c: any) => c.course_types?.some((ct: any) => ct.enabled && ct.level === 'artisan')).length,
+    level6: filteredCourses.filter((c: any) => c.course_types?.some((ct: any) => ct.enabled && ct.level === 'level6')).length,
+    level5: filteredCourses.filter((c: any) => c.course_types?.some((ct: any) => ct.enabled && ct.level === 'level5')).length,
+    level4: filteredCourses.filter((c: any) => c.course_types?.some((ct: any) => ct.enabled && ct.level === 'level4')).length,
+    shortCourse: filteredCourses.filter((c: any) => c.course_types?.some((ct: any) => ct.enabled && ct.study_mode === 'short-course')).length,
+  };
+
+  const getLevelBadgeColor = (level: string) => {
+    const colors: Record<string, { bg: string; text: string; border: string }> = {
+      diploma: { bg: 'bg-blue-500/20', text: 'text-blue-300', border: 'border-blue-500/30' },
+      certificate: { bg: 'bg-green-500/20', text: 'text-green-300', border: 'border-green-500/30' },
+      artisan: { bg: 'bg-amber-500/20', text: 'text-amber-300', border: 'border-amber-500/30' },
+      level6: { bg: 'bg-purple-500/20', text: 'text-purple-300', border: 'border-purple-500/30' },
+      level5: { bg: 'bg-purple-500/20', text: 'text-purple-300', border: 'border-purple-500/30' },
+      level4: { bg: 'bg-purple-500/20', text: 'text-purple-300', border: 'border-purple-500/30' },
+      'short-course': { bg: 'bg-pink-500/20', text: 'text-pink-300', border: 'border-pink-500/30' },
+    };
+    return colors[level] || colors.diploma;
+  };
+
+  const getLevelLabel = (level: string) => {
+    const labels: Record<string, string> = {
+      diploma: 'Diploma',
+      certificate: 'Certificate',
+      artisan: 'Artisan',
+      level6: 'Higher Diploma',
+      level5: 'Diploma',
+      level4: 'Certificate',
+    };
+    return labels[level] || level;
+  };
+
+  const toggleUnits = (courseId: string) => {
+    setExpandedUnits(prev => ({ ...prev, [courseId]: !prev[courseId] }));
+  };
 
   useEffect(() => {
     setSupabase(createClient());
@@ -625,6 +678,13 @@ export default function CoursesPage() {
       return;
     }
 
+    // Validate courseId for new courses
+    if (!editingCourse && !formData.courseId.trim()) {
+      setError('Course ID is required. Use format like KNEC-2801, CDACC-001, or JP-101');
+      setSubmitting(false);
+      return;
+    }
+
     if (!formData.department.trim()) {
       setError('Department is required.');
       setSubmitting(false);
@@ -750,10 +810,11 @@ export default function CoursesPage() {
         courseId = courseData.id;
         console.log('Updated course with ID:', courseId);
       } else {
-        console.log('Creating new course:', formData.courseName);
-        // Insert new course
+        console.log('Creating new course:', formData.courseName, 'with ID:', formData.courseId);
+        // Insert new course with manual course ID
         const { error: insertError, data: courseData } = await supabase.from('courses').insert([
           {
+            id: formData.courseId,
             name: formData.courseName,
             department_id: departmentId
           }
@@ -1096,237 +1157,163 @@ export default function CoursesPage() {
             )}
 
             {viewMode === 'list' ? (
-              <div className="space-y-4">
-                <div className="mb-4">
+              <div className="space-y-6">
+                {/* Stats Bar */}
+                <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div className="text-purple-200 text-sm">
+                      <span className="font-bold text-white">{stats.total}</span> courses matched
+                    </div>
+                    <div className="h-4 w-px bg-white/20"></div>
+                    <div className="flex flex-wrap gap-3 text-xs">
+                      <span className="text-blue-300">Diploma: {stats.diploma}</span>
+                      <span className="text-green-300">Certificate: {stats.certificate}</span>
+                      <span className="text-amber-300">Artisan: {stats.artisan}</span>
+                      <span className="text-purple-300">Higher Diploma: {stats.level6}</span>
+                      <span className="text-pink-300">Short Course: {stats.shortCourse}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Search & Filter */}
+                <div className="flex flex-col md:flex-row gap-4">
                   <input
                     type="text"
-                    placeholder="Search courses by name or department..."
+                    placeholder="Search by course name, ID, or department..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full px-4 py-2 bg-white/20 border border-white/30 rounded-lg text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="flex-1 px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { value: 'all', label: 'All' },
+                      { value: 'diploma', label: 'Diploma' },
+                      { value: 'certificate', label: 'Certificate' },
+                      { value: 'artisan', label: 'Artisan' },
+                      { value: 'level6', label: 'Higher Diploma' },
+                      { value: 'short-course', label: 'Short Course' },
+                    ].map((filter) => (
+                      <button
+                        key={filter.value}
+                        onClick={() => setLevelFilter(filter.value)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                          levelFilter === filter.value
+                            ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/30'
+                            : 'bg-white/10 text-purple-200 hover:bg-white/20 hover:text-white border border-white/20'
+                        }`}
+                      >
+                        {filter.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+
                 {filteredCourses.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-purple-200">No courses found matching your search.</p>
+                  <div className="text-center py-12">
+                    <p className="text-purple-200">No courses found matching your criteria.</p>
                   </div>
                 ) : (
-                  <>
-                    {/* Desktop Table View */}
-                    <div className="hidden md:block overflow-x-auto">
-                      <table className="w-full text-left text-sm text-white border-collapse">
-                        <thead className="bg-white/10 uppercase text-xs font-semibold text-purple-200 border-b border-white/20">
-                          <tr>
-                            <th className="px-4 py-3">Course & Dept</th>
-                            <th className="px-4 py-3">Level & Fees</th>
-                            <th className="px-4 py-3">Units</th>
-                            <th className="px-4 py-3 text-right">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/10">
-                          {filteredCourses.map((course) => (
-                            <tr key={course.id} className="hover:bg-white/5 align-top border-b border-white/10">
-                              <td className="px-4 py-4 w-1/4">
-                                <div className="font-bold text-base text-white">{course.name}</div>
-                                <div className="text-xs text-purple-300 mt-1 font-mono">ID: {course.id}</div>
-                                <div className="text-xs text-purple-200 mt-1">Dept: {course.departments?.name || 'Unknown'}</div>
-                              </td>
-                              <td className="px-4 py-4 w-1/3">
-                                <div className="space-y-3">
-                                  {course.course_types?.filter((ct: any) => ct?.enabled).map((ct: any) => (
-                                    <div key={ct.id || ct.level} className="bg-white/5 rounded p-2 border border-white/10">
-                                      <div className="font-semibold text-purple-300 capitalize flex justify-between">
-                                        <span>{ct.level}</span>
-                                        <span className="text-xs text-white/60 font-normal">Min Grade: {ct.min_kcse_grade || '-'}</span>
-                                      </div>
-                                      {ct.study_mode === 'short-course' ? (
-                                        <div className="text-xs text-purple-100 mt-1">
-                                          {ct.short_course_config?.payment_type === 'monthly' ? (
-                                            <>
-                                              <div className="flex justify-between font-medium text-white/80 border-b border-white/10 pb-0.5 mb-1">
-                                                <span>Total Fee:</span>
-                                                <span className="font-mono">{ct.short_course_config?.fee || 0} KES</span>
-                                              </div>
-                                              <div className="space-y-0.5">
-                                                {ct.short_course_config?.monthly_fees?.map((fee: number, mIdx: number) => (
-                                                  <div key={mIdx} className="ml-2 flex justify-between text-white/70">
-                                                    <span>Month {mIdx + 1}:</span>
-                                                    <span className="font-mono">{fee} KES</span>
-                                                  </div>
-                                                ))}
-                                              </div>
-                                            </>
-                                          ) : (
-                                            <div className="flex justify-between">
-                                              <span>Short Course Fee:</span>
-                                              <span className="font-mono">{ct.short_course_config?.fee || 0} KES</span>
-                                            </div>
-                                          )}
-                                        </div>
-                                      ) : (
-                                        <div className="mt-1 space-y-1">
-                                          {ct.modules?.map((m: any, mIdx: number) => (
-                                            <div key={mIdx} className="text-xs text-purple-100 ml-1">
-                                              <div className="font-medium text-white/80 border-b border-white/10 pb-0.5 mb-0.5">Module {m.module_index}</div>
-                                              {m.semesters?.map((s: any, sIdx: number) => (
-                                                <div key={sIdx} className="ml-2 flex justify-between py-0.5">
-                                                  <span>Sem {s.semester_index}:</span>
-                                                  <span className="font-mono">{s.fee} KES</span>
-                                                </div>
-                                              ))}
-                                            </div>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              </td>
-                              <td className="px-4 py-4 w-1/3">
-                                {course.units && course.units.length > 0 ? (
-                                  <div className="flex flex-wrap gap-1">
-                                    {course.units.map((u: any, i: number) => (
-                                      <span key={i} className="inline-block bg-purple-900/50 border border-purple-500/30 text-purple-100 text-[10px] px-2 py-1 rounded-sm whitespace-nowrap shadow-sm">
-                                        {u.name}
-                                      </span>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <span className="text-xs text-white/40 italic">No units listed</span>
-                                )}
-                              </td>
-                              <td className="px-4 py-4 text-right align-middle">
-                                <div className="flex flex-col gap-2 items-end">
-                                  <button
-                                    onClick={() => handleEditCourse(course)}
-                                    className="px-3 py-1.5 w-20 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold transition-colors shadow text-center"
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredCourses.map((course) => {
+                      const isExpanded = expandedUnits[course.id];
+                      const courseUnits = course.units || [];
+                      const displayUnits = isExpanded ? courseUnits : courseUnits.slice(0, 3);
+                      const colors = getLevelBadgeColor(course.course_types?.[0]?.level || 'diploma');
+                      
+                      return (
+                        <div key={course.id} className="bg-white/10 backdrop-blur-md rounded-xl p-5 border border-white/20 hover:bg-white/15 transition-colors">
+                          {/* Course Header */}
+                          <div className="mb-4">
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <span className="font-mono text-xs text-purple-300 bg-white/5 px-2 py-1 rounded">{course.id}</span>
+                              <div className="flex gap-1 flex-wrap">
+                                {course.course_types?.filter((ct: any) => ct?.enabled).map((ct: any) => (
+                                  <span
+                                    key={ct.id || ct.level}
+                                    className={`px-2 py-1 rounded-full text-xs font-semibold border ${getLevelBadgeColor(ct.level).bg} ${getLevelBadgeColor(ct.level).text} ${getLevelBadgeColor(ct.level).border}`}
                                   >
-                                    Edit
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteCourse(course.id)}
-                                    className="px-3 py-1.5 w-20 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-semibold transition-colors shadow text-center"
-                                  >
-                                    Delete
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Mobile Card View */}
-                    <div className="md:hidden space-y-4">
-                      {filteredCourses.map((course) => (
-                        <div key={course.id} className="bg-white/5 rounded-lg p-4 border border-white/10">
-                          <div className="mb-3">
-                            <h3 className="font-bold text-lg text-white">{course.name}</h3>
-                            <p className="text-xs text-purple-300 font-mono mt-1">ID: {course.id}</p>
-                            <p className="text-xs text-purple-200 mt-1">Dept: {course.departments?.name || 'Unknown'}</p>
-                          </div>
-                          
-                          <div className="mb-3">
-                            <h4 className="text-sm font-semibold text-purple-300 mb-2">Course Types</h4>
-                            <div className="space-y-2">
-                              {course.course_types?.filter((ct: any) => ct?.enabled).map((ct: any) => (
-                                <div key={ct.id || ct.level} className="bg-white/5 rounded p-2 border border-white/10">
-                                  <div className="font-semibold text-purple-200 capitalize flex justify-between text-sm">
-                                    <span>{ct.level}</span>
-                                    <span className="text-xs text-white/60 font-normal">Min: {ct.min_kcse_grade || '-'}</span>
-                                  </div>
-                                  {ct.study_mode === 'short-course' ? (
-                                    <div className="text-xs text-purple-100 mt-1">
-                                      {ct.short_course_config?.payment_type === 'monthly' ? (
-                                        <>
-                                          <div className="flex justify-between font-medium text-white/80 border-b border-white/10 pb-0.5 mb-1">
-                                            <span>Total:</span>
-                                            <span className="font-mono">{ct.short_course_config?.fee || 0} KES</span>
-                                          </div>
-                                          <div className="space-y-0.5">
-                                            {ct.short_course_config?.monthly_fees?.map((fee: number, mIdx: number) => (
-                                              <div key={mIdx} className="ml-2 flex justify-between text-white/70">
-                                                <span>M{mIdx + 1}:</span>
-                                                <span className="font-mono">{fee} KES</span>
-                                              </div>
-                                            ))}
-                                          </div>
-                                        </>
-                                      ) : (
-                                        <div className="flex justify-between">
-                                          <span>Fee:</span>
-                                          <span className="font-mono">{ct.short_course_config?.fee || 0} KES</span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <div className="mt-1 space-y-1">
-                                      {ct.modules?.map((m: any, mIdx: number) => (
-                                        <div key={mIdx} className="text-xs text-purple-100 ml-1">
-                                          <div className="font-medium text-white/80 border-b border-white/10 pb-0.5 mb-0.5">Mod {m.module_index}</div>
-                                          {m.semesters?.map((s: any, sIdx: number) => (
-                                            <div key={sIdx} className="ml-2 flex justify-between py-0.5">
-                                              <span>S{s.semester_index}:</span>
-                                              <span className="font-mono">{s.fee} KES</span>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
+                                    {getLevelLabel(ct.level)}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
+                            <h3 className="font-bold text-lg text-white mb-1">{course.name}</h3>
+                            <span className="text-xs text-purple-300 bg-purple-500/20 px-2 py-1 rounded">{course.departments?.name || 'Unknown'}</span>
                           </div>
 
-                          <div className="mb-3">
-                            <h4 className="text-sm font-semibold text-purple-300 mb-2">Units</h4>
-                            {course.units && course.units.length > 0 ? (
-                              <div className="flex flex-wrap gap-1">
-                                {course.units.map((u: any, i: number) => (
-                                  <span key={i} className="inline-block bg-purple-900/50 border border-purple-500/30 text-purple-100 text-xs px-2 py-1 rounded-sm">
+                          {/* Units */}
+                          <div className="mb-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm text-purple-200 font-medium">Units ({courseUnits.length})</span>
+                              {courseUnits.length > 3 && (
+                                <button
+                                  onClick={() => toggleUnits(course.id)}
+                                  className="text-xs text-purple-300 hover:text-white transition-colors"
+                                >
+                                  {isExpanded ? 'Show less' : 'Show more'}
+                                </button>
+                              )}
+                            </div>
+                            {courseUnits.length > 0 ? (
+                              <div className="flex flex-wrap gap-1.5">
+                                {displayUnits.map((u: any, i: number) => (
+                                  <span
+                                    key={i}
+                                    className="inline-block bg-white/10 border border-white/20 text-purple-100 text-xs px-2 py-1 rounded-sm"
+                                  >
                                     {u.name}
                                   </span>
                                 ))}
+                                {!isExpanded && courseUnits.length > 3 && (
+                                  <span className="inline-block bg-white/5 border border-white/10 text-purple-300 text-xs px-2 py-1 rounded-sm">
+                                    +{courseUnits.length - 3} more
+                                  </span>
+                                )}
                               </div>
                             ) : (
                               <span className="text-xs text-white/40 italic">No units</span>
                             )}
                           </div>
 
-                          <div className="flex gap-2">
+                          {/* Actions */}
+                          <div className="flex gap-2 pt-3 border-t border-white/10">
                             <button
                               onClick={() => handleEditCourse(course)}
-                              className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-semibold transition-colors"
+                              className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors"
                             >
                               Edit
                             </button>
                             <button
                               onClick={() => handleDeleteCourse(course.id)}
-                              className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded text-sm font-semibold transition-colors"
+                              className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-colors"
                             >
                               Delete
                             </button>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
                   <label htmlFor="courseId" className="block text-white font-medium mb-2 text-sm md:text-base">
-                    Course ID (Auto-generated)
+                    Course ID {editingCourse ? '(Read-only)' : '*'} 
+                    <span className="text-purple-300 text-xs ml-1">(e.g., KNEC-2801, CDACC-001, JP-101)</span>
                   </label>
                   <input
                     type="text"
                     id="courseId"
                     value={formData.courseId}
-                    readOnly
-                    className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white/70 text-sm md:text-base cursor-not-allowed"
+                    onChange={(e) => !editingCourse && setFormData((prev) => ({ ...prev, courseId: e.target.value }))}
+                    readOnly={!!editingCourse}
+                    placeholder="Enter course code (e.g., KNEC-2801)"
+                    required
+                    className={`w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base ${
+                      editingCourse ? 'bg-white/5 text-white/70 cursor-not-allowed' : ''
+                    }`}
                   />
                 </div>
 

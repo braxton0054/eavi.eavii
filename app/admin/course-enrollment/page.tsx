@@ -43,8 +43,10 @@ export default function CourseEnrollmentPage() {
   
   // Form state
   const [unitInputs, setUnitInputs] = useState<Record<string, string>>({});
+  const [unitCodeInputs, setUnitCodeInputs] = useState<Record<string, string>>({});
   const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
   const [editUnitName, setEditUnitName] = useState('');
+  const [editUnitCode, setEditUnitCode] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -299,6 +301,7 @@ export default function CourseEnrollmentPage() {
 
   const addUnit = async (moduleIndex: number, semesterIndex: number, inputKey: string) => {
     const unitName = unitInputs[inputKey]?.trim();
+    const unitCode = unitCodeInputs[inputKey]?.trim();
     if (!unitName) return;
 
     setSaving(true);
@@ -320,6 +323,7 @@ export default function CourseEnrollmentPage() {
         .insert([{
           course_id: selectedCourseId,
           semester_id: semesterId,
+          unit_code: unitCode || null,
           name: unitName,
           module_index: moduleIndex,
           semester_index: semesterIndex
@@ -331,6 +335,7 @@ export default function CourseEnrollmentPage() {
 
       setUnits(prev => [...prev, data]);
       setUnitInputs(prev => ({ ...prev, [inputKey]: '' }));
+      setUnitCodeInputs(prev => ({ ...prev, [inputKey]: '' }));
       setSuccess('Unit added successfully.');
     } catch (err: any) {
       console.error('Error adding unit:', err);
@@ -365,6 +370,7 @@ export default function CourseEnrollmentPage() {
 
   const updateUnit = async (unitId: string) => {
     const newName = editUnitName.trim();
+    const newCode = editUnitCode.trim();
     if (!newName) return;
 
     setSaving(true);
@@ -374,15 +380,16 @@ export default function CourseEnrollmentPage() {
     try {
       const { error: updateError } = await supabase
         .from('units')
-        .update({ name: newName })
+        .update({ name: newName, unit_code: newCode || null })
         .eq('id', unitId);
 
       if (updateError) throw updateError;
 
-      setUnits(prev => prev.map(u => u.id === unitId ? { ...u, name: newName } : u));
+      setUnits(prev => prev.map(u => u.id === unitId ? { ...u, name: newName, unit_code: newCode || null } : u));
       setSuccess('Unit updated successfully.');
       setEditingUnitId(null);
       setEditUnitName('');
+      setEditUnitCode('');
     } catch (err: any) {
       console.error('Error updating unit:', err);
       setError(`Failed to update unit: ${err.message}`);
@@ -541,6 +548,13 @@ export default function CourseEnrollmentPage() {
                     <div className="flex flex-col sm:flex-row gap-3 mb-6">
                       <input
                         type="text"
+                        value={unitCodeInputs['short'] || ''}
+                        onChange={(e) => setUnitCodeInputs({ ...unitCodeInputs, 'short': e.target.value })}
+                        placeholder="Unit code (e.g., PEPE-101)"
+                        className="w-32 sm:w-40 px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                      />
+                      <input
+                        type="text"
                         value={unitInputs['short'] || ''}
                         onChange={(e) => setUnitInputs({ ...unitInputs, 'short': e.target.value })}
                         placeholder="Enter unit name..."
@@ -567,6 +581,13 @@ export default function CourseEnrollmentPage() {
                                 <div className="flex items-center gap-2 flex-1">
                                   <input
                                     type="text"
+                                    value={editUnitCode}
+                                    onChange={(e) => setEditUnitCode(e.target.value)}
+                                    placeholder="Code"
+                                    className="w-24 px-3 py-1 bg-white/20 border border-white/30 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                  />
+                                  <input
+                                    type="text"
                                     value={editUnitName}
                                     onChange={(e) => setEditUnitName(e.target.value)}
                                     className="flex-1 px-3 py-1 bg-white/20 border border-white/30 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -582,6 +603,7 @@ export default function CourseEnrollmentPage() {
                                     onClick={() => {
                                       setEditingUnitId(null);
                                       setEditUnitName('');
+                                      setEditUnitCode('');
                                     }}
                                     disabled={saving}
                                     className="px-3 py-1 bg-gray-600 hover:bg-gray-700 disabled:opacity-50 text-white rounded text-xs font-semibold"
@@ -590,7 +612,14 @@ export default function CourseEnrollmentPage() {
                                   </button>
                                 </div>
                               ) : (
-                                <span className="text-purple-100 font-medium">{unit.name}</span>
+                                <div className="flex items-center gap-3">
+                                  {unit.unit_code && (
+                                    <span className="px-2 py-1 bg-purple-600/30 rounded text-xs font-mono text-purple-200">
+                                      {unit.unit_code}
+                                    </span>
+                                  )}
+                                  <span className="text-purple-100 font-medium">{unit.name}</span>
+                                </div>
                               )}
                               <div className="flex gap-2">
                                 {editingUnitId !== unit.id && (
@@ -598,6 +627,7 @@ export default function CourseEnrollmentPage() {
                                     onClick={() => {
                                       setEditingUnitId(unit.id);
                                       setEditUnitName(unit.name);
+                                      setEditUnitCode(unit.unit_code || '');
                                     }}
                                     disabled={saving}
                                     className="text-blue-400 hover:text-blue-300 opacity-0 group-hover:opacity-100 transition-opacity text-sm font-semibold"
@@ -642,6 +672,13 @@ export default function CourseEnrollmentPage() {
                                   <div className="flex flex-col sm:flex-row gap-2 md:gap-3 mb-3 md:mb-4">
                                     <input
                                       type="text"
+                                      value={unitCodeInputs[inputKey] || ''}
+                                      onChange={(e) => setUnitCodeInputs({ ...unitCodeInputs, [inputKey]: e.target.value })}
+                                      placeholder="Unit code"
+                                      className="w-24 sm:w-32 px-3 py-2 md:px-4 md:py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-xs md:text-sm"
+                                    />
+                                    <input
+                                      type="text"
                                       value={unitInputs[inputKey] || ''}
                                       onChange={(e) => setUnitInputs({ ...unitInputs, [inputKey]: e.target.value })}
                                       placeholder="Enter unit name..."
@@ -666,6 +703,13 @@ export default function CourseEnrollmentPage() {
                                             <div className="flex items-center gap-2 flex-1">
                                               <input
                                                 type="text"
+                                                value={editUnitCode}
+                                                onChange={(e) => setEditUnitCode(e.target.value)}
+                                                placeholder="Code"
+                                                className="w-20 px-2 py-1 bg-white/20 border border-white/30 rounded text-white text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                              />
+                                              <input
+                                                type="text"
                                                 value={editUnitName}
                                                 onChange={(e) => setEditUnitName(e.target.value)}
                                                 className="flex-1 px-2 py-1 bg-white/20 border border-white/30 rounded text-white text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -681,6 +725,7 @@ export default function CourseEnrollmentPage() {
                                                 onClick={() => {
                                                   setEditingUnitId(null);
                                                   setEditUnitName('');
+                                                  setEditUnitCode('');
                                                 }}
                                                 disabled={saving}
                                                 className="px-2 py-1 bg-gray-600 hover:bg-gray-700 disabled:opacity-50 text-white rounded text-xs font-semibold"
@@ -689,7 +734,14 @@ export default function CourseEnrollmentPage() {
                                               </button>
                                             </div>
                                           ) : (
-                                            <span className="text-purple-100 text-xs md:text-sm">{unit.name}</span>
+                                            <div className="flex items-center gap-2">
+                                              {unit.unit_code && (
+                                                <span className="px-2 py-0.5 bg-purple-600/30 rounded text-xs font-mono text-purple-200">
+                                                  {unit.unit_code}
+                                                </span>
+                                              )}
+                                              <span className="text-purple-100 text-xs md:text-sm">{unit.name}</span>
+                                            </div>
                                           )}
                                           <div className="flex gap-2">
                                             {editingUnitId !== unit.id && (
@@ -697,6 +749,7 @@ export default function CourseEnrollmentPage() {
                                                 onClick={() => {
                                                   setEditingUnitId(unit.id);
                                                   setEditUnitName(unit.name);
+                                                  setEditUnitCode(unit.unit_code || '');
                                                 }}
                                                 disabled={saving}
                                                 className="text-blue-400 hover:text-blue-300 opacity-0 group-hover:opacity-100 transition-opacity text-xs font-semibold"
