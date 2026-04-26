@@ -103,6 +103,32 @@ export default function PaymentsPage() {
     return `REC-${year}-${random}`;
   }, []);
 
+  const loadPayments = useCallback(async (campusFilter: string) => {
+    if (!supabase) return;
+    let query = supabase
+      .from('fee_payments')
+      .select(`*,application:applications!inner(full_name,admission_number,course_id,campus)`)
+      .order('payment_date', { ascending: false });
+    if (campusFilter && campusFilter !== 'all') {
+      query = query.eq('applications.campus', campusFilter);
+    }
+    const { data, error } = await query;
+    if (error) { console.error('Error loading payments:', error); }
+    else { setPayments(data || []); }
+  }, [supabase]);
+
+  const loadApplications = useCallback(async (campusFilter: string) => {
+    if (!supabase) return;
+    const { data, error } = await supabase
+      .from('applications')
+      .select('id, full_name, admission_number, course_id, current_semester, current_module, course_type_id, total_balance, exam_body, courses(name), course_types(level)')
+      .eq('campus', campusFilter)
+      .eq('status', 'enrolled')
+      .order('full_name', { ascending: true });
+    if (error) { console.error('Error loading applications:', error); }
+    else { setApplications(data || []); }
+  }, [supabase]);
+
   useEffect(() => {
     const client = createClient();
     setSupabase(client);
@@ -115,36 +141,12 @@ export default function PaymentsPage() {
       const userCampus = session.user?.user_metadata?.campus || localStorage.getItem('adminCampus');
       setCampus(userCampus);
 
-      const loadPayments = async (campusFilter: string) => {
-        let query = client
-          .from('fee_payments')
-          .select(`*,application:applications!inner(full_name,admission_number,course_id,campus)`)
-          .order('payment_date', { ascending: false });
-        if (campusFilter && campusFilter !== 'all') {
-          query = query.eq('applications.campus', campusFilter);
-        }
-        const { data, error } = await query;
-        if (error) { console.error('Error loading payments:', error); }
-        else { setPayments(data || []); }
-      };
-
-      const loadApplications = async (campusFilter: string) => {
-        const { data, error } = await client
-          .from('applications')
-          .select('id, full_name, admission_number, course_id, current_semester, current_module, course_type_id, total_balance, exam_body, courses(name), course_types(level)')
-          .eq('campus', campusFilter)
-          .eq('status', 'enrolled')
-          .order('full_name', { ascending: true });
-        if (error) { console.error('Error loading applications:', error); }
-        else { setApplications(data || []); }
-      };
-
       await loadPayments(userCampus);
       await loadApplications(userCampus);
       setLoading(false);
     };
     checkAuth();
-  }, [router]);
+  }, [router, loadPayments, loadApplications]);
 
   const handleApplicationChange = async (applicationId: string) => {
     const application = applications.find(app => app.id === applicationId);
