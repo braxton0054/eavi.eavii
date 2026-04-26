@@ -35,6 +35,7 @@ export async function middleware(request: NextRequest) {
   // with the Supabase client, your users may be randomly logged out.
   const { data: { session } } = await supabase.auth.getSession()
   const user = session?.user
+  const userRole = user?.user_metadata?.role
 
   // Allow access to login pages and application form without authentication
   if (
@@ -56,6 +57,29 @@ export async function middleware(request: NextRequest) {
       url.pathname = '/login/admin'
     }
     return NextResponse.redirect(url)
+  }
+
+  // Check role-based access control
+  if (user) {
+    const url = request.nextUrl.clone()
+
+    // Admin routes require admin role
+    if (request.nextUrl.pathname.startsWith('/admin') && userRole !== 'admin') {
+      url.pathname = '/login/admin'
+      return NextResponse.redirect(url)
+    }
+
+    // Student routes require student role
+    if (request.nextUrl.pathname.startsWith('/student') && userRole !== 'student') {
+      url.pathname = '/login/student'
+      return NextResponse.redirect(url)
+    }
+
+    // Lecturer routes require lecturer role
+    if (request.nextUrl.pathname.startsWith('/lecturer') && userRole !== 'lecturer') {
+      url.pathname = '/login/lecturer'
+      return NextResponse.redirect(url)
+    }
   }
 
   return supabaseResponse
