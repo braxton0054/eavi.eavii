@@ -290,43 +290,81 @@ export default function CoursesPage() {
     // Save course and move to step 2
     setSubmitting(true);
     setError('');
-    
+
     try {
       // Map selected course type to exam_body
       const examBody = selectedCourseType === 'INSTALL' ? 'internal' : selectedCourseType;
-      
-      const { data, error } = await supabase.from('courses').insert([{
-        id: courseFormData.knec_code,
-        name: courseFormData.course_name,
-        department_id: courseFormData.department_id,
-        qualification_level_id: courseFormData.qualification_level_id,
-        min_kcse_grade: courseFormData.min_kcse_grade,
-        exam_body: examBody,
-        fee_per_semester: 0, // Will be set per semester in modules
-      }]).select().single();
 
-      if (error) throw error;
-      setSavedCourseId(data.id);
+      let courseId: string;
+
+      if (editingCourse) {
+        // Update existing course
+        const { error: updateError } = await supabase.from('courses').update({
+          name: courseFormData.course_name,
+          department_id: courseFormData.department_id,
+          qualification_level_id: courseFormData.qualification_level_id,
+          min_kcse_grade: courseFormData.min_kcse_grade,
+          exam_body: examBody,
+        }).eq('id', editingCourse);
+
+        if (updateError) throw updateError;
+        courseId = editingCourse;
+        setSavedCourseId(courseId);
+        console.log('Updated existing course:', courseId);
+      } else {
+        // Insert new course
+        const { data, error } = await supabase.from('courses').insert([{
+          id: courseFormData.knec_code,
+          name: courseFormData.course_name,
+          department_id: courseFormData.department_id,
+          qualification_level_id: courseFormData.qualification_level_id,
+          min_kcse_grade: courseFormData.min_kcse_grade,
+          exam_body: examBody,
+          fee_per_semester: 0,
+        }]).select().single();
+
+        if (error) throw error;
+        courseId = data.id;
+        setSavedCourseId(courseId);
+        console.log('Created new course:', courseId);
+      }
       
       // For short courses (INSTALL), save to short_courses table and skip modules
       if (selectedCourseType === 'INSTALL') {
-        const { data: shortCourseData, error: shortCourseError } = await supabase.from('short_courses').insert([{
-          course_id: data.id,
-          department_id: courseFormData.department_id,
-          qualification_level_id: courseFormData.qualification_level_id,
-          name: courseFormData.course_name,
-          short_code: courseFormData.knec_code,
-          duration_months: 1,
-          payment_mode: courseFormData.payment_mode,
-          first_installment: courseFormData.first_installment,
-          subsequent_installment: courseFormData.subsequent_installment,
-          has_exams: true,
-          practical_fee: courseFormData.practical_fee,
-          is_active: true,
-        }]).select().single();
-        
-        if (shortCourseError) throw shortCourseError;
-        
+        if (editingCourse) {
+          // Update existing short course
+          const { error: shortCourseError } = await supabase.from('short_courses').update({
+            department_id: courseFormData.department_id,
+            qualification_level_id: courseFormData.qualification_level_id,
+            name: courseFormData.course_name,
+            short_code: courseFormData.knec_code,
+            payment_mode: courseFormData.payment_mode,
+            first_installment: courseFormData.first_installment,
+            subsequent_installment: courseFormData.subsequent_installment,
+            practical_fee: courseFormData.practical_fee,
+          }).eq('course_id', courseId);
+
+          if (shortCourseError) throw shortCourseError;
+        } else {
+          // Insert new short course
+          const { data: shortCourseData, error: shortCourseError } = await supabase.from('short_courses').insert([{
+            course_id: courseId,
+            department_id: courseFormData.department_id,
+            qualification_level_id: courseFormData.qualification_level_id,
+            name: courseFormData.course_name,
+            short_code: courseFormData.knec_code,
+            duration_months: 1,
+            payment_mode: courseFormData.payment_mode,
+            first_installment: courseFormData.first_installment,
+            subsequent_installment: courseFormData.subsequent_installment,
+            has_exams: true,
+            practical_fee: courseFormData.practical_fee,
+            is_active: true,
+          }]).select().single();
+
+          if (shortCourseError) throw shortCourseError;
+        }
+
         // Skip modules and go directly to adding units for short courses
         setWizardStep(3);
       } else {
@@ -353,18 +391,43 @@ export default function CoursesPage() {
         const studyMode = courseFormData.is_modular ? 'module' : 'short-course';
         const durationMonths = courseFormData.is_modular ? 18 : 12;
         
-        const { data: courseTypeData, error: courseTypeError } = await supabase.from('course_types').insert([{
-          course_id: data.id,
-          level: mappedLevel,
-          enabled: true,
-          study_mode: studyMode,
-          duration_months: courseFormData.total_duration_months || durationMonths,
-          exam_fee: selectedCourseType === 'JP' ? (courseFormData.jp_exam_fee || 0) : 0,
-        }]).select().single();
-        
-        if (courseTypeError) throw courseTypeError;
-        setSavedCourseTypeId(courseTypeData.id);
-        
+        if (editingCourse) {
+          // Update existing course_type
+          // First find the existing course_type id
+          const { data: existingCourseType } = await supabase
+            .from('course_types')
+            .select('id')
+            .eq('course_id', courseId)
+            .single();
+
+          if (existingCourseType) {
+            const { error: courseTypeError } = await supabase.from('course_types').update({
+              level: mappedLevel,
+              study_mode: studyMode,
+              duration_months: courseFormData.total_duration_months || durationMonths,
+              exam_fee: selectedCourseType === 'JP' ? (courseFormData.jp_exam_fee || 0) : 0,
+            }).eq('id', existingCourseType.id);
+
+            if (courseTypeError) throw courseTypeError;
+            setSavedCourseTypeId(existingCourseType.id);
+            console.log('Updated existing course_type:', existingCourseType.id);
+          }
+        } else {
+          // Insert new course_type
+          const { data: courseTypeData, error: courseTypeError } = await supabase.from('course_types').insert([{
+            course_id: courseId,
+            level: mappedLevel,
+            enabled: true,
+            study_mode: studyMode,
+            duration_months: courseFormData.total_duration_months || durationMonths,
+            exam_fee: selectedCourseType === 'JP' ? (courseFormData.jp_exam_fee || 0) : 0,
+          }]).select().single();
+
+          if (courseTypeError) throw courseTypeError;
+          setSavedCourseTypeId(courseTypeData.id);
+          console.log('Created new course_type:', courseTypeData.id);
+        }
+
         setWizardStep(2);
       }
       
@@ -718,6 +781,7 @@ export default function CoursesPage() {
     try {
       setEditingCourse(course.id);
       setError('');
+      console.log('Starting edit for course:', course.id, course.name);
 
       // Load course types for this course
       const { data: courseTypesData, error: courseTypesError } = await supabase
@@ -731,6 +795,8 @@ export default function CoursesPage() {
         return;
       }
 
+      console.log('Loaded course types:', courseTypesData);
+
       // Load modules for each course type
       const courseTypesWithModules = await Promise.all(
         (courseTypesData || []).map(async (ct: any) => {
@@ -739,6 +805,8 @@ export default function CoursesPage() {
             .select('*')
             .eq('course_type_id', ct.id)
             .order('module_index');
+
+          console.log('Loaded modules for course type', ct.level, ':', modulesData);
 
           // Load semesters for each module
           const modulesWithSemesters = await Promise.all(
@@ -762,6 +830,8 @@ export default function CoursesPage() {
           };
         })
       );
+
+      console.log('Course types with modules:', courseTypesWithModules);
 
     // Load units for this course with IDs
     const { data: unitsData } = await supabase
@@ -890,11 +960,75 @@ export default function CoursesPage() {
       courseTypes
     });
 
+    // Also populate courseFormData for the wizard form
+    // Find department_id from departments
+    const dept = departments.find((d: any) => d.name === departmentName);
+    const enabledCourseType = courseTypesWithModules.find((ct: any) => ct.enabled);
+
+    setCourseFormData({
+      department_id: dept?.id || '',
+      qualification_level_id: enabledCourseType?.qualification_level_id || '',
+      knec_code: course.id,
+      course_name: course.name,
+      min_kcse_grade: enabledCourseType?.min_kcse_grade || 'C-',
+      is_modular: globalStudyMode === 'module',
+      total_duration_months: enabledCourseType?.duration_months || 24,
+      cdacc_payment_mode: 'per_semester',
+      jp_exam_fee: 0,
+      has_units: false,
+      first_installment: 0,
+      subsequent_installment: 0,
+      practical_fee: 0,
+      payment_mode: 'Once',
+    });
+
+    // Set the selected course type based on the first enabled course type's exam body
+    if (enabledCourseType) {
+      const examBody = enabledCourseType.modules?.[0]?.exam_body || 'KNEC';
+      if (examBody === 'internal') {
+        setSelectedCourseType('INSTALL');
+      } else if (examBody === 'JP' || examBody === 'CDACC' || examBody === 'KNEC') {
+        setSelectedCourseType(examBody);
+      }
+    }
+
+    // Set modules data for editing
+    if (enabledCourseType?.modules) {
+      setModulesData(enabledCourseType.modules.map((m: any) => ({
+        label: m.label || `Module ${m.module_index}`,
+        duration_months: m.duration_months,
+        exam_fee: m.exam_fee || 0,
+        fee: m.fee || 0,
+        is_attachment_stage: m.is_attachment_stage || false,
+        has_attachment: m.has_attachment || false,
+        attachment_after_semester: m.attachment_after_semester,
+        attachment_duration_months: m.attachment_duration_months,
+        semesters: m.semesters?.map((s: any) => ({
+          fee: s.fee || 0,
+          practical_fee: s.practical_fee || 0,
+          internal_exams: s.internal_exams || 2,
+          duration_months: s.duration_months || 3,
+          additional_fees: []
+        })) || []
+      })));
+    }
+
+    console.log('Setting form data:', {
+      courseId: course.id,
+      department: departmentName,
+      courseName: course.name,
+      courseStudyMode: globalStudyMode,
+      courseTypes
+    });
+
     // Store existing IDs in a separate state for use during save
     (window as any).existingCourseIds = existingIds;
 
+    console.log('Switching to add/edit mode');
     // Always set view mode to add/edit form
     setViewMode('add');
+    // Start at step 1 for editing
+    setWizardStep(1);
     } catch (err: any) {
       console.error('Error loading course for edit:', err);
       setError(`Failed to load course: ${err.message}`);
