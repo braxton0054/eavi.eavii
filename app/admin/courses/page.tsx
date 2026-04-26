@@ -869,15 +869,22 @@ export default function CoursesPage() {
     }
 
     // Load department name from departments table
-    const { data: departmentData } = await supabase
-      .from('departments')
-      .select('name')
-      .eq('id', course.department_id)
-      .single();
+    let departmentName = '';
+    try {
+      const { data: departmentData } = await supabase
+        .from('departments')
+        .select('name')
+        .eq('id', course.department_id)
+        .single();
+      departmentName = departmentData?.name || '';
+    } catch (err) {
+      console.error('Error loading department:', err);
+      departmentName = '';
+    }
 
     setFormData({
       courseId: course.id,
-      department: departmentData?.name || '',
+      department: departmentName,
       courseName: course.name,
       courseStudyMode: globalStudyMode,
       courseTypes
@@ -886,10 +893,13 @@ export default function CoursesPage() {
     // Store existing IDs in a separate state for use during save
     (window as any).existingCourseIds = existingIds;
 
+    // Always set view mode to add/edit form
     setViewMode('add');
     } catch (err: any) {
       console.error('Error loading course for edit:', err);
       setError(`Failed to load course: ${err.message}`);
+      // Still switch to add mode even if there's an error
+      setViewMode('add');
     }
   };
 
