@@ -715,33 +715,41 @@ export default function CoursesPage() {
   };
 
   const handleEditCourse = async (course: any) => {
-    setEditingCourse(course.id);
+    try {
+      setEditingCourse(course.id);
+      setError('');
 
-    // Load course data from relational tables with IDs
-    const { data: courseTypesData } = await supabase
-      .from('course_types')
-      .select(`
-        id,
-        course_id,
-        level,
-        enabled,
-        min_kcse_grade,
-        study_mode,
-        duration_months,
-        modules (
+      // Load course data from relational tables with IDs
+      const { data: courseTypesData, error: courseTypesError } = await supabase
+        .from('course_types')
+        .select(`
           id,
-          module_index,
-          semesters (
+          course_id,
+          level,
+          enabled,
+          min_kcse_grade,
+          study_mode,
+          duration_months,
+          modules (
             id,
-            semester_index,
-            duration_months,
-            fee,
-            practical_fee,
-            internal_exams
-          )
-        ),
-      `)
-      .eq('course_id', course.id);
+            module_index,
+            semesters (
+              id,
+              semester_index,
+              duration_months,
+              fee,
+              practical_fee,
+              internal_exams
+            )
+          ),
+        `)
+        .eq('course_id', course.id);
+
+      if (courseTypesError) {
+        console.error('Error loading course types:', courseTypesError);
+        setError(`Failed to load course data: ${courseTypesError.message}`);
+        return;
+      }
 
     // Load units for this course with IDs
     const { data: unitsData } = await supabase
@@ -752,6 +760,7 @@ export default function CoursesPage() {
 
     // Store existing IDs for updates
     const existingIds: any = {
+      courseId: course.id,
       courseTypes: {},
       modules: {},
       semesters: {},
@@ -861,11 +870,15 @@ export default function CoursesPage() {
       courseStudyMode: globalStudyMode,
       courseTypes
     });
-    
+
     // Store existing IDs in a separate state for use during save
     (window as any).existingCourseIds = existingIds;
-    
+
     setViewMode('add');
+    } catch (err: any) {
+      console.error('Error loading course for edit:', err);
+      setError(`Failed to load course: ${err.message}`);
+    }
   };
 
   const handleDeleteCourse = async (courseId: string) => {
