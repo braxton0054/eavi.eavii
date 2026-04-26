@@ -686,14 +686,6 @@ export default function CoursesPage() {
                 practical_fee,
                 internal_exams
               )
-            ),
-            short_course_config (
-              fee,
-              payment_type,
-              number_of_months,
-              monthly_fees,
-              practical_fee,
-              has_exams
             )
           )
         `)
@@ -748,15 +740,6 @@ export default function CoursesPage() {
             internal_exams
           )
         ),
-        short_course_config (
-          id,
-          fee,
-          payment_type,
-          number_of_months,
-          monthly_fees,
-          practical_fee,
-          has_exams
-        )
       `)
       .eq('course_id', course.id);
 
@@ -855,12 +838,12 @@ export default function CoursesPage() {
         })),
         semestersPerModule: (ct.modules && ct.modules[0] && ct.modules[0].semesters) ? ct.modules[0].semesters.length : 2,
         moduleDurationMonths: (ct.modules && ct.modules[0] && ct.modules[0].semesters) ? ct.modules[0].semesters.length * 3 : 6,
-        shortCourseFee: ct.short_course_config?.fee || 0,
-        shortCoursePaymentType: ct.short_course_config?.payment_type || 'one-time',
-        shortCourseNumberOfMonths: ct.short_course_config?.number_of_months || 0,
-        shortCourseMonthlyFees: ct.short_course_config?.monthly_fees || [],
-        shortCoursePracticalFee: ct.short_course_config?.practical_fee || 0,
-        shortCourseHasExams: ct.short_course_config?.has_exams ?? true
+        shortCourseFee: ct.short_courses?.first_installment || 0,
+        shortCoursePaymentType: ct.short_courses?.payment_mode || 'one-time',
+        shortCourseNumberOfMonths: ct.short_courses?.duration_months || 0,
+        shortCourseMonthlyFees: [],
+        shortCoursePracticalFee: ct.short_courses?.practical_fee || 0,
+        shortCourseHasExams: ct.short_courses?.has_exams ?? true
       };
     }
 
@@ -1287,11 +1270,11 @@ export default function CoursesPage() {
             console.log('Deleting disabled course type:', level, 'ID:', existingIds.courseTypes[level]);
             
             // Delete related data manually to handle foreign key constraints
-            // Delete short_course_config
+            // Delete short_courses
             await supabase
-              .from('short_course_config')
+              .from('short_courses')
               .delete()
-              .eq('course_type_id', existingIds.courseTypes[level]);
+              .eq('course_id', existingIds.courseId);
             
             // Delete units (by semester_id)
             const { data: modules } = await supabase
@@ -1453,43 +1436,41 @@ export default function CoursesPage() {
             ? (config.shortCourseMonthlyFees?.reduce((sum, fee) => sum + fee, 0) || 0)
             : config.shortCourseFee;
 
-          console.log('Saving short course config for course type:', courseTypeId, 'with total fee:', totalFee);
+          console.log('Saving short course for course:', existingIds.courseId, 'with total fee:', totalFee);
 
-          // Check if short_course_config exists
+          // Check if short_courses exists
           const { data: existingConfig } = await supabase
-            .from('short_course_config')
+            .from('short_courses')
             .select('id')
-            .eq('course_type_id', courseTypeId)
+            .eq('course_id', existingIds.courseId)
             .single();
 
           if (existingConfig) {
-            console.log('Updating existing short course config:', existingConfig.id);
-            // Update existing short course config
-            const { error: shortCourseError } = await supabase.from('short_course_config').update([{
-              fee: totalFee,
-              payment_type: config.shortCoursePaymentType,
-              number_of_months: config.shortCoursePaymentType === 'monthly' ? config.shortCourseNumberOfMonths : 0,
-              monthly_fees: config.shortCoursePaymentType === 'monthly' ? config.shortCourseMonthlyFees : null,
+            console.log('Updating existing short course:', existingConfig.id);
+            // Update existing short course
+            const { error: shortCourseError } = await supabase.from('short_courses').update([{
+              first_installment: totalFee,
+              payment_mode: config.shortCoursePaymentType,
+              duration_months: config.shortCoursePaymentType === 'monthly' ? config.shortCourseNumberOfMonths : 0,
               practical_fee: config.shortCoursePracticalFee,
               has_exams: config.shortCourseHasExams
             }]).eq('id', existingConfig.id);
 
             if (shortCourseError) {
-              console.error('Short course config update error:', shortCourseError);
-              setError(`Failed to update short course config: ${shortCourseError.message}`);
+              console.error('Short course update error:', shortCourseError);
+              setError(`Failed to update short course: ${shortCourseError.message}`);
               setSubmitting(false);
               return;
             }
-            console.log('Updated short course config successfully');
+            console.log('Updated short course successfully');
           } else {
-            console.log('Creating new short course config');
-            // Insert new short course config
-            const { error: shortCourseError } = await supabase.from('short_course_config').insert([{
-              course_type_id: courseTypeId,
-              fee: totalFee,
-              payment_type: config.shortCoursePaymentType,
-              number_of_months: config.shortCoursePaymentType === 'monthly' ? config.shortCourseNumberOfMonths : 0,
-              monthly_fees: config.shortCoursePaymentType === 'monthly' ? config.shortCourseMonthlyFees : null,
+            console.log('Creating new short course');
+            // Insert new short course
+            const { error: shortCourseError } = await supabase.from('short_courses').insert([{
+              course_id: existingIds.courseId,
+              first_installment: totalFee,
+              payment_mode: config.shortCoursePaymentType,
+              duration_months: config.shortCoursePaymentType === 'monthly' ? config.shortCourseNumberOfMonths : 0,
               practical_fee: config.shortCoursePracticalFee,
               has_exams: config.shortCourseHasExams
             }]);
