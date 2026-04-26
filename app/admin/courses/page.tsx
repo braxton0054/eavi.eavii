@@ -447,6 +447,35 @@ export default function CoursesPage() {
     
     try {
       const examBody = selectedCourseType === 'INSTALL' ? 'internal' : selectedCourseType;
+
+      // First, check if modules already exist for this course_type_id
+      const { data: existingModules, error: checkError } = await supabase
+        .from('modules')
+        .select('id, module_index')
+        .eq('course_type_id', savedCourseTypeId);
+
+      if (checkError) throw checkError;
+
+      // If modules exist, delete them first to prevent duplicates
+      if (existingModules && existingModules.length > 0) {
+        // Delete semesters first (due to foreign key constraint)
+        const moduleIds = existingModules.map((m: any) => m.id);
+        const { error: deleteSemestersError } = await supabase
+          .from('semesters')
+          .delete()
+          .in('module_id', moduleIds);
+        if (deleteSemestersError) throw deleteSemestersError;
+
+        // Delete modules
+        const { error: deleteModulesError } = await supabase
+          .from('modules')
+          .delete()
+          .eq('course_type_id', savedCourseTypeId);
+        if (deleteModulesError) throw deleteModulesError;
+
+        // Clear saved module IDs
+        setSavedModuleIds([]);
+      }
       
       for (let i = 0; i < modulesData.length; i++) {
         const module = modulesData[i];
