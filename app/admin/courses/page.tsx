@@ -719,30 +719,10 @@ export default function CoursesPage() {
       setEditingCourse(course.id);
       setError('');
 
-      // Load course data from relational tables with IDs
+      // Load course types for this course
       const { data: courseTypesData, error: courseTypesError } = await supabase
         .from('course_types')
-        .select(`
-          id,
-          course_id,
-          level,
-          enabled,
-          min_kcse_grade,
-          study_mode,
-          duration_months,
-          modules (
-            id,
-            module_index,
-            semesters (
-              id,
-              semester_index,
-              duration_months,
-              fee,
-              practical_fee,
-              internal_exams
-            )
-          ),
-        `)
+        .select('*')
         .eq('course_id', course.id);
 
       if (courseTypesError) {
@@ -750,6 +730,38 @@ export default function CoursesPage() {
         setError(`Failed to load course data: ${courseTypesError.message}`);
         return;
       }
+
+      // Load modules for each course type
+      const courseTypesWithModules = await Promise.all(
+        (courseTypesData || []).map(async (ct: any) => {
+          const { data: modulesData } = await supabase
+            .from('modules')
+            .select('*')
+            .eq('course_type_id', ct.id)
+            .order('module_index');
+
+          // Load semesters for each module
+          const modulesWithSemesters = await Promise.all(
+            (modulesData || []).map(async (m: any) => {
+              const { data: semestersData } = await supabase
+                .from('semesters')
+                .select('*')
+                .eq('module_id', m.id)
+                .order('semester_index');
+
+              return {
+                ...m,
+                semesters: semestersData || []
+              };
+            })
+          );
+
+          return {
+            ...ct,
+            modules: modulesWithSemesters
+          };
+        })
+      );
 
     // Load units for this course with IDs
     const { data: unitsData } = await supabase
@@ -770,7 +782,7 @@ export default function CoursesPage() {
     // Store unit codes for updates (using unit_code instead of id)
     const unitCodes: any = {};
     for (const u of unitsData || []) {
-      const level = courseTypesData?.find((ct: any) => ct.id === u.course_id)?.level;
+      const level = courseTypesWithModules?.find((ct: any) => ct.id === u.course_id)?.level;
       if (level) {
         if (!unitCodes[level]) unitCodes[level] = {};
         unitCodes[level][`${u.module_index}_${u.semester_index}_${u.name}`] = u.unit_code;
@@ -791,22 +803,22 @@ export default function CoursesPage() {
     // Determine global study mode from first enabled course type
     let globalStudyMode: StudyMode = 'module';
 
-    for (const ct of courseTypesData || []) {
+    for (const ct of courseTypesWithModules || []) {
       if (ct.enabled) {
         globalStudyMode = ct.study_mode as StudyMode;
         break;
       }
     }
 
-    for (const ct of courseTypesData || []) {
+    for (const ct of courseTypesWithModules || []) {
       const level = ct.level as LevelKey;
       existingIds.courseTypes[level] = ct.id;
       console.log('Loading course type:', level, 'with', ct.modules?.length, 'modules');
-      
+
       // Store module IDs
       const moduleIds: any = {};
       const semesterIds: any = {};
-      
+
       for (const m of ct.modules || []) {
         console.log('Module from DB:', m.module_index, 'with', m.semesters?.length, 'semesters');
         moduleIds[m.module_index] = m.id;
@@ -815,14 +827,14 @@ export default function CoursesPage() {
           semesterIds[`${m.module_index}_${s.semester_index}`] = s.id;
         }
       }
-      
+
       existingIds.modules[level] = moduleIds;
       existingIds.semesters[level] = semesterIds;
-      
+
 
       // Get exam body from first module (all modules should have same exam body now)
       const courseExamBody = (ct.modules && ct.modules[0] && ct.modules[0].exam_body) || 'internal';
-      
+
       courseTypes[level] = {
         enabled: ct.enabled,
         examBody: courseExamBody,
@@ -835,7 +847,7 @@ export default function CoursesPage() {
             const semesterUnits = (unitsData || [])
               .filter((u: any) => u.course_id === course.id && u.module_index === m.module_index && u.semester_index === s.semester_index)
               .map((u: any) => u.name);
-            
+
             return {
               durationMonths: s.duration_months,
               fee: s.fee,
@@ -847,12 +859,12 @@ export default function CoursesPage() {
         })),
         semestersPerModule: (ct.modules && ct.modules[0] && ct.modules[0].semesters) ? ct.modules[0].semesters.length : 2,
         moduleDurationMonths: (ct.modules && ct.modules[0] && ct.modules[0].semesters) ? ct.modules[0].semesters.length * 3 : 6,
-        shortCourseFee: ct.short_courses?.first_installment || 0,
-        shortCoursePaymentType: ct.short_courses?.payment_mode || 'one-time',
-        shortCourseNumberOfMonths: ct.short_courses?.duration_months || 0,
+        shortCourseFee: 0,
+        shortCoursePaymentType: 'one-time',
+        shortCourseNumberOfMonths: 0,
         shortCourseMonthlyFees: [],
-        shortCoursePracticalFee: ct.short_courses?.practical_fee || 0,
-        shortCourseHasExams: ct.short_courses?.has_exams ?? true
+        shortCoursePracticalFee: 0,
+        shortCourseHasExams: true
       };
     }
 
