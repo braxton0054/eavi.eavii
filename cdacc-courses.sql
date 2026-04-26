@@ -1,201 +1,106 @@
--- ============================================================================
--- CDACC COURSES DATA
--- Complete course structure with basic course information
--- Fee structure for module-based courses to be configured in admin via semesters
--- ============================================================================
+-- ============================================================
+-- 1. CLEANUP & SCHEMA STABILIZATION
+-- ============================================================
+DROP VIEW IF EXISTS v_cdacc_prospectus;
 
--- Insert Departments
-INSERT INTO departments (name) VALUES 
-  ('Engineering & Technology'),
-  ('Building & Construction'),
-  ('Business & Administration'),
-  ('Health & Medical')
+-- Ensure columns exist for CBET (Competency Based Education & Training)
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS exam_body TEXT DEFAULT 'KNEC';
+ALTER TABLE module_subjects ADD COLUMN IF NOT EXISTS unit_type TEXT; -- Basic, Common, or Core
+
+-- ============================================================
+-- 2. CORE CDACC LOOKUP DATA
+-- ============================================================
+INSERT INTO kcse_grades (grade) VALUES ('D'), ('D-'), ('E') ON CONFLICT (grade) DO NOTHING;
+
+INSERT INTO qualification_levels (name) VALUES 
+  ('Level 3 (CDACC Certificate)'),
+  ('Level 4 (CDACC Certificate)'),
+  ('Level 5 (CDACC Diploma)'),
+  ('Level 6 (CDACC Higher Diploma)')
 ON CONFLICT (name) DO NOTHING;
 
--- ============================================================================
--- AUTOMOTIVE ENGINEERING COURSES
--- Module-based courses - fees configured via semesters
--- ============================================================================
+-- ============================================================
+-- 3. CDACC DATA ENTRY TEMPLATE
+-- ============================================================
+DO $$
+DECLARE
+    -- Variable definitions for easy data entry
+    _dept_code    TEXT := 'ICT';
+    _level_name   TEXT := 'Level 5 (CDACC Diploma)';
+    _entry_grade  TEXT := 'D-';
+    _course_name  TEXT := 'ICT Technician Level 5';
+    _course_code  TEXT := 'CDACC-ICT-L5'; 
+    _semester_fee DECIMAL := 15500.00;
 
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('CDACC-454A-AE', 'Automotive Engineering', (SELECT id FROM departments WHERE name = 'Engineering & Technology' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
+    v_course_id   UUID;
+    v_mod_id      UUID;
+BEGIN
+    -- 1. Create the Course Container
+    INSERT INTO courses (name, knec_code, department_id, qualification_level_id, min_kcse_grade_id, exam_body, fee_per_semester)
+    VALUES (
+        _course_name, _course_code, 
+        (SELECT id FROM departments WHERE code = _dept_code),
+        (SELECT id FROM qualification_levels WHERE name = _level_name),
+        (SELECT id FROM kcse_grades WHERE grade = _entry_grade),
+        'CDACC', _semester_fee
+    ) 
+    ON CONFLICT (knec_code) DO UPDATE SET min_kcse_grade_id = EXCLUDED.min_kcse_grade_id
+    RETURNING id INTO v_course_id;
 
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('CDACC-454A-AE', 'certificate', true, 'D+', 'module', 24)
-ON CONFLICT (course_id, level) DO NOTHING;
+    -- 2. ADD MODULE I (e.g., Computer Systems)
+    INSERT INTO course_modules (course_id, module_number, label, duration_months, num_semesters)
+    VALUES (v_course_id, 1, 'Module I: Computer Systems & Support', 6, 2)
+    RETURNING id INTO v_mod_id;
 
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('CDACC-554A-AT', 'Automotive Technician', (SELECT id FROM departments WHERE name = 'Engineering & Technology' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
+    -- 3. ADD UNITS TO MODULE I
+    INSERT INTO subjects (name) VALUES 
+        ('Occupational Safety and Health'), 
+        ('Digital Literacy'), 
+        ('Computer Hardware Maintenance') 
+    ON CONFLICT (name) DO NOTHING;
 
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('CDACC-554A-AT', 'diploma', true, 'C-', 'module', 36)
-ON CONFLICT (course_id, level) DO NOTHING;
+    INSERT INTO module_subjects (module_id, subject_id, semester_number, unit_type)
+    VALUES 
+        (v_mod_id, (SELECT id FROM subjects WHERE name = 'Occupational Safety and Health'), 1, 'Basic'),
+        (v_mod_id, (SELECT id FROM subjects WHERE name = 'Digital Literacy'), 1, 'Basic'),
+        (v_mod_id, (SELECT id FROM subjects WHERE name = 'Computer Hardware Maintenance'), 1, 'Core');
 
--- ============================================================================
--- PLUMBING COURSES
--- Module-based courses - fees configured via semesters
--- ============================================================================
+    -- 4. ADD MODULE II (e.g., Networking)
+    INSERT INTO course_modules (course_id, module_number, label, duration_months, num_semesters)
+    VALUES (v_course_id, 2, 'Module II: Network & Software Dev', 6, 2)
+    RETURNING id INTO v_mod_id;
 
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('CDACC-254A-P3', 'Plumbing (Grade Test)', (SELECT id FROM departments WHERE name = 'Building & Construction' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
+    -- 5. ADD UNITS TO MODULE II
+    INSERT INTO subjects (name) VALUES ('Computer Networking'), ('Database Management') ON CONFLICT DO NOTHING;
 
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('CDACC-254A-P3', 'artisan', true, 'KCPE', 'module', 6)
-ON CONFLICT (course_id, level) DO NOTHING;
+    INSERT INTO module_subjects (module_id, subject_id, semester_number, unit_type)
+    VALUES 
+        (v_mod_id, (SELECT id FROM subjects WHERE name = 'Computer Networking'), 2, 'Core'),
+        (v_mod_id, (SELECT id FROM subjects WHERE name = 'Database Management'), 2, 'Core');
 
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('CDACC-254A-P4', 'Plumbing (Artisan)', (SELECT id FROM departments WHERE name = 'Building & Construction' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
+END $$;
 
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('CDACC-254A-P4', 'artisan', true, 'D-', 'module', 12)
-ON CONFLICT (course_id, level) DO NOTHING;
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('CDACC-254A-P5', 'Plumbing (Certificate)', (SELECT id FROM departments WHERE name = 'Building & Construction' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('CDACC-254A-P5', 'certificate', true, 'D+', 'module', 24)
-ON CONFLICT (course_id, level) DO NOTHING;
-
--- ============================================================================
--- OFFICE ADMINISTRATION COURSES
--- Module-based courses - fees configured via semesters
--- ============================================================================
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('CDACC-554A-OA4', 'Office Assistance (Artisan)', (SELECT id FROM departments WHERE name = 'Business & Administration' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('CDACC-554A-OA4', 'artisan', true, 'D-', 'module', 12)
-ON CONFLICT (course_id, level) DO NOTHING;
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('CDACC-554A-OA5', 'Office Administration (Certificate)', (SELECT id FROM departments WHERE name = 'Business & Administration' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('CDACC-554A-OA5', 'certificate', true, 'D+', 'module', 24)
-ON CONFLICT (course_id, level) DO NOTHING;
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('CDACC-554A-OA6', 'Office Administration (Diploma)', (SELECT id FROM departments WHERE name = 'Business & Administration' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('CDACC-554A-OA6', 'diploma', true, 'C-', 'module', 36)
-ON CONFLICT (course_id, level) DO NOTHING;
-
--- ============================================================================
--- PUBLIC ADMINISTRATION COURSES
--- Module-based courses - fees configured via semesters
--- ============================================================================
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('CDACC-554A-PA', 'Public Administration', (SELECT id FROM departments WHERE name = 'Business & Administration' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('CDACC-554A-PA', 'diploma', true, 'C-', 'module', 36)
-ON CONFLICT (course_id, level) DO NOTHING;
-
--- ============================================================================
--- COMMUNITY HEALTH COURSES
--- Module-based courses - fees configured via semesters
--- ============================================================================
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('CDACC-454A-CH5', 'Community Health (Certificate)', (SELECT id FROM departments WHERE name = 'Health & Medical' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('CDACC-454A-CH5', 'certificate', true, 'D+', 'module', 24)
-ON CONFLICT (course_id, level) DO NOTHING;
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('CDACC-554A-CH6', 'Community Health (Diploma)', (SELECT id FROM departments WHERE name = 'Health & Medical' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('CDACC-554A-CH6', 'diploma', true, 'C-', 'module', 36)
-ON CONFLICT (course_id, level) DO NOTHING;
-
--- ============================================================================
--- ELECTRICAL INSTALLATION/ENGINEERING COURSES
--- Module-based courses - fees configured via semesters
--- ============================================================================
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('CDACC-354A-EI4', 'Electrical Installation/Engineering (Artisan)', (SELECT id FROM departments WHERE name = 'Engineering & Technology' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('CDACC-354A-EI4', 'artisan', true, 'D-', 'module', 12)
-ON CONFLICT (course_id, level) DO NOTHING;
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('CDACC-354A-EI5', 'Electrical Installation/Engineering (Certificate)', (SELECT id FROM departments WHERE name = 'Engineering & Technology' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('CDACC-354A-EI5', 'certificate', true, 'D+', 'module', 24)
-ON CONFLICT (course_id, level) DO NOTHING;
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('CDACC-354A-EI6', 'Electrical Installation/Engineering (Diploma)', (SELECT id FROM departments WHERE name = 'Engineering & Technology' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('CDACC-354A-EI6', 'diploma', true, 'C-', 'module', 36)
-ON CONFLICT (course_id, level) DO NOTHING;
-
--- ============================================================================
--- ELECTRONICS TECHNOLOGY COURSES
--- Module-based courses - fees configured via semesters
--- ============================================================================
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('CDACC-254B-ET3', 'Electronics Technology (Grade Test)', (SELECT id FROM departments WHERE name = 'Engineering & Technology' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('CDACC-254B-ET3', 'artisan', true, 'KCPE', 'module', 6)
-ON CONFLICT (course_id, level) DO NOTHING;
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('CDACC-254B-ET4', 'Electronics Technology (Artisan)', (SELECT id FROM departments WHERE name = 'Engineering & Technology' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('CDACC-254B-ET4', 'artisan', true, 'D-', 'module', 12)
-ON CONFLICT (course_id, level) DO NOTHING;
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('CDACC-254B-ET5', 'Electronics Technology (Certificate)', (SELECT id FROM departments WHERE name = 'Engineering & Technology' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('CDACC-254B-ET5', 'certificate', true, 'D+', 'module', 24)
-ON CONFLICT (course_id, level) DO NOTHING;
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('CDACC-254B-ET6', 'Electronics Technology (Diploma)', (SELECT id FROM departments WHERE name = 'Engineering & Technology' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('CDACC-254B-ET6', 'diploma', true, 'C-', 'module', 36)
-ON CONFLICT (course_id, level) DO NOTHING;
-
--- ============================================================================
--- NOTE: This file adds the basic course structure for CDACC courses.
--- Fee structure for module-based courses (study_mode='module') should be configured
--- in the admin interface via the semesters table.
--- Units and modules can be configured in the admin course management interface.
--- Total: 15 CDACC courses with appropriate levels.
--- Course codes mapped: 254A/254B (Plumbing/Electronics), 354A (Electrical), 454A (Automotive/Community Health), 554A (Automotive/Office/Public/Community)
--- ============================================================================
+-- ============================================================
+-- 4. FINAL CDACC PROSPECTUS VIEW
+-- ============================================================
+CREATE VIEW v_cdacc_prospectus AS
+SELECT
+    c.exam_body,
+    d.name AS department,
+    c.name AS course_name,
+    ql.name AS cdacc_level,
+    kg.grade AS min_entry_grade,
+    cm.label AS module_name,
+    s.name AS unit_of_competency,
+    ms.unit_type, -- Shows Basic, Common, or Core
+    ms.semester_number,
+    c.fee_per_semester
+FROM courses c
+JOIN departments d ON d.id = c.department_id
+JOIN qualification_levels ql ON ql.id = c.qualification_level_id
+LEFT JOIN kcse_grades kg ON kg.id = c.min_kcse_grade_id
+JOIN course_modules cm ON cm.course_id = c.id
+JOIN module_subjects ms ON ms.module_id = cm.id
+JOIN subjects s ON s.id = ms.subject_id
+WHERE c.exam_body = 'CDACC'
+ORDER BY cdacc_level, cm.module_number, ms.semester_number;

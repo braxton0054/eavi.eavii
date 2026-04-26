@@ -1,312 +1,92 @@
--- ============================================================================
--- JP INTERNATIONAL COURSES DATA
--- Complete course structure with basic course information
--- Fee structure for module-based courses to be configured in admin via semesters
--- ============================================================================
+-- ============================================================
+-- 1. CLEANUP & VIEW RESET
+-- ============================================================
+DROP VIEW IF EXISTS v_jp_course_details;
 
--- Insert Departments
-INSERT INTO departments (name) VALUES 
-  ('Education'),
-  ('Healthcare'),
-  ('Business & Management'),
-  ('Technology'),
-  ('Creative Arts'),
-  ('Social Sciences')
+-- ============================================================
+-- 2. SCHEMA STABILIZATION
+-- ============================================================
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS exam_body TEXT DEFAULT 'KNEC';
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS fee_per_semester DECIMAL(10, 2) DEFAULT 0.00;
+
+-- ============================================================
+-- 3. CORE LOOKUP DATA (Run these once to prepare your system)
+-- ============================================================
+INSERT INTO qualification_levels (name) VALUES
+  ('Level 3 (Foundation)'), ('Level 4 (Intermediate)'),
+  ('Level 5 (Advanced)'), ('Level 6 (Graduate)')
 ON CONFLICT (name) DO NOTHING;
 
--- ============================================================================
--- TEACHER TRAINING COURSES
--- Module-based courses - fees configured via semesters
--- ============================================================================
+INSERT INTO kcse_grades (grade) VALUES ('D'), ('D-'), ('E') 
+ON CONFLICT (grade) DO NOTHING;
 
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-TT', 'Teacher Training', (SELECT id FROM departments WHERE name = 'Education' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
+-- ============================================================
+-- 4. CLEAN DATA ENTRY TEMPLATE (JP-IE)
+-- ============================================================
+DO $$
+DECLARE
+    -- Change these variables for each new course you add
+    _dept_code    TEXT := 'ICT'; 
+    _level_name   TEXT := 'Level 4 (Intermediate)';
+    _entry_grade  TEXT := 'D';
+    _course_name  TEXT := 'JP Level 4 Diploma in ICT';
+    _course_code  TEXT := 'JP-ICT-L4'; -- Official JP Course ID
+    _semester_fee DECIMAL := 15000.00;
 
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('JP-TT', 'diploma', true, 'C-', 'module', 18),
-  ('JP-TT', 'certificate', true, 'D', 'module', 9),
-  ('JP-TT', 'level4', true, 'D-', 'module', 6),
-  ('JP-TT', 'artisan', true, 'ID/Birth Cert', 'module', 3)
-ON CONFLICT (course_id, level) DO NOTHING;
+    v_course_id   UUID;
+    v_stage_id    UUID;
+BEGIN
+    -- 1. Create/Find the Course
+    INSERT INTO courses (name, knec_code, department_id, qualification_level_id, min_kcse_grade_id, exam_body, fee_per_semester)
+    VALUES (
+        _course_name, _course_code, 
+        (SELECT id FROM departments WHERE code = _dept_code),
+        (SELECT id FROM qualification_levels WHERE name = _level_name),
+        (SELECT id FROM kcse_grades WHERE grade = _entry_grade),
+        'JP-IE', _semester_fee
+    ) 
+    ON CONFLICT (knec_code) DO UPDATE SET fee_per_semester = EXCLUDED.fee_per_semester
+    RETURNING id INTO v_course_id;
 
--- ============================================================================
--- CAREGIVERS COURSES
--- Module-based courses - fees configured via semesters
--- ============================================================================
+    -- 2. ADD STAGE 1 (Module 1)
+    INSERT INTO course_modules (course_id, module_number, label, duration_months, num_semesters)
+    VALUES (v_course_id, 1, 'Stage 1', 6, 2)
+    RETURNING id INTO v_stage_id;
 
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-CG', 'Caregivers', (SELECT id FROM departments WHERE name = 'Healthcare' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
+    -- 3. ADD UNITS TO STAGE 1
+    -- Repeat this block for every unit in this stage
+    INSERT INTO subjects (name) VALUES ('Unit Name 1'), ('Unit Name 2') ON CONFLICT DO NOTHING;
+    
+    INSERT INTO module_subjects (module_id, subject_id, semester_number, paper_code, unit_type)
+    VALUES 
+    (v_stage_id, (SELECT id FROM subjects WHERE name = 'Unit Name 1'), 1, 'CODE001', 'Core'),
+    (v_stage_id, (SELECT id FROM subjects WHERE name = 'Unit Name 2'), 1, 'CODE002', 'Core');
 
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('JP-CG', 'diploma', true, 'C-', 'module', 18),
-  ('JP-CG', 'certificate', true, 'D', 'module', 9),
-  ('JP-CG', 'level4', true, 'D-', 'module', 6),
-  ('JP-CG', 'artisan', true, 'ID/Birth Cert', 'module', 3)
-ON CONFLICT (course_id, level) DO NOTHING;
+    -- 4. ADD STAGE 2 (Module 2)
+    -- To add Stage 2, you simply repeat the logic above with a new v_stage_id
+END $$;
 
--- ============================================================================
--- HEALTH & CARE COURSES
--- Module-based courses - fees configured via semesters
--- ============================================================================
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-CH', 'Community Health', (SELECT id FROM departments WHERE name = 'Healthcare' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('JP-CH', 'diploma', true, 'C-', 'module', 18),
-  ('JP-CH', 'certificate', true, 'D', 'module', 9),
-  ('JP-CH', 'level4', true, 'D-', 'module', 6),
-  ('JP-CH', 'artisan', true, 'ID/Birth Cert', 'module', 3)
-ON CONFLICT (course_id, level) DO NOTHING;
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-PH', 'Phlebotomy', (SELECT id FROM departments WHERE name = 'Healthcare' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('JP-PH', 'diploma', true, 'C-', 'module', 18),
-  ('JP-PH', 'certificate', true, 'D', 'module', 9),
-  ('JP-PH', 'level4', true, 'D-', 'module', 6),
-  ('JP-PH', 'artisan', true, 'ID/Birth Cert', 'module', 3)
-ON CONFLICT (course_id, level) DO NOTHING;
-
--- ============================================================================
--- JOURNALISM & MASS COMMUNICATION
--- Module-based courses - fees configured via semesters
--- ============================================================================
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-JM', 'Journalism & Mass Communication', (SELECT id FROM departments WHERE name = 'Creative Arts' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('JP-JM', 'diploma', true, 'C-', 'module', 18),
-  ('JP-JM', 'certificate', true, 'D', 'module', 9),
-  ('JP-JM', 'level4', true, 'D-', 'module', 6),
-  ('JP-JM', 'artisan', true, 'ID/Birth Cert', 'module', 3)
-ON CONFLICT (course_id, level) DO NOTHING;
-
--- ============================================================================
--- TECHNOLOGY COURSES
--- Module-based courses - fees configured via semesters
--- ============================================================================
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-WD', 'Web Development', (SELECT id FROM departments WHERE name = 'Technology' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('JP-WD', 'diploma', true, 'C-', 'module', 18),
-  ('JP-WD', 'certificate', true, 'D', 'module', 9),
-  ('JP-WD', 'level4', true, 'D-', 'module', 6),
-  ('JP-WD', 'artisan', true, 'ID/Birth Cert', 'module', 3)
-ON CONFLICT (course_id, level) DO NOTHING;
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-MT', 'Mobile Technology', (SELECT id FROM departments WHERE name = 'Technology' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('JP-MT', 'diploma', true, 'C-', 'module', 18),
-  ('JP-MT', 'certificate', true, 'D', 'module', 9),
-  ('JP-MT', 'level4', true, 'D-', 'module', 6),
-  ('JP-MT', 'artisan', true, 'ID/Birth Cert', 'module', 3)
-ON CONFLICT (course_id, level) DO NOTHING;
-
--- ============================================================================
--- SOCIAL SCIENCES COURSES
--- Module-based courses - fees configured via semesters
--- ============================================================================
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-CD', 'Community Development', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('JP-CD', 'diploma', true, 'C-', 'module', 18),
-  ('JP-CD', 'certificate', true, 'D', 'module', 9),
-  ('JP-CD', 'level4', true, 'D-', 'module', 6),
-  ('JP-CD', 'artisan', true, 'ID/Birth Cert', 'module', 3)
-ON CONFLICT (course_id, level) DO NOTHING;
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-PS', 'Purchasing & Supplies', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('JP-PS', 'diploma', true, 'C-', 'module', 18),
-  ('JP-PS', 'certificate', true, 'D', 'module', 9),
-  ('JP-PS', 'level4', true, 'D-', 'module', 6),
-  ('JP-PS', 'artisan', true, 'ID/Birth Cert', 'module', 3)
-ON CONFLICT (course_id, level) DO NOTHING;
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-SO', 'Sociology', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('JP-SO', 'diploma', true, 'C-', 'module', 18),
-  ('JP-SO', 'certificate', true, 'D', 'module', 9),
-  ('JP-SO', 'level4', true, 'D-', 'module', 6),
-  ('JP-SO', 'artisan', true, 'ID/Birth Cert', 'module', 3)
-ON CONFLICT (course_id, level) DO NOTHING;
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-TR', 'Travel & Tourism', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('JP-TR', 'diploma', true, 'C-', 'module', 18),
-  ('JP-TR', 'certificate', true, 'D', 'module', 9),
-  ('JP-TR', 'level4', true, 'D-', 'module', 6),
-  ('JP-TR', 'artisan', true, 'ID/Birth Cert', 'module', 3)
-ON CONFLICT (course_id, level) DO NOTHING;
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-SM', 'Sales & Marketing', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('JP-SM', 'diploma', true, 'C-', 'module', 18),
-  ('JP-SM', 'certificate', true, 'D', 'module', 9),
-  ('JP-SM', 'level4', true, 'D-', 'module', 6),
-  ('JP-SM', 'artisan', true, 'ID/Birth Cert', 'module', 3)
-ON CONFLICT (course_id, level) DO NOTHING;
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-IR', 'International Relations', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('JP-IR', 'diploma', true, 'C-', 'module', 18),
-  ('JP-IR', 'certificate', true, 'D', 'module', 9),
-  ('JP-IR', 'level4', true, 'D-', 'module', 6),
-  ('JP-IR', 'artisan', true, 'ID/Birth Cert', 'module', 3)
-ON CONFLICT (course_id, level) DO NOTHING;
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-EN', 'English', (SELECT id FROM departments WHERE name = 'Education' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('JP-EN', 'diploma', true, 'C-', 'module', 18),
-  ('JP-EN', 'certificate', true, 'D', 'module', 9),
-  ('JP-EN', 'level4', true, 'D-', 'module', 6),
-  ('JP-EN', 'artisan', true, 'ID/Birth Cert', 'module', 3)
-ON CONFLICT (course_id, level) DO NOTHING;
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-DM', 'Disaster Management', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('JP-DM', 'diploma', true, 'C-', 'module', 18),
-  ('JP-DM', 'certificate', true, 'D', 'module', 9),
-  ('JP-DM', 'level4', true, 'D-', 'module', 6),
-  ('JP-DM', 'artisan', true, 'ID/Birth Cert', 'module', 3)
-ON CONFLICT (course_id, level) DO NOTHING;
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-FC', 'Forensic Criminology', (SELECT id FROM departments WHERE name = 'Social Sciences' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('JP-FC', 'diploma', true, 'C-', 'module', 18),
-  ('JP-FC', 'certificate', true, 'D', 'module', 9),
-  ('JP-FC', 'level4', true, 'D-', 'module', 6),
-  ('JP-FC', 'artisan', true, 'ID/Birth Cert', 'module', 3)
-ON CONFLICT (course_id, level) DO NOTHING;
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-CM', 'CCTV Management', (SELECT id FROM departments WHERE name = 'Technology' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('JP-CM', 'diploma', true, 'C-', 'module', 18),
-  ('JP-CM', 'certificate', true, 'D', 'module', 9),
-  ('JP-CM', 'level4', true, 'D-', 'module', 6),
-  ('JP-CM', 'artisan', true, 'ID/Birth Cert', 'module', 3)
-ON CONFLICT (course_id, level) DO NOTHING;
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-PM', 'Project Management', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('JP-PM', 'diploma', true, 'C-', 'module', 18),
-  ('JP-PM', 'certificate', true, 'D', 'module', 9),
-  ('JP-PM', 'level4', true, 'D-', 'module', 6),
-  ('JP-PM', 'artisan', true, 'ID/Birth Cert', 'module', 3)
-ON CONFLICT (course_id, level) DO NOTHING;
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-CF', 'Clearing & Forwarding', (SELECT id FROM departments WHERE name = 'Business & Management' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('JP-CF', 'diploma', true, 'C-', 'module', 18),
-  ('JP-CF', 'certificate', true, 'D', 'module', 9),
-  ('JP-CF', 'level4', true, 'D-', 'module', 6),
-  ('JP-CF', 'artisan', true, 'ID/Birth Cert', 'module', 3)
-ON CONFLICT (course_id, level) DO NOTHING;
-
--- ============================================================================
--- CREATIVE ARTS COURSES
--- Module-based courses - fees configured via semesters
--- ============================================================================
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-HB', 'Hair & Beauty Therapy', (SELECT id FROM departments WHERE name = 'Creative Arts' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('JP-HB', 'diploma', true, 'C-', 'module', 18),
-  ('JP-HB', 'certificate', true, 'D', 'module', 9),
-  ('JP-HB', 'level4', true, 'D-', 'module', 6),
-  ('JP-HB', 'artisan', true, 'ID/Birth Cert', 'module', 3)
-ON CONFLICT (course_id, level) DO NOTHING;
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-FD', 'Fashion Design', (SELECT id FROM departments WHERE name = 'Creative Arts' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('JP-FD', 'diploma', true, 'C-', 'module', 18),
-  ('JP-FD', 'certificate', true, 'D', 'module', 9),
-  ('JP-FD', 'level4', true, 'D-', 'module', 6),
-  ('JP-FD', 'artisan', true, 'ID/Birth Cert', 'module', 3)
-ON CONFLICT (course_id, level) DO NOTHING;
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-GD', 'Graphic Design', (SELECT id FROM departments WHERE name = 'Creative Arts' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('JP-GD', 'diploma', true, 'C-', 'module', 18),
-  ('JP-GD', 'certificate', true, 'D', 'module', 9),
-  ('JP-GD', 'level4', true, 'D-', 'module', 6),
-  ('JP-GD', 'artisan', true, 'ID/Birth Cert', 'module', 3)
-ON CONFLICT (course_id, level) DO NOTHING;
-
-INSERT INTO courses (id, name, department_id) VALUES 
-  ('JP-BC', 'Barista Course', (SELECT id FROM departments WHERE name = 'Creative Arts' LIMIT 1))
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO course_types (course_id, level, enabled, min_kcse_grade, study_mode, duration_months) VALUES 
-  ('JP-BC', 'diploma', true, 'C-', 'module', 18),
-  ('JP-BC', 'certificate', true, 'D', 'module', 9),
-  ('JP-BC', 'level4', true, 'D-', 'module', 6),
-  ('JP-BC', 'artisan', true, 'ID/Birth Cert', 'module', 3)
-ON CONFLICT (course_id, level) DO NOTHING;
-
--- ============================================================================
--- NOTE: This file adds the basic course structure for JP International courses.
--- Fee structure for module-based courses (study_mode='module') should be configured
--- in the admin interface via the semesters table.
--- Units and modules can be configured in the admin course management interface.
--- Total: 23 JP International courses with 4 levels each.
--- Artisan courses use 'ID/Birth Cert' as minimum KCSE grade requirement.
--- ============================================================================
+-- ============================================================
+-- 5. THE MASTER VIEW (Joins Department + Stage + Units)
+-- ============================================================
+CREATE VIEW v_jp_course_details AS
+SELECT
+    c.exam_body,
+    d.name AS department,
+    ql.name AS level_name,
+    c.name AS course_name,
+    kg.grade AS min_entry_grade,
+    c.fee_per_semester,
+    cm.label AS stage_label, -- This shows 'Stage 1', 'Stage 2', etc.
+    s.name AS unit_name,
+    mu.paper_code AS unit_code,
+    mu.semester_number
+FROM courses c
+JOIN departments d ON c.department_id = d.id
+JOIN qualification_levels ql ON c.qualification_level_id = ql.id
+LEFT JOIN kcse_grades kg ON c.min_kcse_grade_id = kg.id
+JOIN course_modules cm ON cm.course_id = c.id
+JOIN module_subjects mu ON mu.module_id = cm.id
+JOIN subjects s ON s.id = mu.subject_id
+WHERE c.exam_body = 'JP-IE'
+ORDER BY department, level_name, stage_label, mu.semester_number;

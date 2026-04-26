@@ -311,6 +311,7 @@ export default function CoursesPage() {
       // For short courses (INSTALL), save to short_courses table and skip modules
       if (selectedCourseType === 'INSTALL') {
         const { data: shortCourseData, error: shortCourseError } = await supabase.from('short_courses').insert([{
+          course_id: data.id,
           department_id: courseFormData.department_id,
           qualification_level_id: courseFormData.qualification_level_id,
           name: courseFormData.course_name,

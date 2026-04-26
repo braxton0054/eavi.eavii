@@ -17,6 +17,7 @@ interface Application {
   kcse_grade: string;
   course: string;
   course_type?: string;
+  course_type_id?: string;
   campus: string;
   application_date: string;
   admission_number: string;
@@ -284,15 +285,68 @@ export default function ApplicationsPage() {
       // Generate class name based on application date
       const className = generateClassName(selectedApplication?.application_date || '');
 
+      // Calculate initial balance from first semester fee
+      let initialBalance = 0;
+      if (selectedApplication?.course_type_id) {
+        // Get module and semester data for first semester
+        const { data: module } = await supabase
+          .from('modules')
+          .select('*, semesters(*)')
+          .eq('course_type_id', selectedApplication.course_type_id)
+          .eq('module_index', 1)
+          .single();
+
+        if (module) {
+          // Check if short course
+          const { data: courseType } = await supabase
+            .from('course_types')
+            .select('*, courses(*)')
+            .eq('id', selectedApplication.course_type_id)
+            .single();
+
+          const examBody = courseType?.courses?.exam_body || 'internal';
+
+          if (examBody === 'internal' && courseType?.study_mode === 'short-course') {
+            // Short course fees - use course_id link
+            const { data: shortCourse } = await supabase
+              .from('short_courses')
+              .select('*')
+              .eq('course_id', courseType.course_id)
+              .single();
+            if (shortCourse) {
+              initialBalance = shortCourse.first_installment + shortCourse.subsequent_installment + shortCourse.practical_fee;
+            }
+          } else if (examBody === 'CDACC' && module.semesters && module.semesters.length === 0) {
+            // CDACC once_per_stage
+            initialBalance = module.fee + module.exam_fee;
+          } else {
+            // Standard modular courses
+            const semester = module.semesters?.find((s: any) => s.semester_index === 1);
+            if (semester) {
+              // Get additional fees for KNEC
+              const { data: additionalFees } = await supabase
+                .from('semester_additional_fees')
+                .select('amount')
+                .eq('semester_id', semester.id);
+              const additionalFeesTotal = additionalFees?.reduce((sum: number, f: any) => sum + f.amount, 0) || 0;
+              // JP: add course-level exam fee
+              const jpCourseExamFee = examBody === 'JP' ? (courseType?.exam_fee || 0) : 0;
+              initialBalance = semester.fee + semester.practical_fee + module.exam_fee + additionalFeesTotal + jpCourseExamFee;
+            }
+          }
+        }
+      }
+
       // Update application status and admission number in Supabase
       const { error: updateError } = await supabase
         .from('applications')
-        .update({ 
+        .update({
           status: 'enrolled',
           admission_number: newAdmissionNumber,
           current_module: 1,
           current_semester: 1,
-          class_name: className
+          class_name: className,
+          total_balance: initialBalance
         })
         .eq('id', selectedApplication?.id);
 

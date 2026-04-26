@@ -37,7 +37,7 @@ export interface StudentInfo {
 }
 
 /**
- * Calculate fees for a standard student
+ * Calculate fees for a standard student using actual course data
  */
 export const calculateStandardFees = async (
   student: StudentInfo,
@@ -45,18 +45,14 @@ export const calculateStandardFees = async (
 ): Promise<FeeCalculationResult> => {
   const supabase = createClient();
 
-  const { data: feeStructure } = await supabase
-    .from('fee_structure')
-    .select('*')
-    .eq('course_type_id', student.course_type_id)
-    .eq('exam_body', student.exam_body)
-    .eq('semester', student.current_semester)
-    .eq('module', student.current_module)
-    .eq('campus', student.campus)
-    .eq('academic_year', academicYear)
+  // Get course type info to determine exam body and course type
+  const { data: courseType } = await supabase
+    .from('course_types')
+    .select('*, courses(*)')
+    .eq('id', student.course_type_id)
     .single();
 
-  if (!feeStructure) {
+  if (!courseType) {
     return {
       total_fees: 0,
       tuition_fee: 0,
@@ -72,28 +68,144 @@ export const calculateStandardFees = async (
     };
   }
 
-  const total = feeStructure.tuition_fee + feeStructure.practical_fee + 
-              feeStructure.exam_fee + feeStructure.registration_fee + 
-              feeStructure.library_fee + feeStructure.lab_fee;
+  const examBody = courseType.courses?.exam_body || 'internal';
+
+  // Handle short courses (INSTALL/internal)
+  if (examBody === 'internal' && courseType.study_mode === 'short-course') {
+    // Short course fees are in short_courses table - use course_id link
+    const { data: shortCourse } = await supabase
+      .from('short_courses')
+      .select('*')
+      .eq('course_id', courseType.course_id)
+      .single();
+
+    if (!shortCourse) {
+      return {
+        total_fees: 0,
+        tuition_fee: 0,
+        practical_fee: 0,
+        exam_fee: 0,
+        registration_fee: 0,
+        library_fee: 0,
+        lab_fee: 0,
+        late_fee: 0,
+        holiday_class_fee: 0,
+        discount: 0,
+        breakdown: {}
+      };
+    }
+
+    const total = shortCourse.first_installment + shortCourse.subsequent_installment + shortCourse.practical_fee;
+    return {
+      total_fees: total,
+      tuition_fee: shortCourse.first_installment + shortCourse.subsequent_installment,
+      practical_fee: shortCourse.practical_fee,
+      exam_fee: 0,
+      registration_fee: 0,
+      library_fee: 0,
+      lab_fee: 0,
+      late_fee: 0,
+      holiday_class_fee: 0,
+      discount: 0,
+      breakdown: {
+        tuition: shortCourse.first_installment + shortCourse.subsequent_installment,
+        practical: shortCourse.practical_fee
+      }
+    };
+  }
+
+  // Get module and semester data for modular courses
+  const { data: module } = await supabase
+    .from('modules')
+    .select('*, semesters(*)')
+    .eq('course_type_id', student.course_type_id)
+    .eq('module_index', student.current_module)
+    .single();
+
+  if (!module) {
+    return {
+      total_fees: 0,
+      tuition_fee: 0,
+      practical_fee: 0,
+      exam_fee: 0,
+      registration_fee: 0,
+      library_fee: 0,
+      lab_fee: 0,
+      late_fee: 0,
+      holiday_class_fee: 0,
+      discount: 0,
+      breakdown: {}
+    };
+  }
+
+  // CDACC once_per_stage: use module.fee, no semester fees
+  if (examBody === 'CDACC' && module.semesters && module.semesters.length === 0) {
+    const total = module.fee + module.exam_fee;
+    return {
+      total_fees: total,
+      tuition_fee: module.fee,
+      practical_fee: 0,
+      exam_fee: module.exam_fee,
+      registration_fee: 0,
+      library_fee: 0,
+      lab_fee: 0,
+      late_fee: 0,
+      holiday_class_fee: 0,
+      discount: 0,
+      breakdown: {
+        tuition: module.fee,
+        exam: module.exam_fee
+      }
+    };
+  }
+
+  // Standard modular courses (KNEC, JP, CDACC per_semester)
+  const semester = module.semesters?.find((s: any) => s.semester_index === student.current_semester);
+  if (!semester) {
+    return {
+      total_fees: 0,
+      tuition_fee: 0,
+      practical_fee: 0,
+      exam_fee: 0,
+      registration_fee: 0,
+      library_fee: 0,
+      lab_fee: 0,
+      late_fee: 0,
+      holiday_class_fee: 0,
+      discount: 0,
+      breakdown: {}
+    };
+  }
+
+  // Get additional fees for KNEC
+  const { data: additionalFees } = await supabase
+    .from('semester_additional_fees')
+    .select('amount')
+    .eq('semester_id', semester.id);
+
+  const additionalFeesTotal = additionalFees?.reduce((sum: number, f: any) => sum + f.amount, 0) || 0;
+
+  // JP: add course-level exam fee
+  const jpCourseExamFee = examBody === 'JP' ? (courseType.exam_fee || 0) : 0;
+
+  const total = semester.fee + semester.practical_fee + module.exam_fee + additionalFeesTotal + jpCourseExamFee;
 
   return {
     total_fees: total,
-    tuition_fee: feeStructure.tuition_fee,
-    practical_fee: feeStructure.practical_fee,
-    exam_fee: feeStructure.exam_fee,
-    registration_fee: feeStructure.registration_fee,
-    library_fee: feeStructure.library_fee,
-    lab_fee: feeStructure.lab_fee,
+    tuition_fee: semester.fee,
+    practical_fee: semester.practical_fee,
+    exam_fee: module.exam_fee + jpCourseExamFee,
+    registration_fee: 0,
+    library_fee: 0,
+    lab_fee: 0,
     late_fee: 0,
     holiday_class_fee: 0,
     discount: 0,
     breakdown: {
-      tuition: feeStructure.tuition_fee,
-      practical: feeStructure.practical_fee,
-      exam: feeStructure.exam_fee,
-      registration: feeStructure.registration_fee,
-      library: feeStructure.library_fee,
-      lab: feeStructure.lab_fee
+      tuition: semester.fee,
+      practical: semester.practical_fee,
+      exam: module.exam_fee + jpCourseExamFee,
+      additional: additionalFeesTotal
     }
   };
 };
