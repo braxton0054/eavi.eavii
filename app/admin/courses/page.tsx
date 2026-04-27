@@ -2591,14 +2591,20 @@ export default function CoursesPage() {
                             <div className="flex items-start justify-between gap-2 mb-2">
                               <span className="font-mono text-xs text-purple-300 bg-white/5 px-2 py-1 rounded">{course.id}</span>
                               <div className="flex gap-1 flex-wrap">
-                                {course.course_types?.filter((ct: any) => ct?.enabled).map((ct: any) => (
-                                  <span
-                                    key={ct.id || ct.level}
-                                    className={`px-2 py-1 rounded-full text-xs font-semibold border ${getLevelBadgeColor(ct.level).bg} ${getLevelBadgeColor(ct.level).text} ${getLevelBadgeColor(ct.level).border}`}
-                                  >
-                                    {getLevelLabel(ct.level)}
-                                  </span>
-                                ))}
+                                {/* Show only the first enabled level (primary) instead of all levels */}
+                                {(() => {
+                                  const enabledTypes = course.course_types?.filter((ct: any) => ct?.enabled) || [];
+                                  const primaryType = enabledTypes[0];
+                                  if (!primaryType) return null;
+                                  return (
+                                    <span
+                                      key={primaryType.id || primaryType.level}
+                                      className={`px-2 py-1 rounded-full text-xs font-semibold border ${getLevelBadgeColor(primaryType.level).bg} ${getLevelBadgeColor(primaryType.level).text} ${getLevelBadgeColor(primaryType.level).border}`}
+                                    >
+                                      {getLevelLabel(primaryType.level)}
+                                    </span>
+                                  );
+                                })()}
                               </div>
                             </div>
                             <h3 className="font-bold text-lg text-white mb-1">{course.name}</h3>
