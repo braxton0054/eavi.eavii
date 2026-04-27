@@ -141,7 +141,7 @@ export default function LandingPage() {
               <div key={campus.name} className="bg-gray-50 rounded-xl p-6 border border-gray-200">
                 <h3 className="text-xl font-bold text-gray-900 mb-2">{campus.name}</h3>
                 <p className="text-gray-600 mb-2">{campus.location}</p>
-                <a href={`tel:${campus.phone.replace(/ /g, '')}`} className="text-purple-700 font-semibold hover:text-purple-800">
+                <a href={`tel:${campus.phone.replace(/ /g, '')}`} className="text-purple-700 font-semibold hover:text-purple-800" suppressHydrationWarning>
                   {campus.phone}
                 </a>
               </div>

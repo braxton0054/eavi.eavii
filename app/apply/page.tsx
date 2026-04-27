@@ -408,6 +408,7 @@ export default function ApplyPage() {
         const selectedCourse = courses.find(c => c.id === formData.course);
         const enrichedData = {
           ...data,
+          course_id: data.course_id,
           course: selectedCourse?.name || formData.course,
           course_type: formData.courseType
         };

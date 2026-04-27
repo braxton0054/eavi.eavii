@@ -172,7 +172,7 @@ export default function LecturersPage() {
         phone: formData.phoneNumber,
         email: `${formData.lecturerNumber.toLowerCase()}@eavicollege.ac.ke`,
         gender: formData.gender,
-        campus: campus
+        campus: ['main', 'west'] // All lecturers are available at both campuses
       };
 
       if (editingLecturer) {
@@ -452,6 +452,14 @@ export default function LecturersPage() {
                         </div>
                         <p className="text-purple-200 text-sm">Phone: {lecturer.phone}</p>
                         <p className="text-purple-200 text-sm">Gender: {lecturer.gender ? lecturer.gender.charAt(0).toUpperCase() + lecturer.gender.slice(1) : 'Not specified'}</p>
+                        {lecturer.campus && (
+                          <p className="text-purple-200 text-sm">
+                            Campus: {Array.isArray(lecturer.campus) 
+                              ? lecturer.campus.map((c: string) => c === 'main' ? 'Main' : c === 'west' ? 'West' : c === 'town' ? 'Town' : c).join(', ')
+                              : (lecturer.campus === 'main' ? 'Main' : lecturer.campus === 'west' ? 'West' : lecturer.campus === 'town' ? 'Town' : lecturer.campus)
+                            }
+                          </p>
+                        )}
                       </div>
                       <div className="flex gap-2 ml-4">
                         <button

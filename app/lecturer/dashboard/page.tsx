@@ -533,8 +533,8 @@ export default function LecturerDashboard() {
                   className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="">Select Campus</option>
-                  <option value="west" className="text-gray-900">West Campus</option>
                   <option value="main" className="text-gray-900">Main Campus</option>
+                  <option value="west" className="text-gray-900">West Campus</option>
                 </select>
               </div>
 
