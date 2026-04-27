@@ -2870,19 +2870,22 @@ export default function CoursesPage() {
                           <option value="">Select Qualification Level</option>
                           {qualificationLevels
                             .filter((level) => {
-                              // If level has exam_body set, ONLY show it for matching course type
-                              if (level.exam_body) {
+                              // STRICT filtering: If level has exam_body set, ONLY show matching course type
+                              if (level.exam_body && level.exam_body !== '') {
                                 return level.exam_body === selectedCourseType;
                               }
-                              // If no exam_body set, use name-based filtering as fallback
+                              // If no exam_body is set, don't show for CDACC or JP (must be tagged)
+                              // Only use name-based fallback for KNEC and INSTALL
                               const name = level.name?.toLowerCase() || '';
                               if (selectedCourseType === 'CDACC' || selectedCourseType === 'JP') {
-                                return name.includes('level');
+                                // CDACC and JP levels MUST have exam_body set - don't show untagged levels
+                                return false;
                               } else if (selectedCourseType === 'INSTALL') {
                                 return name.includes('certificate');
-                              } else {
+                              } else if (selectedCourseType === 'KNEC') {
                                 return !name.includes('level');
                               }
+                              return true;
                             })
                             .map((level) => (
                             <option key={level.id} value={level.id} className="text-gray-900">{level.name}</option>
