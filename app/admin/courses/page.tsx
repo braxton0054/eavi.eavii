@@ -174,7 +174,8 @@ export default function CoursesPage() {
   // Filter departments based on selected course type
   const filteredDepartments = useMemo(() => {
     if (!selectedCourseType || selectedCourseType === 'INSTALL') return departments;
-    return departments.filter(d => !d.exam_body || d.exam_body === selectedCourseType || d.exam_body === 'all');
+    // Only show departments tagged with this exam body, or untagged (for backward compatibility during transition)
+    return departments.filter(d => d.exam_body === selectedCourseType || d.exam_body === 'all' || !d.exam_body);
   }, [departments, selectedCourseType]);
 
   const filteredCourses = courses.filter(course => {
@@ -2869,6 +2870,15 @@ export default function CoursesPage() {
                           <option value="">Select Qualification Level</option>
                           {qualificationLevels
                             .filter((level) => {
+                              // Filter by exam_body if the column exists and course type is selected
+                              if (selectedCourseType && selectedCourseType !== 'INSTALL') {
+                                // If level has exam_body set, only show matching ones
+                                // If level has no exam_body (NULL), show for all (backward compatible)
+                                if (level.exam_body && level.exam_body !== selectedCourseType) {
+                                  return false;
+                                }
+                              }
+                              // Also apply name-based filtering as backup
                               const name = level.name?.toLowerCase() || '';
                               if (selectedCourseType === 'CDACC' || selectedCourseType === 'JP') {
                                 return name.includes('level');
