@@ -51,6 +51,10 @@ export default function CourseEnrollmentPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // Bulk paste mode
+  const [bulkPasteMode, setBulkPasteMode] = useState<Record<string, boolean>>({});
+  const [bulkPasteText, setBulkPasteText] = useState<Record<string, string>>({});
+
   useEffect(() => {
     setSupabase(createClient());
   }, []);
@@ -190,7 +194,7 @@ export default function CourseEnrollmentPage() {
       }
 
       const { data: unitsData, error: unitsError } = await supabase
-        .from('units')
+        .from('v_units_by_module_semester')
         .select('*')
         .eq('course_id', courseId);
         
@@ -273,7 +277,7 @@ export default function CourseEnrollmentPage() {
       const coursesWithUnits = await Promise.all(
         (coursesData || []).map(async (course: any) => {
           const { data: unitsData } = await supabase
-            .from('units')
+            .from('v_units_by_module_semester')
             .select('*')
             .eq('course_id', course.id);
 
@@ -340,6 +344,62 @@ export default function CourseEnrollmentPage() {
     } catch (err: any) {
       console.error('Error adding unit:', err);
       setError(`Failed to add unit: ${err.message}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const addUnitsBulk = async (moduleIndex: number, semesterIndex: number, inputKey: string, lines: string[]) => {
+    if (!lines.length) return;
+
+    setSaving(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      let semesterId = null;
+      if (!isShortCourse) {
+        const mod = modules.find(m => m.module_index === moduleIndex);
+        if (!mod) throw new Error('Module not found');
+        const sem = semesters.find(s => s.module_id === mod.id && s.semester_index === semesterIndex);
+        if (!sem) throw new Error('Semester not found');
+        semesterId = sem.id;
+      }
+
+      const unitsToInsert = [];
+      for (const line of lines) {
+        const match = line.match(/^\s*(\S+)\s*[-\s]\s*(.+)$/);
+        if (match) {
+          const [, unitCode, unitName] = match;
+          unitsToInsert.push({
+            course_id: selectedCourseId,
+            semester_id: semesterId,
+            unit_code: unitCode.trim() || null,
+            name: unitName.trim(),
+            module_index: moduleIndex,
+            semester_index: semesterIndex
+          });
+        }
+      }
+
+      if (unitsToInsert.length === 0) {
+        setError('No valid units found. Format: CODE - NAME');
+        return;
+      }
+
+      const { data, error: insertError } = await supabase
+        .from('units')
+        .insert(unitsToInsert)
+        .select();
+
+      if (insertError) throw insertError;
+
+      setUnits(prev => [...prev, ...(data || [])]);
+      setBulkPasteText(prev => ({ ...prev, [inputKey]: '' }));
+      setSuccess(`${unitsToInsert.length} units added successfully.`);
+    } catch (err: any) {
+      console.error('Error adding units:', err);
+      setError(`Failed to add units: ${err.message}`);
     } finally {
       setSaving(false);
     }
@@ -649,6 +709,7 @@ export default function CourseEnrollmentPage() {
                     </div>
                   </div>
                 ) : (
+                  // Modular courses (including KNEC): Per-semester display but KNEC units are shared
                   <div className="space-y-4 md:space-y-6">
                     {modules.map((module) => {
                       const modSemesters = semesters.filter(s => s.module_id === module.id);
@@ -660,38 +721,81 @@ export default function CourseEnrollmentPage() {
                           <div className="p-4 md:p-6 space-y-4 md:space-y-6">
                             {modSemesters.map((semester) => {
                               const inputKey = `mod_${module.module_index}_sem_${semester.semester_index}`;
-                              const semesterUnits = units.filter(u => 
-                                u.module_index === module.module_index && 
-                                u.semester_index === semester.semester_index
-                              );
-                              
+                              const isKNEC = modules[0]?.exam_body === 'KNEC';
+                              // For KNEC, show ALL units from the module in every semester
+                              const semesterUnits = isKNEC
+                                ? units.filter(u => u.module_index === module.module_index)
+                                : units.filter(u =>
+                                    u.module_index === module.module_index &&
+                                    u.semester_index === semester.semester_index
+                                  );
+
                               return (
                                 <div key={semester.id} className="bg-black/20 rounded-lg p-4 md:p-5">
-                                  <h5 className="text-sm md:text-md font-semibold text-purple-200 mb-3 md:mb-4">Semester {semester.semester_index}</h5>
-                                  
-                                  <div className="flex flex-col sm:flex-row gap-2 md:gap-3 mb-3 md:mb-4">
-                                    <input
-                                      type="text"
-                                      value={unitCodeInputs[inputKey] || ''}
-                                      onChange={(e) => setUnitCodeInputs({ ...unitCodeInputs, [inputKey]: e.target.value })}
-                                      placeholder="Unit code"
-                                      className="w-24 sm:w-32 px-3 py-2 md:px-4 md:py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-xs md:text-sm"
-                                    />
-                                    <input
-                                      type="text"
-                                      value={unitInputs[inputKey] || ''}
-                                      onChange={(e) => setUnitInputs({ ...unitInputs, [inputKey]: e.target.value })}
-                                      placeholder="Enter unit name..."
-                                      className="flex-1 px-3 py-2 md:px-4 md:py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-xs md:text-sm"
-                                    />
+                                  <div className="flex items-center justify-between mb-3 md:mb-4">
+                                    <h5 className="text-sm md:text-md font-semibold text-purple-200">
+                                      Semester {semester.semester_index}
+                                      {isKNEC && <span className="ml-2 text-xs font-normal text-purple-300/70">(shares all module units)</span>}
+                                    </h5>
                                     <button
-                                      onClick={() => addUnit(module.module_index, semester.semester_index, inputKey)}
-                                      disabled={saving || !unitInputs[inputKey]?.trim()}
-                                      className="px-4 py-2 md:px-5 md:py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-lg text-xs md:text-sm font-semibold transition-colors"
+                                      onClick={() => setBulkPasteMode({ ...bulkPasteMode, [inputKey]: !bulkPasteMode[inputKey] })}
+                                      className="text-xs text-purple-300 hover:text-white underline"
                                     >
-                                      Add Unit
+                                      {bulkPasteMode[inputKey] ? 'Single Entry' : 'Bulk Paste'}
                                     </button>
                                   </div>
+
+                                  {bulkPasteMode[inputKey] ? (
+                                    <div className="space-y-3">
+                                      <textarea
+                                        value={bulkPasteText[inputKey] || ''}
+                                        onChange={(e) => setBulkPasteText({ ...bulkPasteText, [inputKey]: e.target.value })}
+                                        placeholder={`201 - TYPEWRITING
+202 - BUSINESS ORGANISATION
+203 - BOOK-KEEPING`}
+                                        rows={5}
+                                        className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono"
+                                      />
+                                      <p className="text-purple-300/60 text-xs">
+                                        Format: CODE - NAME (one per line)
+                                      </p>
+                                      <button
+                                        onClick={() => {
+                                          const text = bulkPasteText[inputKey] || '';
+                                          const lines = text.trim().split('\n').filter(line => line.trim());
+                                          addUnitsBulk(module.module_index, semester.semester_index, inputKey, lines);
+                                        }}
+                                        disabled={saving || !(bulkPasteText[inputKey]?.trim())}
+                                        className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg text-xs md:text-sm font-semibold transition-colors"
+                                      >
+                                        Add All Units
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex flex-col sm:flex-row gap-2 md:gap-3 mb-3 md:mb-4">
+                                      <input
+                                        type="text"
+                                        value={unitCodeInputs[inputKey] || ''}
+                                        onChange={(e) => setUnitCodeInputs({ ...unitCodeInputs, [inputKey]: e.target.value })}
+                                        placeholder="Unit code"
+                                        className="w-24 sm:w-32 px-3 py-2 md:px-4 md:py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-xs md:text-sm"
+                                      />
+                                      <input
+                                        type="text"
+                                        value={unitInputs[inputKey] || ''}
+                                        onChange={(e) => setUnitInputs({ ...unitInputs, [inputKey]: e.target.value })}
+                                        placeholder="Enter unit name..."
+                                        className="flex-1 px-3 py-2 md:px-4 md:py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-xs md:text-sm"
+                                      />
+                                      <button
+                                        onClick={() => addUnit(module.module_index, semester.semester_index, inputKey)}
+                                        disabled={saving || !unitInputs[inputKey]?.trim()}
+                                        className="px-4 py-2 md:px-5 md:py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-lg text-xs md:text-sm font-semibold transition-colors"
+                                      >
+                                        Add Unit
+                                      </button>
+                                    </div>
+                                  )}
 
                                   <div className="space-y-2">
                                     {semesterUnits.length === 0 ? (

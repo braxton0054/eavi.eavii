@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { createClient } from '@/lib/client';
@@ -161,17 +161,55 @@ export default function CoursesPage() {
   const [showAddDepartment, setShowAddDepartment] = useState(false);
   const [newDepartment, setNewDepartment] = useState({ name: '', code: '' });
 
+  // Bulk paste mode for units
+  const [bulkPasteMode, setBulkPasteMode] = useState(false);
+  const [bulkPasteText, setBulkPasteText] = useState('');
+
+  // Exam body filter for course list view
+  const [examBodyFilter, setExamBodyFilter] = useState<'all' | 'KNEC' | 'CDACC' | 'JP' | 'INSTALL'>('all');
+
+  // Filter departments based on selected course type
+  const filteredDepartments = useMemo(() => {
+    if (!selectedCourseType || selectedCourseType === 'INSTALL') return departments;
+    return departments.filter(d => !d.exam_body || d.exam_body === selectedCourseType || d.exam_body === 'all');
+  }, [departments, selectedCourseType]);
+
   const filteredCourses = courses.filter(course => {
-    const matchesSearch = searchTerm === '' || 
+    const matchesSearch = searchTerm === '' ||
       course.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       course.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       course.departments?.name?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     if (!matchesSearch) return false;
-    
+
+    // Exam body filter - check both ID prefix and database exam_body field
+    if (examBodyFilter !== 'all') {
+      const courseIdPrefix = course.id.split('-')[0];
+      const dbExamBody = course.exam_body || course.course_types?.[0]?.exam_body;
+
+      // For INSTALL (short courses)
+      if (examBodyFilter === 'INSTALL') {
+        const isInstall = course.id.startsWith('INT-') || course.id.startsWith('INSTALL-') || dbExamBody === 'internal' || dbExamBody === 'INSTALL';
+        if (!isInstall) return false;
+      }
+      // For KNEC/CDACC/JP - check ID prefix OR database field
+      else if (examBodyFilter === 'KNEC') {
+        const isKNEC = courseIdPrefix === 'KNEC' || dbExamBody === 'KNEC';
+        if (!isKNEC) return false;
+      }
+      else if (examBodyFilter === 'CDACC') {
+        const isCDACC = courseIdPrefix === 'CDACC' || dbExamBody === 'CDACC';
+        if (!isCDACC) return false;
+      }
+      else if (examBodyFilter === 'JP') {
+        const isJP = courseIdPrefix === 'JP' || dbExamBody === 'JP';
+        if (!isJP) return false;
+      }
+    }
+
     if (levelFilter === 'all') return true;
-    
-    const hasLevel = course.course_types?.some((ct: any) => 
+
+    const hasLevel = course.course_types?.some((ct: any) =>
       ct.enabled && ct.level === levelFilter
     );
     return hasLevel;
@@ -187,6 +225,11 @@ export default function CoursesPage() {
     level5: filteredCourses.filter((c: any) => c.course_types?.some((ct: any) => ct.enabled && ct.level === 'level5')).length,
     level4: filteredCourses.filter((c: any) => c.course_types?.some((ct: any) => ct.enabled && ct.level === 'level4')).length,
     shortCourse: filteredCourses.filter((c: any) => c.course_types?.some((ct: any) => ct.enabled && ct.study_mode === 'short-course')).length,
+    // Exam body counts - check both ID prefix and exam_body field
+    knec: courses.filter((c: any) => c.id.startsWith('KNEC-') || c.exam_body === 'KNEC').length,
+    cdacc: courses.filter((c: any) => c.id.startsWith('CDACC-') || c.exam_body === 'CDACC').length,
+    jp: courses.filter((c: any) => c.id.startsWith('JP-') || c.exam_body === 'JP').length,
+    install: courses.filter((c: any) => c.id.startsWith('INT-') || c.id.startsWith('INSTALL-') || c.exam_body === 'internal').length,
   };
 
   const getLevelBadgeColor = (level: string) => {
@@ -248,15 +291,19 @@ export default function CoursesPage() {
 
   const handleAddDepartment = async () => {
     if (!newDepartment.name.trim() || !newDepartment.code.trim()) return;
-    
+
     setSubmitting(true);
     try {
+      // Determine exam body from selected course type
+      const examBody = selectedCourseType === 'INSTALL' ? 'internal' : selectedCourseType;
+
       const { data, error } = await supabase.from('departments').insert([{
         name: newDepartment.name.trim(),
         code: newDepartment.code.trim().toUpperCase(),
         is_active: true,
+        exam_body: examBody, // Tag with exam body for filtering
       }]).select().single();
-      
+
       if (error) {
         if (error.code === '23505') {
           setError('A department with this name or code already exists.');
@@ -265,11 +312,11 @@ export default function CoursesPage() {
         }
         return;
       }
-      
+
       // Add to departments list and select it
       setDepartments([...departments, data]);
       setCourseFormData({ ...courseFormData, department_id: data.id });
-      
+
       // Reset form and hide it
       setNewDepartment({ name: '', code: '' });
       setShowAddDepartment(false);
@@ -282,8 +329,73 @@ export default function CoursesPage() {
   };
 
   const handleCourseTypeSelect = (type: 'KNEC' | 'CDACC' | 'JP' | 'INSTALL') => {
+    // If we were not already in the wizard (fresh start), reset everything
+    if (!selectedCourseType) {
+      resetWizard();
+      setFormData(getInitialFormData());
+    }
     setSelectedCourseType(type);
     setWizardStep(1);
+  };
+
+  // Validation-only function for Step 1 (just validates, doesn't save)
+  const validateStep1 = (): boolean => {
+    setError('');
+
+    if (!courseFormData.department_id || courseFormData.department_id.trim() === '') {
+      setError('Please select a department before continuing.');
+      return false;
+    }
+
+    if (!courseFormData.qualification_level_id || courseFormData.qualification_level_id.trim() === '') {
+      setError('Please select a qualification level before continuing.');
+      return false;
+    }
+
+    if (!courseFormData.knec_code || courseFormData.knec_code.trim() === '') {
+      setError('Please enter a course code before continuing.');
+      return false;
+    }
+
+    if (!courseFormData.course_name || courseFormData.course_name.trim() === '') {
+      setError('Please enter a course name before continuing.');
+      return false;
+    }
+
+    return true;
+  };
+
+  // Navigation functions that just move between steps
+  const goToStep2 = () => {
+    if (!validateStep1()) return;
+    setWizardStep(2);
+  };
+
+  const goToStep3 = () => {
+    // Validate modules have required data
+    if (modulesData.length === 0) {
+      setError('Please add at least one module.');
+      return;
+    }
+
+    // Check that all modules have fees set
+    for (let i = 0; i < modulesData.length; i++) {
+      const mod = modulesData[i];
+      if (!mod.semesters || mod.semesters.length === 0) {
+        setError(`Module ${i + 1} has no semesters configured.`);
+        return;
+      }
+      for (let j = 0; j < mod.semesters.length; j++) {
+        const sem = mod.semesters[j];
+        if (!sem.fee || sem.fee <= 0) {
+          setError(`Please set a fee for Module ${i + 1}, Semester ${j + 1}.`);
+          return;
+        }
+      }
+    }
+
+    setError('');
+    setWizardStep(3);
   };
 
   const handleSaveCourse = async () => {
@@ -295,6 +407,36 @@ export default function CoursesPage() {
       // Map selected course type to exam_body
       const examBody = selectedCourseType === 'INSTALL' ? 'internal' : selectedCourseType;
 
+      if (!courseFormData.department_id || courseFormData.department_id.trim() === '') {
+        console.error('Missing department_id in courseFormData:', courseFormData);
+        setError('Please select a department before saving.');
+        setSubmitting(false);
+        return;
+      }
+
+      if (!courseFormData.qualification_level_id || courseFormData.qualification_level_id.trim() === '') {
+        console.error('Missing qualification_level_id in courseFormData:', courseFormData);
+        setError('Please select a qualification level before saving.');
+        setSubmitting(false);
+        return;
+      }
+
+      if (!courseFormData.knec_code || courseFormData.knec_code.trim() === '') {
+        console.error('Missing knec_code in courseFormData:', courseFormData);
+        setError('Please enter a course code before saving.');
+        setSubmitting(false);
+        return;
+      }
+
+      if (!courseFormData.course_name || courseFormData.course_name.trim() === '') {
+        console.error('Missing course_name in courseFormData:', courseFormData);
+        setError('Please enter a course name before saving.');
+        setSubmitting(false);
+        return;
+      }
+
+      // Build proper course ID with prefix based on course type
+      const rawCode = courseFormData.knec_code.trim();
       let courseId: string;
 
       if (editingCourse) {
@@ -312,9 +454,13 @@ export default function CoursesPage() {
         setSavedCourseId(courseId);
         console.log('Updated existing course:', courseId);
       } else {
+        // Build course ID with proper prefix for new courses
+        const prefix = selectedCourseType === 'INSTALL' ? 'INT' : selectedCourseType;
+        courseId = rawCode.startsWith(prefix + '-') ? rawCode : `${prefix}-${rawCode}`;
+
         // Insert new course
         const { data, error } = await supabase.from('courses').insert([{
-          id: courseFormData.knec_code,
+          id: courseId,
           name: courseFormData.course_name,
           department_id: courseFormData.department_id,
           qualification_level_id: courseFormData.qualification_level_id,
@@ -331,6 +477,13 @@ export default function CoursesPage() {
       
       // For short courses (INSTALL), save to short_courses table and skip modules
       if (selectedCourseType === 'INSTALL') {
+        if (!courseId || courseId.trim() === '') {
+          console.error('Missing courseId after save (INSTALL branch):', { courseId, editingCourse });
+          setError('Course ID is missing. Please try again.');
+          setSubmitting(false);
+          return;
+        }
+
         if (editingCourse) {
           // Update existing short course
           const { error: shortCourseError } = await supabase.from('short_courses').update({
@@ -432,44 +585,54 @@ export default function CoursesPage() {
       }
       
       // Initialize modules based on total duration
-      // KNEC: 1 module = 12 months calendar (includes 3 months holiday)
-      // Each module has 3 instructional semesters × 3 months
-      const totalDuration = courseFormData.total_duration_months || 24;
-      const monthsPerModule = 12; // 12 months calendar per module (includes holidays)
-      const moduleCount = courseFormData.is_modular ? Math.ceil(totalDuration / monthsPerModule) : 1;
-      const moduleDuration = courseFormData.is_modular ? Math.ceil(totalDuration / moduleCount) : totalDuration;
-      
-      const initialModules = Array.from({ length: moduleCount }, (_, i) => {
-        const duration = i === moduleCount - 1 
-          ? totalDuration - (moduleDuration * (moduleCount - 1)) // last module gets remainder
-          : moduleDuration;
-        // CDACC once_per_stage: no semesters, just stage fee
-        const isCdaccOncePerStage = selectedCourseType === 'CDACC' && courseFormData.cdacc_payment_mode === 'once_per_stage';
-        const semesterCount = isCdaccOncePerStage ? 0 : 3; // 3 instructional semesters per module (holidays counted in calendar)
-        // CDACC Per Semester: last stage is Industrial Attachment (no units)
-        // CDACC Once per Stage: all stages have units (including last which is Industrial Attachment)
-        const isAttachmentStage = selectedCourseType === 'CDACC' && !isCdaccOncePerStage && i === moduleCount - 1;
-        // Attachment: after module 2 for 2-module courses, after semester 2 in module 3 for 3+ module courses
-        const hasAttachment = moduleCount >= 3 ? (i === 2) : (i === 1);
-        return {
-          duration_months: duration,
-          label: courseFormData.is_modular ? `${selectedCourseType === 'CDACC' ? 'Stage' : 'Module'} ${['I', 'II', 'III', 'IV', 'V', 'VI'][i] || `${selectedCourseType === 'CDACC' ? 'Stage' : 'Module'} ${i+1}`}` : 'Single Module',
-          exam_fee: 0,
-          fee: isCdaccOncePerStage ? 0 : undefined, // stage-level fee for CDACC once_per_stage
-          is_attachment_stage: isAttachmentStage,
-          has_attachment: hasAttachment,
-          attachment_after_semester: hasAttachment ? (moduleCount >= 3 ? 2 : 3) : undefined,
-          attachment_duration_months: 3,
-          semesters: isCdaccOncePerStage ? [] : Array.from({ length: semesterCount }, (_, j) => ({
-            semester_index: j + 1,
-            fee: 0,
-            internal_exams: 2,
-            additional_fees: [] as { fee_name: string; amount: number }[],
-          })),
-        };
-      });
-      setModulesData(initialModules);
+      // IMPORTANT: When editing, do not overwrite existing Step 2 data that was loaded from DB.
+      if (!editingCourse || modulesData.length === 0) {
+        // KNEC: 1 module = 12 months calendar (includes 3 months holiday)
+        // Each module has 3 instructional semesters × 3 months
+        const totalDuration = courseFormData.total_duration_months || 24;
+        const monthsPerModule = 12; // 12 months calendar per module (includes holidays)
+        const moduleCount = courseFormData.is_modular ? Math.ceil(totalDuration / monthsPerModule) : 1;
+        const moduleDuration = courseFormData.is_modular ? Math.ceil(totalDuration / moduleCount) : totalDuration;
+        
+        const initialModules = Array.from({ length: moduleCount }, (_, i) => {
+          const duration = i === moduleCount - 1 
+            ? totalDuration - (moduleDuration * (moduleCount - 1)) // last module gets remainder
+            : moduleDuration;
+          // CDACC once_per_stage: no semesters, just stage fee
+          const isCdaccOncePerStage = selectedCourseType === 'CDACC' && courseFormData.cdacc_payment_mode === 'once_per_stage';
+          const semesterCount = isCdaccOncePerStage ? 0 : 3; // 3 instructional semesters per module (holidays counted in calendar)
+          // CDACC Per Semester: last stage is Industrial Attachment (no units)
+          // CDACC Once per Stage: all stages have units (including last which is Industrial Attachment)
+          const isAttachmentStage = selectedCourseType === 'CDACC' && !isCdaccOncePerStage && i === moduleCount - 1;
+          // Attachment: after module 2 for 2-module courses, after semester 2 in module 3 for 3+ module courses
+          const hasAttachment = moduleCount >= 3 ? (i === 2) : (i === 1);
+          return {
+            duration_months: duration,
+            label: courseFormData.is_modular ? `${selectedCourseType === 'CDACC' ? 'Stage' : 'Module'} ${['I', 'II', 'III', 'IV', 'V', 'VI'][i] || `${selectedCourseType === 'CDACC' ? 'Stage' : 'Module'} ${i+1}`}` : 'Single Module',
+            exam_fee: 0,
+            fee: isCdaccOncePerStage ? 0 : undefined, // stage-level fee for CDACC once_per_stage
+            is_attachment_stage: isAttachmentStage,
+            has_attachment: hasAttachment,
+            attachment_after_semester: hasAttachment ? (moduleCount >= 3 ? 2 : 3) : undefined,
+            attachment_duration_months: 3,
+            semesters: isCdaccOncePerStage ? [] : Array.from({ length: semesterCount }, (_, j) => ({
+              semester_index: j + 1,
+              fee: 0,
+              internal_exams: 2,
+              additional_fees: [] as { fee_name: string; amount: number }[],
+            })),
+          };
+        });
+        setModulesData(initialModules);
+      }
     } catch (err: any) {
+      console.error('handleSaveCourse failed with payload:', {
+        editingCourse,
+        selectedCourseType,
+        courseFormData,
+        savedCourseId,
+        savedCourseTypeId,
+      });
       setError(`Failed to save course: ${err.message}`);
     } finally {
       setSubmitting(false);
@@ -503,13 +666,182 @@ export default function CoursesPage() {
     setModulesData(updated);
   };
 
+  // Comprehensive save function that saves everything at the end (Finish button)
+  const handleFinishAndSave = async () => {
+    setSubmitting(true);
+    setError('');
+
+    try {
+      const examBody = selectedCourseType === 'INSTALL' ? 'internal' : selectedCourseType;
+
+      // ===== STEP 1: Save Course =====
+      if (!courseFormData.department_id || !courseFormData.qualification_level_id ||
+          !courseFormData.knec_code || !courseFormData.course_name) {
+        setError('Please fill in all required course details.');
+        setSubmitting(false);
+        return;
+      }
+
+      const rawCode = courseFormData.knec_code.trim();
+      const prefix = selectedCourseType === 'INSTALL' ? 'INT' : selectedCourseType;
+      const courseId = editingCourse || (rawCode.startsWith(prefix + '-') ? rawCode : `${prefix}-${rawCode}`);
+
+      if (editingCourse) {
+        // Update existing course
+        const { error: updateError } = await supabase.from('courses').update({
+          name: courseFormData.course_name,
+          department_id: courseFormData.department_id,
+          qualification_level_id: courseFormData.qualification_level_id,
+          min_kcse_grade: courseFormData.min_kcse_grade,
+          exam_body: examBody,
+        }).eq('id', editingCourse);
+        if (updateError) throw updateError;
+      } else {
+        // Insert new course
+        const { error: insertError } = await supabase.from('courses').insert([{
+          id: courseId,
+          name: courseFormData.course_name,
+          department_id: courseFormData.department_id,
+          qualification_level_id: courseFormData.qualification_level_id,
+          min_kcse_grade: courseFormData.min_kcse_grade,
+          exam_body: examBody,
+          fee_per_semester: 0,
+        }]);
+        if (insertError) throw insertError;
+      }
+
+      // ===== STEP 2: Save Course Type =====
+      const level = courseFormData.qualification_level_id === '3998928f-5571-46f3-8116-1bdde4c46995' ? 'diploma' :
+                   courseFormData.qualification_level_id === 'certificate' ? 'certificate' :
+                   courseFormData.qualification_level_id === 'artisan' ? 'artisan' : 'diploma';
+
+      const { data: courseTypeData, error: courseTypeError } = await supabase.from('course_types').upsert([{
+        course_id: courseId,
+        level: level,
+        duration_months: courseFormData.total_duration_months,
+        study_mode: selectedCourseType === 'INSTALL' ? 'short-course' : 'module',
+        enabled: true,
+        min_kcse_grade: courseFormData.min_kcse_grade,
+      }], { onConflict: 'course_id,level' }).select().single();
+
+      if (courseTypeError) throw courseTypeError;
+      const courseTypeId = courseTypeData.id;
+
+      // ===== STEP 3: Save Modules & Semesters =====
+      // Delete existing modules for this course type
+      const { data: existingMods } = await supabase.from('modules').select('id').eq('course_type_id', courseTypeId);
+      if (existingMods && existingMods.length > 0) {
+        const modIds = existingMods.map((m: any) => m.id);
+        await supabase.from('semesters').delete().in('module_id', modIds);
+        await supabase.from('modules').delete().eq('course_type_id', courseTypeId);
+      }
+
+      const savedModuleIds: string[] = [];
+
+      for (let i = 0; i < modulesData.length; i++) {
+        const module = modulesData[i];
+        const semesterCount = courseFormData.is_modular ? 3 : Math.ceil(module.duration_months / 3);
+
+        const { data: moduleData, error: moduleError } = await supabase.from('modules').insert([{
+          course_type_id: courseTypeId,
+          module_index: i + 1,
+          label: module.label || `${selectedCourseType === 'CDACC' ? 'Stage' : 'Module'} ${i + 1}`,
+          duration_months: module.duration_months,
+          exam_body: examBody,
+          exam_fee: module.exam_fee || 0,
+          fee: module.fee || 0,
+          is_attachment_stage: module.is_attachment_stage || false,
+          has_attachment: module.has_attachment || false,
+          attachment_after_semester: module.has_attachment ? module.attachment_after_semester : null,
+          attachment_duration_months: module.has_attachment ? module.attachment_duration_months || 3 : null,
+        }]).select().single();
+
+        if (moduleError) throw moduleError;
+        savedModuleIds.push(moduleData.id);
+
+        // Create semesters
+        for (let j = 0; j < semesterCount; j++) {
+          const semesterData = module.semesters?.[j] || { fee: 0, internal_exams: 2, additional_fees: [] };
+
+          const { data: savedSemester, error: semesterError } = await supabase.from('semesters').insert([{
+            module_id: moduleData.id,
+            semester_index: j + 1,
+            duration_months: 3,
+            fee: semesterData.fee || 0,
+            practical_fee: !courseFormData.is_modular || selectedCourseType !== 'KNEC' ? (semesterData.practical_fee || 0) : 0,
+            internal_exams: semesterData.internal_exams || 2,
+          }]).select().single();
+
+          if (semesterError) throw semesterError;
+
+          // Save additional fees
+          if (semesterData.additional_fees && semesterData.additional_fees.length > 0) {
+            const additionalFeesRows = semesterData.additional_fees
+              .filter((af: { fee_name: string; amount: number }) => af.fee_name && af.amount > 0)
+              .map((af: { fee_name: string; amount: number }) => ({
+                semester_id: savedSemester.id,
+                fee_name: af.fee_name,
+                amount: af.amount,
+              }));
+            if (additionalFeesRows.length > 0) {
+              await supabase.from('semester_additional_fees').insert(additionalFeesRows);
+            }
+          }
+        }
+      }
+
+      // ===== STEP 4: Save Units =====
+      // Get all existing units for this course and delete them
+      await supabase.from('units').delete().eq('course_id', courseId);
+
+      // Insert all units from unitsData
+      for (const [key, units] of Object.entries(unitsData)) {
+        if (!units || units.length === 0) continue;
+
+        const [moduleIdxStr, semesterIdxStr] = key.split('_');
+        const moduleIndex = parseInt(moduleIdxStr) + 1;
+        const semesterIndex = semesterIdxStr === 'stage' ? 0 : parseInt(semesterIdxStr) + 1;
+
+        for (const unit of units) {
+          await supabase.from('units').insert([{
+            course_id: courseId,
+            unit_code: unit.paper_code,
+            name: unit.subject_name,
+            module_index: moduleIndex,
+            semester_index: semesterIndex,
+            unit_type: unit.unit_type || 'Core',
+          }]);
+        }
+      }
+
+      // Success - reset and go to list
+      resetWizard();
+      setViewMode('list');
+      loadCourses();
+
+    } catch (err: any) {
+      console.error('Error saving course:', err);
+      setError(`Failed to save course: ${err.message}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleSaveModules = async () => {
     // Save modules and move to step 3
     setSubmitting(true);
     setError('');
-    
+
     try {
       const examBody = selectedCourseType === 'INSTALL' ? 'internal' : selectedCourseType;
+
+      // Validate savedCourseTypeId
+      if (!savedCourseTypeId || savedCourseTypeId === '') {
+        console.error('savedCourseTypeId is empty:', savedCourseTypeId);
+        setError('Course type ID is missing. Please save the course first.');
+        setSubmitting(false);
+        return;
+      }
 
       // First, check if modules already exist for this course_type_id
       const { data: existingModules, error: checkError } = await supabase
@@ -596,10 +928,32 @@ export default function CoursesPage() {
                 fee_name: af.fee_name,
                 amount: af.amount,
               }));
-            
+
             if (additionalFeesRows.length > 0) {
               const { error: addFeesError } = await supabase.from('semester_additional_fees').insert(additionalFeesRows);
               if (addFeesError) throw addFeesError;
+            }
+          }
+
+          // Save units for this semester
+          if (semesterData.units && semesterData.units.length > 0) {
+            // Validate savedCourseId before saving units
+            if (!savedCourseId || savedCourseId === '') {
+              console.error('savedCourseId is empty when trying to save units:', savedCourseId);
+              setError('Course ID is missing when saving units. Please try again.');
+              setSubmitting(false);
+              return;
+            }
+            for (const unitName of semesterData.units) {
+              const unitCode = unitName.split('-')[0].trim();
+              const { error: unitError } = await supabase.from('units').upsert([{
+                course_id: savedCourseId,
+                unit_code: unitCode,
+                name: unitName,
+                module_index: i + 1,
+                semester_index: j + 1
+              }], { onConflict: 'course_id,unit_code' });
+              if (unitError) throw unitError;
             }
           }
         }
@@ -639,14 +993,20 @@ export default function CoursesPage() {
 
     // Add unit to units table
     // Note: units table has course_id, unit_code, name, module_index, semester_index, unit_type
-    const { error: unitError } = await supabase.from('units').insert([{
+    // Validate savedCourseId
+    if (!savedCourseId || savedCourseId === '') {
+      console.error('savedCourseId is empty in handleAddUnit:', savedCourseId);
+      setError('Course ID is missing. Please save the course first.');
+      return;
+    }
+    const { error: unitError } = await supabase.from('units').upsert([{
       course_id: savedCourseId,
       unit_code: unit.paper_code,
       name: unit.subject_name,
       module_index: moduleId + 1,
       semester_index: isCdaccOncePerStage ? 0 : semesterIndex + 1, // 0 for stage-level units
       unit_type: unit.unit_type || 'Core', // Default to Core if not specified
-    }]);
+    }], { onConflict: 'course_id,unit_code' });
 
     if (unitError) {
       throw new Error(`Failed to save unit: ${unitError.message}`);
@@ -686,6 +1046,8 @@ export default function CoursesPage() {
     setSelectedSemester(0);
     setShowAddDepartment(false);
     setNewDepartment({ name: '', code: '' });
+    setBulkPasteMode(false);
+    setBulkPasteText('');
   };
 
   useEffect(() => {
@@ -760,15 +1122,22 @@ export default function CoursesPage() {
         // Fetch all units separately to avoid PostgREST relationship errors
         let coursesWithUnits = data || [];
         try {
-          const { data: unitsData, error: unitsError } = await supabase.from('units').select('*');
+          const { data: unitsData, error: unitsError } = await supabase.from('v_units_by_module_semester').select('*');
           if (!unitsError && unitsData) {
-            coursesWithUnits = coursesWithUnits.map((course: any) => ({
-              ...course,
-              units: unitsData.filter((u: any) => u.course_id === course.id)
-            }));
+            coursesWithUnits = coursesWithUnits.map((course: any) => {
+              const courseUnits = unitsData.filter((u: any) => u.course_id === course.id);
+              // Deduplicate units by unit_code to avoid showing duplicates from the view
+              const uniqueUnits = Array.from(new Map(courseUnits.map((u: any) => [u.unit_code || u.name, u])).values());
+              return {
+                ...course,
+                units: uniqueUnits,
+                // Store raw units with module info for KNEC display
+                rawUnits: courseUnits
+              };
+            });
           }
         } catch (_err) {
-          // Fallback if units fail
+          // Ignore unit load errors
         }
         setCourses(coursesWithUnits);
       }
@@ -782,6 +1151,11 @@ export default function CoursesPage() {
       setEditingCourse(course.id);
       setError('');
       console.log('Starting edit for course:', course.id, course.name);
+
+      // Ensure wizard IDs are populated for Step 2/3 operations
+      setSavedCourseId(course.id);
+      setSelectedModule(0);
+      setSelectedSemester(0);
 
       // Load course types for this course
       const { data: courseTypesData, error: courseTypesError } = await supabase
@@ -834,11 +1208,20 @@ export default function CoursesPage() {
       console.log('Course types with modules:', courseTypesWithModules);
 
     // Load units for this course with IDs
-    const { data: unitsData } = await supabase
-      .from('units')
+    const { data: rawUnitsData, error: unitsLoadError } = await supabase
+      .from('v_units_by_module_semester')
       .select('*')
       .eq('course_id', course.id)
       .order('module_index, semester_index');
+
+    if (unitsLoadError) {
+      console.error('Error loading units for course:', unitsLoadError);
+    }
+
+    // Deduplicate units by unit_code to handle KNEC view expansion
+    const unitsData = Array.from(new Map((rawUnitsData || []).map((u: any) => [u.unit_code || u.name, u])).values());
+
+    console.log('Loaded units for course:', unitsData?.length, 'unique from', rawUnitsData?.length, 'raw');
 
     // Store existing IDs for updates
     const existingIds: any = {
@@ -851,7 +1234,7 @@ export default function CoursesPage() {
 
     // Store unit codes for updates (using unit_code instead of id)
     const unitCodes: any = {};
-    for (const u of unitsData || []) {
+    for (const u of (unitsData || []) as any[]) {
       const level = courseTypesWithModules?.find((ct: any) => ct.id === u.course_id)?.level;
       if (level) {
         if (!unitCodes[level]) unitCodes[level] = {};
@@ -961,13 +1344,11 @@ export default function CoursesPage() {
     });
 
     // Also populate courseFormData for the wizard form
-    // Find department_id from departments
-    const dept = departments.find((d: any) => d.name === departmentName);
     const enabledCourseType = courseTypesWithModules.find((ct: any) => ct.enabled);
 
     setCourseFormData({
-      department_id: dept?.id || '',
-      qualification_level_id: enabledCourseType?.qualification_level_id || '',
+      department_id: course.department_id || '',
+      qualification_level_id: course.qualification_level_id || '',
       knec_code: course.id,
       course_name: course.name,
       min_kcse_grade: enabledCourseType?.min_kcse_grade || 'C-',
@@ -981,6 +1362,10 @@ export default function CoursesPage() {
       practical_fee: 0,
       payment_mode: 'Once',
     });
+
+    if (enabledCourseType?.id) {
+      setSavedCourseTypeId(enabledCourseType.id);
+    }
 
     // Set the selected course type based on the first enabled course type's exam body
     if (enabledCourseType) {
@@ -1011,6 +1396,55 @@ export default function CoursesPage() {
           additional_fees: []
         })) || []
       })));
+
+      // Keep saved module IDs aligned with loaded modules for Step 3
+      setSavedModuleIds((enabledCourseType.modules || []).map((m: any) => m.id).filter(Boolean));
+    }
+
+    // Populate Step 3 unitsData (UI state) from DB units
+    try {
+      const moduleSemesterCount: Record<number, number> = {};
+      if (enabledCourseType?.modules) {
+        for (const m of enabledCourseType.modules) {
+          moduleSemesterCount[m.module_index] = (m.semesters?.length ?? 0) || Math.ceil((m.duration_months || 6) / 3) || 2;
+        }
+      }
+
+      const nextUnitsData: Record<string, any[]> = {};
+      for (const u of (unitsData || []) as any[]) {
+        const moduleIdx0 = Math.max(0, (u.module_index || 1) - 1);
+        const semesterIdx0 = Math.max(0, (u.semester_index || 1) - 1);
+        const baseUnit = {
+          paper_code: u.unit_code,
+          subject_name: u.name,
+          unit_type: u.unit_type || 'Core'
+        };
+
+        // semester_index = 0 means module-wide / stage-level.
+        // Keep the _stage key for CDACC once_per_stage, and also fan out into all semesters
+        // so Step 3 can show the same units in each semester tab when needed.
+        if (u.semester_index === 0) {
+          const stageKey = `${moduleIdx0}_stage`;
+          if (!nextUnitsData[stageKey]) nextUnitsData[stageKey] = [];
+          nextUnitsData[stageKey].push(baseUnit);
+
+          const semCount = moduleSemesterCount[u.module_index] || 0;
+          for (let s0 = 0; s0 < semCount; s0++) {
+            const k = `${moduleIdx0}_${s0}`;
+            if (!nextUnitsData[k]) nextUnitsData[k] = [];
+            nextUnitsData[k].push(baseUnit);
+          }
+          continue;
+        }
+
+        const key = `${moduleIdx0}_${semesterIdx0}`;
+        if (!nextUnitsData[key]) nextUnitsData[key] = [];
+        nextUnitsData[key].push(baseUnit);
+      }
+      setUnitsData(nextUnitsData);
+      console.log('Preloaded unitsData keys:', Object.keys(nextUnitsData));
+    } catch (err) {
+      console.error('Error populating unitsData state:', err);
     }
 
     console.log('Setting form data:', {
@@ -1022,12 +1456,34 @@ export default function CoursesPage() {
     });
 
     // Store existing IDs in a separate state for use during save
-    (window as any).existingCourseIds = existingIds;
+    // Validate that all IDs are proper UUIDs before storing
+    const validatedIds: any = {
+      courseId: course.id,
+      courseTypes: {},
+      modules: {},
+      semesters: {},
+      units: existingIds.units || {}
+    };
+
+    for (const [level, ctId] of Object.entries(existingIds.courseTypes || {})) {
+      if (ctId && ctId !== '') {
+        validatedIds.courseTypes[level] = ctId;
+        if (existingIds.modules?.[level]) {
+          validatedIds.modules[level] = existingIds.modules[level];
+        }
+        if (existingIds.semesters?.[level]) {
+          validatedIds.semesters[level] = existingIds.semesters[level];
+        }
+      }
+    }
+
+    (window as any).existingCourseIds = validatedIds;
+    console.log('Stored validated existing IDs:', validatedIds);
 
     console.log('Switching to add/edit mode');
     // Always set view mode to add/edit form
     setViewMode('add');
-    // Start at step 1 for editing
+    // Start at step 1 for editing (course details), while Step 2/3 data is preloaded above
     setWizardStep(1);
     } catch (err: any) {
       console.error('Error loading course for edit:', err);
@@ -1384,6 +1840,12 @@ export default function CoursesPage() {
         console.log('Created department with ID:', departmentId);
       }
 
+      if (!departmentId) {
+        setError('Failed to get valid department ID');
+        setSubmitting(false);
+        return;
+      }
+
       // Save to relational tables
       let courseId;
       if (editingCourse) {
@@ -1425,31 +1887,99 @@ export default function CoursesPage() {
         console.log('Created course with ID:', courseId);
       }
 
+      if (!courseId || courseId === '') {
+        console.error('courseId is empty after save:', courseId);
+        setError('Course ID is empty after save. Please try again.');
+        setSubmitting(false);
+        return;
+      }
+
       // Get existing IDs if editing
       const existingIds = (window as any).existingCourseIds || {};
-      console.log('existingIds:', existingIds);
+      console.log('existingIds from window:', JSON.stringify(existingIds, null, 2));
       console.log('editingCourse:', editingCourse);
+      console.log('courseId after save:', courseId);
       console.log('formData.courseTypes:', formData.courseTypes);
+
+      // If editing but no existing IDs found, load them
+      if (editingCourse && (!existingIds.courseId || Object.keys(existingIds.courseTypes || {}).length === 0)) {
+        console.log('No existing IDs found, loading them now...');
+        const { data: courseTypesData } = await supabase
+          .from('course_types')
+          .select('*')
+          .eq('course_id', courseId);
+
+        existingIds.courseTypes = {};
+        existingIds.modules = {};
+        existingIds.semesters = {};
+        existingIds.units = {};
+
+        for (const ct of courseTypesData || []) {
+          if (!ct.id || ct.id === '') {
+            console.error('Invalid course type ID from database:', ct);
+            continue;
+          }
+          existingIds.courseTypes[ct.level] = ct.id;
+          console.log('Loaded course type:', ct.level, 'with ID:', ct.id);
+          const { data: modulesData } = await supabase
+            .from('modules')
+            .select('*')
+            .eq('course_type_id', ct.id);
+          const moduleIds: any = {};
+          const semesterIds: any = {};
+          for (const m of modulesData || []) {
+            if (!m.id || m.id === '') {
+              console.error('Invalid module ID from database:', m);
+              continue;
+            }
+            moduleIds[m.module_index] = m.id;
+            console.log('Loaded module:', m.module_index, 'with ID:', m.id);
+            const { data: semestersData } = await supabase
+              .from('semesters')
+              .select('*')
+              .eq('module_id', m.id);
+            for (const s of semestersData || []) {
+              if (!s.id || s.id === '') {
+                console.error('Invalid semester ID from database:', s);
+                continue;
+              }
+              semesterIds[`${m.module_index}_${s.semester_index}`] = s.id;
+            }
+          }
+          existingIds.modules[ct.level] = moduleIds;
+          existingIds.semesters[ct.level] = semesterIds;
+        }
+        existingIds.courseId = courseId;
+        console.log('Loaded existing IDs:', existingIds);
+      }
 
       // Delete disabled course types when editing
       if (editingCourse) {
+        console.log('Processing disabled course types for deletion...');
         for (const [level, config] of Object.entries(formData.courseTypes)) {
-          console.log('Checking level:', level, 'enabled:', config.enabled, 'has existing ID:', !!existingIds.courseTypes[level]);
-          if (!config.enabled && existingIds.courseTypes[level]) {
-            console.log('Deleting disabled course type:', level, 'ID:', existingIds.courseTypes[level]);
-            
+          console.log('Checking level:', level, 'enabled:', config.enabled, 'has existing ID:', !!existingIds.courseTypes?.[level]);
+          if (!config.enabled && existingIds.courseTypes?.[level]) {
+            const courseTypeIdToDelete = existingIds.courseTypes[level];
+            console.log('Deleting disabled course type:', level, 'ID:', courseTypeIdToDelete);
+
+            if (!courseTypeIdToDelete || courseTypeIdToDelete === '') {
+              console.error('Invalid course type ID for deletion:', courseTypeIdToDelete);
+              continue;
+            }
+
             // Delete related data manually to handle foreign key constraints
-            // Delete short_courses
+            // Delete short_course_config
+            console.log('Deleting short_course_config for course_type_id:', courseTypeIdToDelete);
             await supabase
-              .from('short_courses')
+              .from('short_course_config')
               .delete()
-              .eq('course_id', existingIds.courseId);
-            
-            // Delete units (by semester_id)
+              .eq('course_type_id', courseTypeIdToDelete);
+
+            // Delete units for this course type
             const { data: modules } = await supabase
               .from('modules')
               .select('id')
-              .eq('course_type_id', existingIds.courseTypes[level]);
+              .eq('course_type_id', courseTypeIdToDelete);
             
             if (modules && modules.length > 0) {
               const moduleIds = modules.map((m: any) => m.id);
@@ -1493,14 +2023,40 @@ export default function CoursesPage() {
         let courseTypeId;
         console.log('Saving course type:', level, 'for course:', courseId);
 
-        const { data: courseTypeData, error: courseTypeError } = await supabase.from('course_types').upsert([{
-          course_id: courseId,
-          level,
-          enabled: true,
-          min_kcse_grade: config.minKcseGrade,
-          study_mode: config.studyMode,
-          duration_months: durationMonths
-        }], { onConflict: 'course_id,level' }).select().single();
+        // Check if course type already exists
+        const { data: existingCourseType, error: checkError } = await supabase
+          .from('course_types')
+          .select('id')
+          .eq('course_id', courseId)
+          .eq('level', level)
+          .maybeSingle();
+
+        console.log('Course type check result:', { level, existingCourseType, checkError });
+
+        let courseTypeData, courseTypeError;
+        if (existingCourseType) {
+          // Update existing
+          const result = await supabase.from('course_types').update({
+            enabled: true,
+            min_kcse_grade: config.minKcseGrade,
+            study_mode: config.studyMode,
+            duration_months: durationMonths
+          }).eq('id', existingCourseType.id).select().single();
+          courseTypeData = result.data;
+          courseTypeError = result.error;
+        } else {
+          // Insert new
+          const result = await supabase.from('course_types').insert([{
+            course_id: courseId,
+            level,
+            enabled: true,
+            min_kcse_grade: config.minKcseGrade,
+            study_mode: config.studyMode,
+            duration_months: durationMonths
+          }]).select().single();
+          courseTypeData = result.data;
+          courseTypeError = result.error;
+        }
 
         if (courseTypeError) {
           console.error('Course type save error:', courseTypeError);
@@ -1511,6 +2067,12 @@ export default function CoursesPage() {
         courseTypeId = courseTypeData.id;
         console.log('Saved course type with ID:', courseTypeId);
 
+        if (!courseTypeId) {
+          setError('Failed to get valid course type ID');
+          setSubmitting(false);
+          return;
+        }
+
         if (config.studyMode === 'module') {
           // Handle modules and semesters
           console.log('Saving modules for course type:', courseTypeId, 'total modules:', config.modules.length);
@@ -1518,14 +2080,46 @@ export default function CoursesPage() {
             const module = config.modules[moduleIndex];
             let moduleId;
 
-            const { data: moduleData, error: moduleError } = await supabase.from('modules').upsert([{
-              course_type_id: courseTypeId,
-              module_index: moduleIndex + 1,
-              exam_body: config.examBody
-            }], { onConflict: 'course_type_id,module_index' }).select().single();
+            const examBody = config.examBody || 'internal';
+            console.log('Saving module with exam_body:', examBody, 'courseTypeId:', courseTypeId);
+
+            if (!courseTypeId || courseTypeId === '') {
+              console.error('courseTypeId is empty when trying to save module');
+              setError('Course type ID is missing. Please try again.');
+              setSubmitting(false);
+              return;
+            }
+
+            // Check if module already exists
+            const { data: existingModule } = await supabase
+              .from('modules')
+              .select('id')
+              .eq('course_type_id', courseTypeId)
+              .eq('module_index', moduleIndex + 1)
+              .maybeSingle();
+
+            let moduleData, moduleError;
+            if (existingModule) {
+              // Update existing
+              const result = await supabase.from('modules').update({
+                exam_body: examBody
+              }).eq('id', existingModule.id).select().single();
+              moduleData = result.data;
+              moduleError = result.error;
+            } else {
+              // Insert new
+              const result = await supabase.from('modules').insert([{
+                course_type_id: courseTypeId,
+                module_index: moduleIndex + 1,
+                exam_body: examBody
+              }]).select().single();
+              moduleData = result.data;
+              moduleError = result.error;
+            }
 
             if (moduleError) {
               console.error('Module save error:', moduleError);
+              console.error('Module save details:', { courseTypeId, moduleIndex: moduleIndex + 1, examBody });
               setError(`Failed to save module: ${moduleError.message}`);
               setSubmitting(false);
               return;
@@ -1533,18 +2127,50 @@ export default function CoursesPage() {
             moduleId = moduleData.id;
             console.log('Saved module', moduleIndex + 1, 'with ID:', moduleId, 'semesters in module:', module.semesters.length);
 
+            if (!moduleId) {
+              setError('Failed to get valid module ID');
+              setSubmitting(false);
+              return;
+            }
+
             for (let semesterIndex = 0; semesterIndex < module.semesters.length; semesterIndex++) {
               const semester = module.semesters[semesterIndex];
               let semesterId;
 
-              const { data: semesterData, error: semesterError } = await supabase.from('semesters').upsert([{
-                module_id: moduleId,
-                semester_index: semesterIndex + 1,
-                duration_months: semester.durationMonths,
-                fee: semester.fee,
-                practical_fee: semester.practicalFee,
-                internal_exams: semester.internalExams
-              }], { onConflict: 'module_id,semester_index' }).select().single();
+              console.log('Saving semester with module_id:', moduleId, 'semester_index:', semesterIndex + 1);
+
+              // Check if semester already exists
+              const { data: existingSemester } = await supabase
+                .from('semesters')
+                .select('id')
+                .eq('module_id', moduleId)
+                .eq('semester_index', semesterIndex + 1)
+                .maybeSingle();
+
+              let semesterData, semesterError;
+              if (existingSemester) {
+                // Update existing
+                const result = await supabase.from('semesters').update({
+                  duration_months: semester.durationMonths,
+                  fee: semester.fee,
+                  practical_fee: semester.practicalFee,
+                  internal_exams: semester.internalExams
+                }).eq('id', existingSemester.id).select().single();
+                semesterData = result.data;
+                semesterError = result.error;
+              } else {
+                // Insert new
+                const result = await supabase.from('semesters').insert([{
+                  module_id: moduleId,
+                  semester_index: semesterIndex + 1,
+                  duration_months: semester.durationMonths,
+                  fee: semester.fee,
+                  practical_fee: semester.practicalFee,
+                  internal_exams: semester.internalExams
+                }]).select().single();
+                semesterData = result.data;
+                semesterError = result.error;
+              }
 
               if (semesterError) {
                 console.error('Semester save error:', semesterError);
@@ -1555,14 +2181,26 @@ export default function CoursesPage() {
               semesterId = semesterData.id;
               console.log('Saved semester', semesterIndex + 1, 'with ID:', semesterId, 'fee:', semester.fee);
 
+              if (!semesterId) {
+                setError('Failed to get valid semester ID');
+                setSubmitting(false);
+                return;
+              }
+
               // Save units
               if (semester.units && semester.units.length > 0) {
-                console.log('Saving', semester.units.length, 'units for semester:', semesterId);
+                console.log('Saving', semester.units.length, 'units for semester:', semesterId, 'courseId:', courseId);
+                if (!courseId || courseId === '') {
+                  console.error('courseId is empty when trying to save units');
+                  setError('Course ID is missing when saving units. Please try again.');
+                  setSubmitting(false);
+                  return;
+                }
                 for (const unitName of semester.units) {
                   // Generate unit code from paper code (e.g., "201" from "201- TYPEWRITING")
                   const unitCode = unitName.split('-')[0].trim();
                   const existingUnitCode = existingIds.units?.[level]?.[`${moduleIndex}_${semesterIndex}_${unitName}`];
-                  
+
                   if (editingCourse && existingUnitCode) {
                     // Update existing unit
                     const { error: unitError } = await supabase.from('units').update([{
@@ -1570,7 +2208,7 @@ export default function CoursesPage() {
                       module_index: moduleIndex,
                       semester_index: semesterIndex
                     }]).eq('course_id', courseId).eq('unit_code', existingUnitCode);
-                    
+
                     if (unitError) {
                       console.error('Unit update error:', unitError);
                       setError(`Failed to update unit: ${unitError.message}`);
@@ -1605,25 +2243,33 @@ export default function CoursesPage() {
             ? (config.shortCourseMonthlyFees?.reduce((sum, fee) => sum + fee, 0) || 0)
             : config.shortCourseFee;
 
-          console.log('Saving short course for course:', existingIds.courseId, 'with total fee:', totalFee);
+          console.log('Saving short course for course:', courseId, 'courseTypeId:', courseTypeId, 'with total fee:', totalFee);
 
-          // Check if short_courses exists
+          if (!courseTypeId || courseTypeId === '') {
+            console.error('courseTypeId is empty when trying to save short course');
+            setError('Course type ID is missing for short course. Please try again.');
+            setSubmitting(false);
+            return;
+          }
+
+          // Check if short_course_config exists
           const { data: existingConfig } = await supabase
-            .from('short_courses')
+            .from('short_course_config')
             .select('id')
-            .eq('course_id', existingIds.courseId)
-            .single();
+            .eq('course_type_id', courseTypeId)
+            .maybeSingle();
 
           if (existingConfig) {
-            console.log('Updating existing short course:', existingConfig.id);
-            // Update existing short course
-            const { error: shortCourseError } = await supabase.from('short_courses').update([{
-              first_installment: totalFee,
-              payment_mode: config.shortCoursePaymentType,
-              duration_months: config.shortCoursePaymentType === 'monthly' ? config.shortCourseNumberOfMonths : 0,
+            console.log('Updating existing short course config:', existingConfig.id);
+            // Update existing short course config
+            const { error: shortCourseError } = await supabase.from('short_course_config').update({
+              fee: totalFee,
+              payment_type: config.shortCoursePaymentType,
+              number_of_months: config.shortCoursePaymentType === 'monthly' ? config.shortCourseNumberOfMonths : 0,
+              monthly_fees: config.shortCoursePaymentType === 'monthly' ? config.shortCourseMonthlyFees : null,
               practical_fee: config.shortCoursePracticalFee,
               has_exams: config.shortCourseHasExams
-            }]).eq('id', existingConfig.id);
+            }).eq('id', existingConfig.id);
 
             if (shortCourseError) {
               console.error('Short course update error:', shortCourseError);
@@ -1633,13 +2279,14 @@ export default function CoursesPage() {
             }
             console.log('Updated short course successfully');
           } else {
-            console.log('Creating new short course');
-            // Insert new short course
-            const { error: shortCourseError } = await supabase.from('short_courses').insert([{
-              course_id: existingIds.courseId,
-              first_installment: totalFee,
-              payment_mode: config.shortCoursePaymentType,
-              duration_months: config.shortCoursePaymentType === 'monthly' ? config.shortCourseNumberOfMonths : 0,
+            console.log('Creating new short course config');
+            // Insert new short course config
+            const { error: shortCourseError } = await supabase.from('short_course_config').insert([{
+              course_type_id: courseTypeId,
+              fee: totalFee,
+              payment_type: config.shortCoursePaymentType,
+              number_of_months: config.shortCoursePaymentType === 'monthly' ? config.shortCourseNumberOfMonths : 0,
+              monthly_fees: config.shortCoursePaymentType === 'monthly' ? config.shortCourseMonthlyFees : null,
               practical_fee: config.shortCoursePracticalFee,
               has_exams: config.shortCourseHasExams
             }]);
@@ -1726,7 +2373,15 @@ export default function CoursesPage() {
               <div className="flex border-b border-white/20 mb-6">
                 <button
                   type="button"
-                  onClick={() => { setViewMode('add'); setEditingCourse(null); }}
+                  onClick={() => {
+                    if (!editingCourse) {
+                      // Starting fresh - reset all wizard and form state
+                      resetWizard();
+                      setFormData(getInitialFormData());
+                    }
+                    setViewMode('add');
+                    setEditingCourse(null);
+                  }}
                   className={`px-6 py-3 text-sm font-semibold border-b-2 transition-colors ${viewMode === 'add' ? 'border-purple-500 text-white' : 'border-transparent text-purple-300 hover:text-white'}`}
                 >
                   {editingCourse ? 'Edit Course' : 'Add New Course'}
@@ -1765,39 +2420,82 @@ export default function CoursesPage() {
                       <span className="text-purple-300">Higher Diploma: {stats.level6}</span>
                       <span className="text-pink-300">Short Course: {stats.shortCourse}</span>
                     </div>
+                    <div className="h-4 w-px bg-white/20"></div>
+                    <div className="flex flex-wrap gap-3 text-xs">
+                      <span className="text-blue-400 font-medium">KNEC: {stats.knec}</span>
+                      <span className="text-green-400 font-medium">CDACC: {stats.cdacc}</span>
+                      <span className="text-purple-400 font-medium">JP: {stats.jp}</span>
+                      <span className="text-pink-400 font-medium">Short: {stats.install}</span>
+                    </div>
                   </div>
                 </div>
 
                 {/* Search & Filter */}
-                <div className="flex flex-col md:flex-row gap-4">
-                  <input
-                    type="text"
-                    placeholder="Search by course name, ID, or department..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="flex-1 px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      { value: 'all', label: 'All' },
-                      { value: 'diploma', label: 'Diploma' },
-                      { value: 'certificate', label: 'Certificate' },
-                      { value: 'artisan', label: 'Artisan' },
-                      { value: 'level6', label: 'Higher Diploma' },
-                      { value: 'short-course', label: 'Short Course' },
-                    ].map((filter) => (
-                      <button
-                        key={filter.value}
-                        onClick={() => setLevelFilter(filter.value)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                          levelFilter === filter.value
-                            ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/30'
-                            : 'bg-white/10 text-purple-200 hover:bg-white/20 hover:text-white border border-white/20'
-                        }`}
-                      >
-                        {filter.label}
-                      </button>
-                    ))}
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col md:flex-row gap-4">
+                    <input
+                      type="text"
+                      placeholder="Search by course name, ID, or department..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="flex-1 px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { value: 'all', label: 'All' },
+                        { value: 'diploma', label: 'Diploma' },
+                        { value: 'certificate', label: 'Certificate' },
+                        { value: 'artisan', label: 'Artisan' },
+                        { value: 'level6', label: 'Higher Diploma' },
+                        { value: 'short-course', label: 'Short Course' },
+                      ].map((filter) => (
+                        <button
+                          key={filter.value}
+                          onClick={() => setLevelFilter(filter.value)}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                            levelFilter === filter.value
+                              ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/30'
+                              : 'bg-white/10 text-purple-200 hover:bg-white/20 hover:text-white border border-white/20'
+                          }`}
+                        >
+                          {filter.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Exam Body Filter */}
+                  <div className="flex items-center gap-3">
+                    <span className="text-purple-300 text-sm">Exam Body:</span>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { value: 'all', label: 'All Courses', color: 'gray' },
+                        { value: 'KNEC', label: 'KNEC', color: 'blue' },
+                        { value: 'CDACC', label: 'CDACC', color: 'green' },
+                        { value: 'JP', label: 'JP', color: 'purple' },
+                        { value: 'INSTALL', label: 'Short/Install', color: 'pink' },
+                      ].map((filter) => (
+                        <button
+                          key={filter.value}
+                          onClick={() => setExamBodyFilter(filter.value as any)}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                            examBodyFilter === filter.value
+                              ? filter.value === 'all'
+                                ? 'bg-gray-600 text-white shadow-lg'
+                                : filter.value === 'KNEC'
+                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
+                                : filter.value === 'CDACC'
+                                ? 'bg-green-600 text-white shadow-lg shadow-green-500/30'
+                                : filter.value === 'JP'
+                                ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/30'
+                                : 'bg-pink-600 text-white shadow-lg shadow-pink-500/30'
+                              : 'bg-white/10 text-purple-200 hover:bg-white/20 hover:text-white border border-white/20'
+                          }`}
+                        >
+                          {filter.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -1809,10 +2507,21 @@ export default function CoursesPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filteredCourses.map((course) => {
                       const isExpanded = expandedUnits[course.id];
+                      const isKNEC = course.id.startsWith('KNEC-');
                       const courseUnits = course.units || [];
                       const displayUnits = isExpanded ? courseUnits : courseUnits.slice(0, 3);
                       const colors = getLevelBadgeColor(course.course_types?.[0]?.level || 'diploma');
-                      
+
+                      // Group units by module for KNEC courses
+                      const unitsByModule = isKNEC
+                        ? courseUnits.reduce((acc: any, u: any) => {
+                            const modIdx = u.module_index || 1;
+                            if (!acc[modIdx]) acc[modIdx] = [];
+                            acc[modIdx].push(u);
+                            return acc;
+                          }, {})
+                        : {};
+
                       return (
                         <div key={course.id} className="bg-white/10 backdrop-blur-md rounded-xl p-5 border border-white/20 hover:bg-white/15 transition-colors">
                           {/* Course Header */}
@@ -1837,7 +2546,9 @@ export default function CoursesPage() {
                           {/* Units */}
                           <div className="mb-4">
                             <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm text-purple-200 font-medium">Units ({courseUnits.length})</span>
+                              <span className="text-sm text-purple-200 font-medium">
+                                Units ({courseUnits.length}){isKNEC && ' - Module Based'}
+                              </span>
                               {courseUnits.length > 3 && (
                                 <button
                                   onClick={() => toggleUnits(course.id)}
@@ -1848,21 +2559,43 @@ export default function CoursesPage() {
                               )}
                             </div>
                             {courseUnits.length > 0 ? (
-                              <div className="flex flex-wrap gap-1.5">
-                                {displayUnits.map((u: any, i: number) => (
-                                  <span
-                                    key={i}
-                                    className="inline-block bg-white/10 border border-white/20 text-purple-100 text-xs px-2 py-1 rounded-sm"
-                                  >
-                                    {u.name}
-                                  </span>
-                                ))}
-                                {!isExpanded && courseUnits.length > 3 && (
-                                  <span className="inline-block bg-white/5 border border-white/10 text-purple-300 text-xs px-2 py-1 rounded-sm">
-                                    +{courseUnits.length - 3} more
-                                  </span>
-                                )}
-                              </div>
+                              isKNEC && isExpanded ? (
+                                // KNEC expanded view: show grouped by module
+                                <div className="space-y-2">
+                                  {Object.entries(unitsByModule).sort((a, b) => Number(a[0]) - Number(b[0])).map(([modIdx, units]: [string, any]) => (
+                                    <div key={modIdx} className="bg-white/5 rounded p-2">
+                                      <span className="text-xs font-semibold text-purple-300 block mb-1">Module {modIdx}</span>
+                                      <div className="flex flex-wrap gap-1">
+                                        {(units as any[]).map((u: any, i: number) => (
+                                          <span
+                                            key={i}
+                                            className="inline-block bg-white/10 border border-white/20 text-purple-100 text-xs px-2 py-1 rounded-sm"
+                                          >
+                                            {u.unit_code ? `${u.unit_code} - ` : ''}{u.name}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                // Standard view: flat list
+                                <div className="flex flex-wrap gap-1.5">
+                                  {displayUnits.map((u: any, i: number) => (
+                                    <span
+                                      key={i}
+                                      className="inline-block bg-white/10 border border-white/20 text-purple-100 text-xs px-2 py-1 rounded-sm"
+                                    >
+                                      {u.unit_code ? `${u.unit_code} - ` : ''}{u.name}
+                                    </span>
+                                  ))}
+                                  {!isExpanded && courseUnits.length > 3 && (
+                                    <span className="inline-block bg-white/5 border border-white/10 text-purple-300 text-xs px-2 py-1 rounded-sm">
+                                      +{courseUnits.length - 3} more
+                                    </span>
+                                  )}
+                                </div>
+                              )
                             ) : (
                               <span className="text-xs text-white/40 italic">No units</span>
                             )}
@@ -1930,7 +2663,12 @@ export default function CoursesPage() {
 
                     <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 space-y-4">
                       <div>
-                        <label className="block text-white font-medium mb-2">Department *</label>
+                        <label className="block text-white font-medium mb-2">
+                          Department *
+                          {selectedCourseType && selectedCourseType !== 'INSTALL' && (
+                            <span className="ml-2 text-xs text-purple-300 font-normal">({selectedCourseType} only)</span>
+                          )}
+                        </label>
                         <select
                           value={courseFormData.department_id}
                           onChange={(e) => setCourseFormData({ ...courseFormData, department_id: e.target.value })}
@@ -1938,10 +2676,15 @@ export default function CoursesPage() {
                           required
                         >
                           <option value="">Select Department</option>
-                          {departments.map((dept) => (
+                          {filteredDepartments.map((dept) => (
                             <option key={dept.id} value={dept.id} className="text-gray-900">{dept.name}</option>
                           ))}
                         </select>
+                        {filteredDepartments.length === 0 && (
+                          <p className="text-yellow-300 text-xs mt-2">
+                            No departments found for {selectedCourseType}. Please add a department first.
+                          </p>
+                        )}
                         
                         {/* Add New Department Toggle */}
                         <div className="mt-3 pt-3 border-t border-white/10">
@@ -1951,7 +2694,7 @@ export default function CoursesPage() {
                             className="text-sm text-purple-300 hover:text-white flex items-center gap-2"
                           >
                             <span>{showAddDepartment ? '−' : '+'}</span>
-                            {showAddDepartment ? 'Cancel' : 'Add New Department'}
+                            {showAddDepartment ? 'Cancel' : `Add New ${selectedCourseType === 'INSTALL' ? '' : selectedCourseType + ' '}Department`}
                           </button>
                           
                           {showAddDepartment && (
@@ -2210,28 +2953,31 @@ export default function CoursesPage() {
                       )}
                     </div>
 
-                    <button
-                      onClick={handleSaveCourse}
-                      disabled={submitting}
-                      className="w-full px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-50"
-                    >
-                      {submitting ? 'Saving...' : selectedCourseType === 'INSTALL' ? 'Save Short Course' : 'Save & Continue to Modules'}
-                    </button>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => {
+                          resetWizard();
+                          setSelectedCourseType(null);
+                        }}
+                        className="flex-1 px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={selectedCourseType === 'INSTALL' ? handleSaveCourse : goToStep2}
+                        disabled={submitting}
+                        className="flex-1 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-50"
+                      >
+                        {selectedCourseType === 'INSTALL' ? 'Save Short Course' : 'Continue →'}
+                      </button>
+                    </div>
                   </div>
                 )}
 
                 {/* Screen 2: Add Modules */}
                 {selectedCourseType && wizardStep === 2 && (
                   <div className="space-y-6">
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-2xl font-bold text-white">Add {selectedCourseType === 'CDACC' ? 'Stages' : 'Modules'}</h2>
-                      <button
-                        onClick={() => setWizardStep(1)}
-                        className="text-purple-300 hover:text-white text-sm"
-                      >
-                        ← Back to course details
-                      </button>
-                    </div>
+                    <h2 className="text-2xl font-bold text-white">Add {selectedCourseType === 'CDACC' ? 'Stages' : 'Modules'}</h2>
 
                     <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 space-y-4">
                       {modulesData.map((module, moduleIndex) => {
@@ -2379,38 +3125,89 @@ export default function CoursesPage() {
                             {/* Semester Fees & Details */}
                             {!isCdaccOncePerStage && (
                               <div className="space-y-3">
-                                <h6 className="text-white font-medium text-sm border-b border-white/10 pb-2">Semester Fees & Details</h6>
+                                <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                                  <h6 className="text-white font-medium text-sm">Semester Fees & Details</h6>
+                                  {isKNEC && (
+                                    <span className="text-xs text-purple-300 bg-purple-600/20 px-2 py-1 rounded">
+                                      Tip: M1-S1 is separate. Enter fee in any other semester to auto-fill the rest.
+                                    </span>
+                                  )}
+                                </div>
                                 {Array.from({ length: semesterCount }, (_, semIndex) => {
                                 const semesterData = module.semesters?.[semIndex];
                                 const additionalFees = semesterData?.additional_fees || [];
+                                // For KNEC: check if this is Module 1, Semester 1 (special) or other (auto-fill applies)
+                                const isFirstSemester = moduleIndex === 0 && semIndex === 0;
+                                const isKNECAutoFill = isKNEC && !isFirstSemester;
                                 return (
                                   <div key={semIndex} className="bg-black/30 rounded-lg p-4 space-y-3 border border-white/5">
-                                    <p className="text-white font-medium text-sm">Semester {semIndex + 1}</p>
+                                    <div className="flex items-center justify-between">
+                                      <p className="text-white font-medium text-sm">Semester {semIndex + 1}</p>
+                                      {isKNEC && isFirstSemester && (
+                                        <span className="text-xs text-blue-300 bg-blue-600/20 px-2 py-0.5 rounded">Admission Fee + Tuition</span>
+                                      )}
+                                      {isKNECAutoFill && semesterData?.fee > 0 && (
+                                        <span className="text-xs text-green-300 bg-green-600/20 px-2 py-0.5 rounded">Auto-fills others</span>
+                                      )}
+                                    </div>
                                     <div className="grid grid-cols-2 gap-3">
                                       <div>
-                                        <label className="text-purple-200 text-xs uppercase mb-1 block">Tuition Fee (KES)</label>
+                                        <label className="text-purple-200 text-xs uppercase mb-1 block">
+                                          Tuition Fee (KES)
+                                          {isKNECAutoFill && <span className="text-purple-300/60 ml-1">(edits all)</span>}
+                                        </label>
                                         <input
                                           type="number"
                                           value={semesterData?.fee || ''}
                                           onChange={(e) => {
+                                            const newFee = parseInt(e.target.value) || 0;
                                             const updated = [...modulesData];
-                                            if (!updated[moduleIndex].semesters || updated[moduleIndex].semesters.length !== semesterCount) {
-                                              updated[moduleIndex].semesters = Array.from({ length: semesterCount }, (_, i) => ({
-                                                semester_index: i + 1,
-                                                fee: 0,
-                                                internal_exams: 2,
-                                                additional_fees: isKNEC ? [] : undefined,
-                                                practical_fee: !isKNEC ? 0 : undefined,
-                                              }));
-                                            }
+
+                                            // Ensure all modules have semesters array initialized
+                                            updated.forEach((mod, idx) => {
+                                              if (!mod.semesters || mod.semesters.length !== semesterCount) {
+                                                mod.semesters = Array.from({ length: semesterCount }, (_, i) => ({
+                                                  semester_index: i + 1,
+                                                  fee: 0,
+                                                  internal_exams: 2,
+                                                  additional_fees: isKNEC ? [] : undefined,
+                                                  practical_fee: !isKNEC ? 0 : undefined,
+                                                }));
+                                              }
+                                            });
+
+                                            // Set fee for current semester
                                             updated[moduleIndex].semesters[semIndex] = {
                                               ...updated[moduleIndex].semesters[semIndex],
                                               semester_index: semIndex + 1,
-                                              fee: parseInt(e.target.value) || 0,
+                                              fee: newFee,
                                             };
+
+                                            // KNEC: Auto-fill fee to all subsequent semesters in ALL modules
+                                            if (isKNEC && !isFirstSemester) {
+                                              // Fill remaining semesters in current module
+                                              for (let s = semIndex + 1; s < semesterCount; s++) {
+                                                updated[moduleIndex].semesters[s] = {
+                                                  ...updated[moduleIndex].semesters[s],
+                                                  semester_index: s + 1,
+                                                  fee: newFee,
+                                                };
+                                              }
+                                              // Fill all semesters in subsequent modules
+                                              for (let m = moduleIndex + 1; m < updated.length; m++) {
+                                                for (let s = 0; s < semesterCount; s++) {
+                                                  updated[m].semesters[s] = {
+                                                    ...updated[m].semesters[s],
+                                                    semester_index: s + 1,
+                                                    fee: newFee,
+                                                  };
+                                                }
+                                              }
+                                            }
+
                                             setModulesData(updated);
                                           }}
-                                          placeholder="e.g., 15000"
+                                          placeholder={isFirstSemester && isKNEC ? "e.g., 18000 (with admission)" : "e.g., 15000"}
                                           className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                                         />
                                       </div>
@@ -2587,28 +3384,27 @@ export default function CoursesPage() {
                       )}
                     </div>
 
-                    <button
-                      onClick={handleSaveModules}
-                      disabled={submitting}
-                      className="w-full px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-50"
-                    >
-                      {submitting ? 'Saving...' : 'Save & Continue to Units'}
-                    </button>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setWizardStep(1)}
+                        className="flex-1 px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition-colors"
+                      >
+                        ← Back
+                      </button>
+                      <button
+                        onClick={goToStep3}
+                        className="flex-1 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-colors"
+                      >
+                        Continue →
+                      </button>
+                    </div>
                   </div>
                 )}
 
                 {/* Screen 3: Assign Units */}
                 {selectedCourseType && wizardStep === 3 && (
                   <div className="space-y-6">
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-2xl font-bold text-white">Assign Units</h2>
-                      <button
-                        onClick={() => setWizardStep(2)}
-                        className="text-purple-300 hover:text-white text-sm"
-                      >
-                        ← Back to modules
-                      </button>
-                    </div>
+                    <h2 className="text-2xl font-bold text-white">Assign Units</h2>
 
                     <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
                       {/* Module/Stage Tabs */}
@@ -2635,7 +3431,7 @@ export default function CoursesPage() {
                       {/* Semester Tabs - only show if not CDACC once_per_stage */}
                       {!(selectedCourseType === 'CDACC' && courseFormData.cdacc_payment_mode === 'once_per_stage') && (
                         <div className="flex gap-2 mb-4">
-                          {Array.from({ length: Math.ceil(modulesData[selectedModule]?.duration_months / 3) || 2 }).map((_, index) => (
+                          {Array.from({ length: modulesData[selectedModule]?.semesters?.length || Math.ceil(modulesData[selectedModule]?.duration_months / 3) || 2 }).map((_, index) => (
                             <button
                               key={index}
                               onClick={() => setSelectedSemester(index)}
@@ -2650,13 +3446,33 @@ export default function CoursesPage() {
                           ))}
                         </div>
                       )}
+                      {/* KNEC: Show badge indicating module-level units */}
+                      {selectedCourseType === 'KNEC' && (
+                        <div className="mb-4">
+                          <span className="text-xs text-purple-300 bg-purple-600/20 px-3 py-1.5 rounded">
+                            KNEC: Units added here will appear in all semesters of this module
+                          </span>
+                        </div>
+                      )}
 
                       {/* Units List */}
                       <div className="space-y-2 mb-4">
                         {(() => {
                           const isCdaccOncePerStage = selectedCourseType === 'CDACC' && courseFormData.cdacc_payment_mode === 'once_per_stage';
+                          const isKNEC = selectedCourseType === 'KNEC';
                           const key = isCdaccOncePerStage ? `${selectedModule}_stage` : `${selectedModule}_${selectedSemester}`;
-                          return (unitsData[key] || []).map((unit: any, index: number) => (
+                          const semesterUnits = unitsData[key] || [];
+                          // For KNEC, show ALL units from the module regardless of which semester they were added to
+                          const allModuleUnits = isKNEC
+                            ? Array.from(new Set([
+                                ...semesterUnits,
+                                ...(unitsData[`${selectedModule}_0`] || []),
+                                ...(unitsData[`${selectedModule}_1`] || []),
+                                ...(unitsData[`${selectedModule}_2`] || []),
+                                ...(unitsData[`${selectedModule}_3`] || [])
+                              ].map(u => JSON.stringify(u)))).map(u => JSON.parse(u))
+                            : semesterUnits;
+                          return allModuleUnits.map((unit: any, index: number) => (
                             <div key={index} className="bg-black/20 rounded-lg p-3 border border-white/5 flex items-center justify-between">
                               <div>
                                 <div className="text-white font-medium">{unit.paper_code} - {unit.subject_name}</div>
@@ -2669,78 +3485,158 @@ export default function CoursesPage() {
 
                       {/* Add Unit Form */}
                       <div className="bg-black/20 rounded-lg p-4 border border-white/5 space-y-3">
-                        <h5 className="text-white font-semibold">Add Unit</h5>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                          <div>
-                            <label className="text-purple-200 text-xs mb-1 block">Paper Code</label>
-                            <input
-                              type="text"
-                              id="paperCode"
-                              placeholder="e.g., 201"
-                              className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-purple-200 text-xs mb-1 block">Subject Name</label>
-                            <input
-                              type="text"
-                              id="subjectName"
-                              placeholder="e.g., Typewriting"
-                              list="subjects"
-                              className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                            />
-                            <datalist id="subjects">
-                              {subjects.map((subject) => (
-                                <option key={subject.id} value={subject.name}>
-                                  {subject.paper_code} - {subject.name}
-                                </option>
-                              ))}
-                            </datalist>
-                          </div>
-                          <div>
-                            <label className="text-purple-200 text-xs mb-1 block">Unit Type</label>
-                            <select
-                              id="unitType"
-                              className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                            >
-                              <option value="Core">Core</option>
-                              <option value="Common">Common</option>
-                              <option value="Basic">Basic</option>
-                              <option value="Elective">Elective</option>
-                            </select>
-                          </div>
+                        <div className="flex items-center justify-between">
+                          <h5 className="text-white font-semibold">Add Unit</h5>
+                          <button
+                            type="button"
+                            onClick={() => setBulkPasteMode(!bulkPasteMode)}
+                            className="text-xs text-purple-300 hover:text-white underline"
+                          >
+                            {bulkPasteMode ? 'Switch to Single Entry' : 'Switch to Bulk Paste'}
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const paperCode = (document.getElementById('paperCode') as HTMLInputElement)?.value;
-                            const subjectName = (document.getElementById('subjectName') as HTMLInputElement)?.value;
-                            const unitType = (document.getElementById('unitType') as HTMLSelectElement)?.value;
-                            if (paperCode && subjectName) {
-                              const isCdaccOncePerStage = selectedCourseType === 'CDACC' && courseFormData.cdacc_payment_mode === 'once_per_stage';
-                              const semesterIndex = isCdaccOncePerStage ? 0 : selectedSemester;
-                              handleAddUnit(selectedModule, semesterIndex, { paper_code: paperCode, subject_name: subjectName, unit_type: unitType });
-                              (document.getElementById('paperCode') as HTMLInputElement).value = '';
-                              (document.getElementById('subjectName') as HTMLInputElement).value = '';
-                            }
-                          }}
-                          className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-semibold transition-colors"
-                        >
-                          Add Unit
-                        </button>
+
+                        {bulkPasteMode ? (
+                          <div className="space-y-3">
+                            <div>
+                              <label className="text-purple-200 text-xs mb-1 block">
+                                Paste Units (one per line, format: CODE - NAME)
+                              </label>
+                              <textarea
+                                value={bulkPasteText}
+                                onChange={(e) => setBulkPasteText(e.target.value)}
+                                placeholder={`201 - TYPEWRITING
+202 - BUSINESS ORGANISATION
+203 - BOOK-KEEPING
+204 - CLERICAL DUTIES`}
+                                rows={6}
+                                className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono"
+                              />
+                              <p className="text-purple-300/60 text-xs mt-1">
+                                Each line: Paper Code - Subject Name (e.g., &quot;201 - TYPEWRITING&quot;)
+                              </p>
+                            </div>
+                            <div>
+                              <label className="text-purple-200 text-xs mb-1 block">Default Unit Type</label>
+                              <select
+                                id="bulkUnitType"
+                                className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                              >
+                                <option value="Core">Core</option>
+                                <option value="Common">Common</option>
+                                <option value="Basic">Basic</option>
+                                <option value="Elective">Elective</option>
+                              </select>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const unitType = (document.getElementById('bulkUnitType') as HTMLSelectElement)?.value || 'Core';
+                                const lines = bulkPasteText.trim().split('\n').filter(line => line.trim());
+                                const isCdaccOncePerStage = selectedCourseType === 'CDACC' && courseFormData.cdacc_payment_mode === 'once_per_stage';
+                                const semesterIndex = isCdaccOncePerStage ? 0 : selectedSemester;
+
+                                lines.forEach(line => {
+                                  // Parse format: "201 - TYPEWRITING" or "201 -TYPEWRITING" or "201 TYPEWRITING"
+                                  const match = line.match(/^\s*(\S+)\s*[-\s]\s*(.+)$/);
+                                  if (match) {
+                                    const [, paperCode, subjectName] = match;
+                                    handleAddUnit(selectedModule, semesterIndex, {
+                                      paper_code: paperCode.trim(),
+                                      subject_name: subjectName.trim(),
+                                      unit_type: unitType
+                                    });
+                                  }
+                                });
+                                setBulkPasteText('');
+                              }}
+                              disabled={!bulkPasteText.trim()}
+                              className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg text-sm font-semibold transition-colors"
+                            >
+                              Add All Units
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                              <div>
+                                <label className="text-purple-200 text-xs mb-1 block">Paper Code</label>
+                                <input
+                                  type="text"
+                                  id="paperCode"
+                                  placeholder="e.g., 201"
+                                  className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-purple-200 text-xs mb-1 block">Subject Name</label>
+                                <input
+                                  type="text"
+                                  id="subjectName"
+                                  placeholder="e.g., Typewriting"
+                                  list="subjects"
+                                  className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                />
+                                <datalist id="subjects">
+                                  {subjects.map((subject) => (
+                                    <option key={subject.id} value={subject.name}>
+                                      {subject.paper_code} - {subject.name}
+                                    </option>
+                                  ))}
+                                </datalist>
+                              </div>
+                              <div>
+                                <label className="text-purple-200 text-xs mb-1 block">Unit Type</label>
+                                <select
+                                  id="unitType"
+                                  className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                >
+                                  <option value="Core">Core</option>
+                                  <option value="Common">Common</option>
+                                  <option value="Basic">Basic</option>
+                                  <option value="Elective">Elective</option>
+                                </select>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const paperCode = (document.getElementById('paperCode') as HTMLInputElement)?.value;
+                                const subjectName = (document.getElementById('subjectName') as HTMLInputElement)?.value;
+                                const unitType = (document.getElementById('unitType') as HTMLSelectElement)?.value;
+                                if (paperCode && subjectName) {
+                                  const isCdaccOncePerStage = selectedCourseType === 'CDACC' && courseFormData.cdacc_payment_mode === 'once_per_stage';
+                                  // For KNEC, we use the current selected semester for display, but the unit applies to all
+                                  const semesterIndex = isCdaccOncePerStage ? 0 : selectedSemester;
+                                  handleAddUnit(selectedModule, semesterIndex, { paper_code: paperCode, subject_name: subjectName, unit_type: unitType });
+                                  (document.getElementById('paperCode') as HTMLInputElement).value = '';
+                                  (document.getElementById('subjectName') as HTMLInputElement).value = '';
+                                }
+                              }}
+                              className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-semibold transition-colors"
+                            >
+                              Add Unit
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => {
-                        resetWizard();
-                        setViewMode('list');
-                        loadCourses();
-                      }}
-                      className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors"
-                    >
-                      Finish & View Courses
-                    </button>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setWizardStep(2)}
+                        className="flex-1 px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition-colors"
+                      >
+                        ← Back
+                      </button>
+                      <button
+                        onClick={handleFinishAndSave}
+                        disabled={submitting}
+                        className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg font-semibold transition-colors"
+                      >
+                        {submitting ? 'Saving...' : 'Save & Finish'}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

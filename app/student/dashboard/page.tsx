@@ -230,7 +230,7 @@ export default function StudentDashboard() {
         // Fetch all units separately to avoid PostgREST relationship errors
         let coursesWithUnits = data || [];
         try {
-          const { data: unitsData, error: unitsError } = await supabase.from('units').select('*');
+          const { data: unitsData, error: unitsError } = await supabase.from('v_units_by_module_semester').select('*');
           if (!unitsError && unitsData) {
             coursesWithUnits = coursesWithUnits.map((course: any) => {
               const courseUnits = unitsData.filter((u: any) => u.course_id === course.id);

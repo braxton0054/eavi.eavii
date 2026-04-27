@@ -77,7 +77,7 @@ export default function UnitsPage() {
   const loadUnits = async () => {
     try {
       const { data: unitsData, error: unitsError } = await supabase
-        .from('units')
+        .from('v_units_by_module_semester')
         .select('*')
         .order('course_id, module_index, semester_index');
 
