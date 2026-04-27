@@ -160,6 +160,8 @@ export default function CoursesPage() {
   
   // Department management
   const [showAddDepartment, setShowAddDepartment] = useState(false);
+  const [showDeleteDepartment, setShowDeleteDepartment] = useState(false);
+  const [departmentToDelete, setDepartmentToDelete] = useState<string>('');
   const [newDepartment, setNewDepartment] = useState({ name: '', code: '' });
 
   // Bulk paste mode for units
@@ -324,6 +326,60 @@ export default function CoursesPage() {
       setError('');
     } catch (err: any) {
       setError(`Failed to add department: ${err.message}`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteDepartment = async () => {
+    if (!departmentToDelete) return;
+
+    const dept = departments.find(d => d.id === departmentToDelete);
+    if (!dept) return;
+
+    // Confirm deletion
+    if (!confirm(`Are you sure you want to delete "${dept.name}" (${dept.code})? This action cannot be undone.`)) {
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      // Check if department is used by any courses
+      const { data: coursesUsingDept, error: checkError } = await supabase
+        .from('courses')
+        .select('id, name')
+        .eq('department_id', departmentToDelete)
+        .limit(1);
+
+      if (checkError) throw checkError;
+
+      if (coursesUsingDept && coursesUsingDept.length > 0) {
+        setError(`Cannot delete "${dept.name}" because it is being used by courses. Please reassign those courses first.`);
+        return;
+      }
+
+      // Delete the department
+      const { error } = await supabase
+        .from('departments')
+        .delete()
+        .eq('id', departmentToDelete);
+
+      if (error) throw error;
+
+      // Remove from local state
+      setDepartments(departments.filter(d => d.id !== departmentToDelete));
+      
+      // If the deleted department was selected, clear the selection
+      if (courseFormData.department_id === departmentToDelete) {
+        setCourseFormData({ ...courseFormData, department_id: '' });
+      }
+
+      // Reset and hide
+      setDepartmentToDelete('');
+      setShowDeleteDepartment(false);
+      setError('');
+    } catch (err: any) {
+      setError(`Failed to delete department: ${err.message}`);
     } finally {
       setSubmitting(false);
     }
@@ -1047,6 +1103,8 @@ export default function CoursesPage() {
     setSelectedModule(0);
     setSelectedSemester(0);
     setShowAddDepartment(false);
+    setShowDeleteDepartment(false);
+    setDepartmentToDelete('');
     setNewDepartment({ name: '', code: '' });
     setBulkPasteMode(false);
     setBulkPasteText('');
@@ -2731,6 +2789,53 @@ export default function CoursesPage() {
                               >
                                 {submitting ? 'Saving...' : 'Save Department'}
                               </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Delete Department Toggle */}
+                        <div className="mt-2 pt-2 border-t border-white/10">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowDeleteDepartment(!showDeleteDepartment);
+                              setShowAddDepartment(false); // Close add form if open
+                            }}
+                            className="text-sm text-red-400 hover:text-red-300 flex items-center gap-2"
+                          >
+                            <span>{showDeleteDepartment ? '−' : '×'}</span>
+                            {showDeleteDepartment ? 'Cancel' : 'Delete Department'}
+                          </button>
+
+                          {showDeleteDepartment && (
+                            <div className="mt-3 space-y-3 bg-black/20 rounded-lg p-4 border border-red-500/30">
+                              <div>
+                                <label className="text-red-200 text-xs mb-1 block">Select Department to Delete</label>
+                                <select
+                                  value={departmentToDelete}
+                                  onChange={(e) => setDepartmentToDelete(e.target.value)}
+                                  className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                                >
+                                  <option value="">Select a department...</option>
+                                  {filteredDepartments.map((dept) => (
+                                    <option key={dept.id} value={dept.id} className="text-gray-900">{dept.name} ({dept.code})</option>
+                                  ))}
+                                </select>
+                                {filteredDepartments.length === 0 && (
+                                  <p className="text-yellow-300 text-xs mt-2">No departments available to delete.</p>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={handleDeleteDepartment}
+                                disabled={!departmentToDelete || submitting}
+                                className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white rounded-lg text-sm font-semibold transition-colors"
+                              >
+                                {submitting ? 'Deleting...' : 'Delete Department'}
+                              </button>
+                              <p className="text-red-300/60 text-xs">
+                                Note: Cannot delete departments that are currently used by courses.
+                              </p>
                             </div>
                           )}
                         </div>
