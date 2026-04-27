@@ -88,14 +88,11 @@ export default function ApplyPage() {
                   internal_exams
                 )
               ),
-              short_courses (
-                id,
-                name,
-                short_code,
-                duration_months,
-                payment_mode,
-                first_installment,
-                subsequent_installment,
+              short_course_config (
+                fee,
+                payment_type,
+                number_of_months,
+                monthly_fees,
                 practical_fee,
                 has_exams
               )

@@ -714,6 +714,26 @@ export default function LecturerDashboard() {
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-white">Your Teaching Assignments</h2>
 
+            {/* Stats Counter */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 text-center">
+                <div className="text-3xl font-bold text-white">{assignments.length}</div>
+                <div className="text-purple-200 text-sm">Total Assignments</div>
+              </div>
+              <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 text-center">
+                <div className="text-3xl font-bold text-white">
+                  {assignments.reduce((total, a) => total + (a.units?.length || 0), 0)}
+                </div>
+                <div className="text-purple-200 text-sm">Total Units</div>
+              </div>
+              <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 text-center">
+                <div className="text-3xl font-bold text-white">
+                  {new Set(assignments.map(a => a.campus)).size}
+                </div>
+                <div className="text-purple-200 text-sm">Campuses</div>
+              </div>
+            </div>
+
             {/* Course Selection Dropdown */}
             <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
               <label htmlFor="courseSelect" className="block text-purple-200 text-sm mb-2 font-semibold">
