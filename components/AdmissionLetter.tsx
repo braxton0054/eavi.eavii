@@ -118,6 +118,7 @@ export default function AdmissionLetter({ studentData }: AdmissionLetterProps) {
             duration_months,
             modules (
               module_index,
+              exam_body,
               semesters (
                 semester_index,
                 duration_months,
@@ -125,14 +126,6 @@ export default function AdmissionLetter({ studentData }: AdmissionLetterProps) {
                 practical_fee,
                 internal_exams
               )
-            ),
-            short_course_config (
-              fee,
-              payment_type,
-              number_of_months,
-              monthly_fees,
-              practical_fee,
-              has_exams
             )
           )
         `)

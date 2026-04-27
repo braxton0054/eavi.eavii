@@ -2484,6 +2484,9 @@ export default function CoursesPage() {
     { label: 'Settings', href: '/admin/settings', active: false },
   ];
 
+  // Mobile menu state
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   // Get course type color for card stripe
   const getCourseTypeColor = (level: string) => {
     const colors: Record<string, string> = {
@@ -2509,8 +2512,8 @@ export default function CoursesPage() {
 
   return (
     <div className="min-h-screen w-full flex bg-[#f4f6f9]">
-      {/* Sidebar */}
-      <aside className="w-[220px] min-h-screen bg-[#1a1d27] fixed left-0 top-0 flex flex-col">
+      {/* Desktop Sidebar - Hidden on mobile */}
+      <aside className="hidden lg:flex w-[220px] min-h-screen bg-[#1a1d27] fixed left-0 top-0 flex-col">
         {/* Logo */}
         <div className="p-6 border-b border-white/10">
           <div className="w-10 h-10 bg-[#7c3aed] rounded-lg flex items-center justify-center mb-3">
@@ -2539,12 +2542,23 @@ export default function CoursesPage() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 ml-[220px]">
-        {/* Top Bar */}
-        <header className="bg-white border-b border-[#e5e7eb] px-6 py-4 flex items-center justify-between sticky top-0 z-20">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Course Management</h1>
-            <p className="text-gray-500 text-sm">View and manage all campus courses</p>
+      <main className="flex-1 lg:ml-[220px]">
+        {/* Top Bar - Mobile Responsive */}
+        <header className="bg-white border-b border-[#e5e7eb] px-4 lg:px-6 py-4 flex items-center justify-between sticky top-0 z-20">
+          {/* Mobile Menu Button */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="lg:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <div>
+              <h1 className="text-lg lg:text-xl font-bold text-gray-900">Course Management</h1>
+              <p className="hidden sm:block text-gray-500 text-sm">View and manage all campus courses</p>
+            </div>
           </div>
           <button
             onClick={() => {
@@ -2555,11 +2569,34 @@ export default function CoursesPage() {
               setViewMode('add');
               setEditingCourse(null);
             }}
-            className="px-4 py-2 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-lg text-sm font-semibold transition-colors"
+            className="px-3 lg:px-4 py-2 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-lg text-sm font-semibold transition-colors whitespace-nowrap"
           >
-            + Add New Course
+            <span className="hidden sm:inline">+ Add New Course</span>
+            <span className="sm:hidden">+ Add</span>
           </button>
         </header>
+
+        {/* Mobile Menu Dropdown */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden bg-[#1a1d27] border-b border-white/10">
+            <nav className="py-2">
+              {navItems.map((item) => (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center px-4 py-3 text-sm transition-colors ${
+                    item.active
+                      ? 'bg-[#7c3aed] text-white font-bold'
+                      : 'text-[#9ca3af] hover:bg-white/5 hover:text-white'
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+          </div>
+        )}
 
         {/* Content Area */}
         <div className="p-6">

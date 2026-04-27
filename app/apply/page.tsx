@@ -39,13 +39,20 @@ export default function ApplyPage() {
 
   // Initialize Supabase client only on client side
   useEffect(() => {
-    setSupabase(createClient());
+    try {
+      const client = createClient();
+      console.log('Supabase client created:', client ? 'success' : 'failed');
+      setSupabase(client);
+    } catch (err: any) {
+      console.error('Error creating Supabase client:', err);
+      alert('Failed to initialize: ' + err.message);
+    }
   }, []);
 
   // Generate admission number based on campus selection
   const generateAdmissionNumber = (campus: string) => {
     const currentYear = new Date().getFullYear();
-    const campusCode = campus === 'main' ? 'M' : campus === 'west' ? 'W' : 'N';
+    const campusCode = campus === 'Main Campus' ? 'M' : campus === 'West Campus' ? 'W' : 'N';
     const sequenceNumber = Math.floor(Math.random() * 9000) + 1000; // Random 4-digit number
     return `${campusCode}${currentYear}${sequenceNumber}`;
   };
@@ -62,10 +69,15 @@ export default function ApplyPage() {
 
   // Load courses from Supabase
   useEffect(() => {
-    if (!supabase) return;
+    console.log('Course load effect triggered, supabase:', supabase ? 'exists' : 'null');
+    if (!supabase) {
+      console.log('Supabase not ready yet, skipping course load');
+      return;
+    }
 
     const loadCourses = async () => {
       try {
+        console.log('Starting to load courses...');
         const { data, error } = await supabase
           .from('courses')
           .select(`
@@ -87,25 +99,31 @@ export default function ApplyPage() {
                   practical_fee,
                   internal_exams
                 )
-              ),
-              short_course_config (
-                fee,
-                payment_type,
-                number_of_months,
-                monthly_fees,
-                practical_fee,
-                has_exams
               )
             )
-          `);
+          `)
+          .order('name');
 
         if (error) {
           console.error('Error loading courses:', error);
+          alert('Error loading courses: ' + error.message + '\nCode: ' + error.code);
         } else {
-          setCourses(data || []);
+          console.log('Courses loaded successfully:', data?.length || 0, 'courses');
+          if (data && data.length > 0) {
+            console.log('First course:', data[0]);
+            console.log('First course types:', data[0]?.course_types);
+            if (data[0]?.course_types?.[0]) {
+              console.log('First course type min_kcse_grade:', data[0].course_types[0].min_kcse_grade);
+            }
+            setCourses(data);
+          } else {
+            console.log('No courses found in database');
+            setCourses([]);
+          }
         }
-      } catch (err) {
-        console.error('Error loading courses:', err);
+      } catch (err: any) {
+        console.error('Exception loading courses:', err);
+        alert('Exception: ' + err.message);
       } finally {
         setLoading(false);
       }
@@ -154,7 +172,10 @@ export default function ApplyPage() {
   // Compare student grade with course minimum grade
   const compareGrades = (studentGrade: string, minRequiredGrade: string): boolean => {
     if (!studentGrade || !minRequiredGrade) return false;
-    return GRADE_VALUE[studentGrade] >= GRADE_VALUE[minRequiredGrade];
+    const studentValue = GRADE_VALUE[studentGrade];
+    const minValue = GRADE_VALUE[minRequiredGrade];
+    console.log(`Grade compare: ${studentGrade}(${studentValue}) >= ${minRequiredGrade}(${minValue}) = ${studentValue >= minValue}`);
+    return studentValue >= minValue;
   };
 
   // Get exam body for a course from course ID prefix
@@ -187,6 +208,7 @@ export default function ApplyPage() {
     
     Object.entries(courseTypesObj).forEach(([type, data]: [string, any]) => {
       const config = getCourseTypeConfig(courseTypesObj, type);
+      console.log(`Checking ${type}: enabled=${config?.enabled}, minKcseGrade=${config?.minKcseGrade}, studentGrade=${studentGrade}`);
       // Check if this course type has the selected exam body
       const modules = data.modules || [];
       const hasExamBody = modules.some((m: any) => m.exam_body === examBody);
@@ -194,7 +216,11 @@ export default function ApplyPage() {
       // Fallback: use course ID prefix if no modules exist
       const matchesByPrefix = !hasExamBody && courseExamBody === examBody;
       
-      if (config?.enabled && compareGrades(studentGrade, config.minKcseGrade) && (hasExamBody || matchesByPrefix)) {
+      const gradeMatch = compareGrades(studentGrade, config?.minKcseGrade || '');
+      console.log(`  hasExamBody=${hasExamBody}, matchesByPrefix=${matchesByPrefix}, gradeMatch=${gradeMatch}`);
+      
+      if (config?.enabled && gradeMatch && (hasExamBody || matchesByPrefix)) {
+        console.log(`  -> Adding ${type} to available types`);
         availableTypes.push(type);
       }
     });
@@ -487,7 +513,7 @@ export default function ApplyPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-purple-300">Campus:</span>
-                  <span className="text-white font-medium capitalize">{submittedData.campus} Campus</span>
+                  <span className="text-white font-medium">{submittedData.campus}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-purple-300">Status:</span>
@@ -663,15 +689,15 @@ export default function ApplyPage() {
                 value={formData.course}
                 onChange={handleChange}
                 required
-                disabled={loading || courses.length === 0 || !formData.examBody}
+                disabled={loading || courses.length === 0}
                 className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">
-                  {!formData.examBody ? 'Select exam body first' : loading ? 'Loading courses...' : courses.length === 0 ? 'No courses available' : 'Select Course'}
+                  {loading ? 'Loading courses...' : courses.length === 0 ? 'No courses available' : 'Select Course'}
                 </option>
                 {courses
                   .filter(course => {
-                    if (!formData.examBody) return false;
+                    if (!formData.examBody) return true; // Show all courses for debugging
                     // Check if course has any course type with the selected exam body
                     const courseTypes = course.course_types || [];
                     const hasExamBodyInModules = courseTypes.some((ct: any) => {
@@ -684,7 +710,7 @@ export default function ApplyPage() {
                     return hasExamBodyInModules || matchesByPrefix;
                   })
                   .map(course => (
-                    <option key={course.id} value={course.id} className="text-gray-900">{course.name}</option>
+                    <option key={course.id} value={course.id} className="text-gray-900">{course.name} ({course.id})</option>
                   ))}
               </select>
               {formData.examBody && courses.filter(course => {
@@ -752,10 +778,10 @@ export default function ApplyPage() {
             <div>
               <label className="block text-white font-medium mb-2 text-sm md:text-base">Campus *</label>
               <div className="grid grid-cols-2 gap-2">
-                {['west', 'main'].map(c => (
-                  <button type="button" key={c} onClick={() => setFormData(p => ({...p, campus: c}))}
-                    className={`p-3 rounded-lg border capitalize transition-all ${formData.campus === c ? 'border-purple-500 bg-purple-900/50 text-white' : 'border-white/30 bg-white/10 text-purple-200'}`}>
-                    {c} Campus
+                {[{id: 'west', label: 'West Campus'}, {id: 'main', label: 'Main Campus'}].map(c => (
+                  <button type="button" key={c.id} onClick={() => setFormData(p => ({...p, campus: c.label}))}
+                    className={`p-3 rounded-lg border capitalize transition-all ${formData.campus === c.label ? 'border-purple-500 bg-purple-900/50 text-white' : 'border-white/30 bg-white/10 text-purple-200'}`}>
+                    {c.label}
                   </button>
                 ))}
               </div>
