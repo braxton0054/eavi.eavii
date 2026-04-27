@@ -138,6 +138,7 @@ export default function CoursesPage() {
     is_modular: true,
     total_duration_months: 24, // 2 modules × 12 months
     cdacc_payment_mode: 'per_semester' as 'per_semester' | 'once_per_stage', // CDACC only
+    unit_assignment_mode: 'per_semester' as 'per_semester' | 'module_level', // For JP and CDACC: units per semester or module/stage level
     jp_exam_fee: 0, // JP exam fee at end of complete course
     has_units: false, // Short courses: has units
     // Fee fields for short courses
@@ -1033,6 +1034,7 @@ export default function CoursesPage() {
       is_modular: true,
       total_duration_months: 24,
       cdacc_payment_mode: 'per_semester',
+      unit_assignment_mode: 'per_semester',
       jp_exam_fee: 0,
       has_units: false,
       first_installment: 0,
@@ -1355,6 +1357,7 @@ export default function CoursesPage() {
       is_modular: globalStudyMode === 'module',
       total_duration_months: enabledCourseType?.duration_months || 24,
       cdacc_payment_mode: 'per_semester',
+      unit_assignment_mode: 'per_semester',
       jp_exam_fee: 0,
       has_units: false,
       first_installment: 0,
@@ -3407,6 +3410,48 @@ export default function CoursesPage() {
                     <h2 className="text-2xl font-bold text-white">Assign Units</h2>
 
                     <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+                      {/* Unit Assignment Mode Toggle - for JP and CDACC per_semester */}
+                      {(selectedCourseType === 'JP' || (selectedCourseType === 'CDACC' && courseFormData.cdacc_payment_mode === 'per_semester')) && (
+                        <div className="mb-4 p-3 bg-black/20 rounded-lg border border-white/10">
+                          <div className="flex items-center justify-between">
+                            <span className="text-white text-sm font-medium">
+                              Unit Assignment Mode:
+                            </span>
+                            <div className="flex items-center gap-3">
+                              <span className={`text-xs ${courseFormData.unit_assignment_mode === 'per_semester' ? 'text-purple-300' : 'text-gray-400'}`}>
+                                Per Semester
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newMode = courseFormData.unit_assignment_mode === 'module_level' ? 'per_semester' : 'module_level';
+                                  setCourseFormData({ ...courseFormData, unit_assignment_mode: newMode });
+                                  // Reset selected semester when switching to module level
+                                  if (newMode === 'module_level') {
+                                    setSelectedSemester(0);
+                                  }
+                                }}
+                                className={`w-12 h-6 rounded-full transition-colors relative ${
+                                  courseFormData.unit_assignment_mode === 'module_level' ? 'bg-purple-600' : 'bg-gray-600'
+                                }`}
+                              >
+                                <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${
+                                  courseFormData.unit_assignment_mode === 'module_level' ? 'left-7' : 'left-1'
+                                }`} />
+                              </button>
+                              <span className={`text-xs ${courseFormData.unit_assignment_mode === 'module_level' ? 'text-purple-300' : 'text-gray-400'}`}>
+                                {selectedCourseType === 'CDACC' ? 'Stage Level' : 'Module Level'}
+                              </span>
+                            </div>
+                          </div>
+                          <p className="text-purple-300/60 text-xs mt-2">
+                            {courseFormData.unit_assignment_mode === 'module_level'
+                              ? `Units will be shared across all semesters in this ${selectedCourseType === 'CDACC' ? 'stage' : 'module'}`
+                              : 'Different units can be assigned to each semester'}
+                          </p>
+                        </div>
+                      )}
+
                       {/* Module/Stage Tabs */}
                       <div className="flex gap-2 mb-4 border-b border-white/10 pb-2">
                         {modulesData.map((module, index) => {
@@ -3428,29 +3473,41 @@ export default function CoursesPage() {
                         })}
                       </div>
 
-                      {/* Semester Tabs - only show if not CDACC once_per_stage */}
-                      {!(selectedCourseType === 'CDACC' && courseFormData.cdacc_payment_mode === 'once_per_stage') && (
-                        <div className="flex gap-2 mb-4">
-                          {Array.from({ length: modulesData[selectedModule]?.semesters?.length || Math.ceil(modulesData[selectedModule]?.duration_months / 3) || 2 }).map((_, index) => (
-                            <button
-                              key={index}
-                              onClick={() => setSelectedSemester(index)}
-                              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                selectedSemester === index
-                                  ? 'bg-purple-600 text-white'
-                                  : 'bg-white/10 text-purple-300 hover:bg-white/20'
-                              }`}
-                            >
-                              Sem {index + 1}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      {/* KNEC: Show badge indicating module-level units */}
-                      {selectedCourseType === 'KNEC' && (
+                      {/* Semester Tabs - show based on assignment mode */}
+                      {/* Always show for: CDACC once_per_stage (no tabs), KNEC (module level) */}
+                      {/* Conditionally show for: JP and CDACC per_semester based on unit_assignment_mode */}
+                      {(() => {
+                        const isCdaccOncePerStage = selectedCourseType === 'CDACC' && courseFormData.cdacc_payment_mode === 'once_per_stage';
+                        const isModuleLevel = courseFormData.unit_assignment_mode === 'module_level';
+                        const showSemesterTabs = !isCdaccOncePerStage && !isModuleLevel;
+                        return showSemesterTabs ? (
+                          <div className="flex gap-2 mb-4">
+                            {Array.from({ length: modulesData[selectedModule]?.semesters?.length || Math.ceil(modulesData[selectedModule]?.duration_months / 3) || 2 }).map((_, index) => (
+                              <button
+                                key={index}
+                                onClick={() => setSelectedSemester(index)}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                  selectedSemester === index
+                                    ? 'bg-purple-600 text-white'
+                                    : 'bg-white/10 text-purple-300 hover:bg-white/20'
+                                }`}
+                              >
+                                Sem {index + 1}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null;
+                      })()
+                      }
+
+                      {/* Info badge for module-level unit assignment */}
+                      {(selectedCourseType === 'KNEC' || courseFormData.unit_assignment_mode === 'module_level') && (
                         <div className="mb-4">
                           <span className="text-xs text-purple-300 bg-purple-600/20 px-3 py-1.5 rounded">
-                            KNEC: Units added here will appear in all semesters of this module
+                            {selectedCourseType === 'KNEC'
+                              ? 'KNEC: Units added here will appear in all semesters of this module'
+                              : `Units added here will be shared across all semesters in this ${selectedCourseType === 'CDACC' ? 'stage' : 'module'}`
+                            }
                           </span>
                         </div>
                       )}
@@ -3460,10 +3517,13 @@ export default function CoursesPage() {
                         {(() => {
                           const isCdaccOncePerStage = selectedCourseType === 'CDACC' && courseFormData.cdacc_payment_mode === 'once_per_stage';
                           const isKNEC = selectedCourseType === 'KNEC';
-                          const key = isCdaccOncePerStage ? `${selectedModule}_stage` : `${selectedModule}_${selectedSemester}`;
+                          const isModuleLevel = courseFormData.unit_assignment_mode === 'module_level';
+                          // For module-level: use first semester index (0) as the canonical storage
+                          const effectiveSemester = isModuleLevel ? 0 : selectedSemester;
+                          const key = isCdaccOncePerStage ? `${selectedModule}_stage` : `${selectedModule}_${effectiveSemester}`;
                           const semesterUnits = unitsData[key] || [];
-                          // For KNEC, show ALL units from the module regardless of which semester they were added to
-                          const allModuleUnits = isKNEC
+                          // For KNEC or module-level mode, show ALL units from the module regardless of which semester they were added to
+                          const allModuleUnits = (isKNEC || isModuleLevel)
                             ? Array.from(new Set([
                                 ...semesterUnits,
                                 ...(unitsData[`${selectedModule}_0`] || []),
@@ -3534,7 +3594,10 @@ export default function CoursesPage() {
                                 const unitType = (document.getElementById('bulkUnitType') as HTMLSelectElement)?.value || 'Core';
                                 const lines = bulkPasteText.trim().split('\n').filter(line => line.trim());
                                 const isCdaccOncePerStage = selectedCourseType === 'CDACC' && courseFormData.cdacc_payment_mode === 'once_per_stage';
-                                const semesterIndex = isCdaccOncePerStage ? 0 : selectedSemester;
+                                const isModuleLevel = courseFormData.unit_assignment_mode === 'module_level';
+                                // For module-level or once_per_stage: use semester 0 (shared)
+                                // For per-semester: use selected semester
+                                const semesterIndex = (isCdaccOncePerStage || isModuleLevel) ? 0 : selectedSemester;
 
                                 lines.forEach(line => {
                                   // Parse format: "201 - TYPEWRITING" or "201 -TYPEWRITING" or "201 TYPEWRITING"
@@ -3606,8 +3669,10 @@ export default function CoursesPage() {
                                 const unitType = (document.getElementById('unitType') as HTMLSelectElement)?.value;
                                 if (paperCode && subjectName) {
                                   const isCdaccOncePerStage = selectedCourseType === 'CDACC' && courseFormData.cdacc_payment_mode === 'once_per_stage';
-                                  // For KNEC, we use the current selected semester for display, but the unit applies to all
-                                  const semesterIndex = isCdaccOncePerStage ? 0 : selectedSemester;
+                                  const isModuleLevel = courseFormData.unit_assignment_mode === 'module_level';
+                                  // For module-level or once_per_stage: use semester 0 (shared)
+                                  // For per-semester: use selected semester
+                                  const semesterIndex = (isCdaccOncePerStage || isModuleLevel) ? 0 : selectedSemester;
                                   handleAddUnit(selectedModule, semesterIndex, { paper_code: paperCode, subject_name: subjectName, unit_type: unitType });
                                   (document.getElementById('paperCode') as HTMLInputElement).value = '';
                                   (document.getElementById('subjectName') as HTMLInputElement).value = '';
