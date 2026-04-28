@@ -127,6 +127,27 @@ export default function StudentsPage() {
     }
   };
 
+  const handleDeleteStudent = async (studentId: string, studentName: string) => {
+    if (!confirm(`Are you sure you want to delete student "${studentName}"? This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from('applications')
+        .delete()
+        .eq('id', studentId);
+
+      if (error) {
+        setError('Failed to delete student: ' + error.message);
+      } else {
+        setError('Student deleted successfully!');
+        await loadStudents(campus);
+      }
+    } catch (err) {
+      setError('Failed to delete student');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950 flex items-center justify-center">
@@ -190,15 +211,23 @@ export default function StudentsPage() {
                           <h3 className="text-white font-semibold text-sm">{student.full_name}</h3>
                           <p className="text-purple-300 text-xs font-mono">{student.admission_number}</p>
                         </div>
-                        <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${
-                          student.status === 'enrolled' 
-                            ? 'bg-green-500/20 border-green-500/50 text-green-400'
-                            : student.status === 'pending'
-                            ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400'
-                            : 'bg-red-500/20 border-red-500/50 text-red-400'
-                        }`}>
-                          {student.status.charAt(0).toUpperCase() + student.status.slice(1)}
-                        </span>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleDeleteStudent(student.id, student.full_name)}
+                            className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-semibold"
+                          >
+                            Delete
+                          </button>
+                          <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${
+                            student.status === 'enrolled' 
+                              ? 'bg-green-500/20 border-green-500/50 text-green-400'
+                              : student.status === 'pending'
+                              ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400'
+                              : 'bg-red-500/20 border-red-500/50 text-red-400'
+                          }`}>
+                            {student.status.charAt(0).toUpperCase() + student.status.slice(1)}
+                          </span>
+                        </div>
                       </div>
                       <div className="space-y-2 text-xs">
                         <div className="flex justify-between">
@@ -249,6 +278,7 @@ export default function StudentsPage() {
                         <th className="text-left py-3 px-4 text-white font-semibold text-sm">Semester</th>
                         <th className="text-left py-3 px-4 text-white font-semibold text-sm">Class</th>
                         <th className="text-left py-3 px-4 text-white font-semibold text-sm">Status</th>
+                        <th className="text-left py-3 px-4 text-white font-semibold text-sm">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -273,6 +303,14 @@ export default function StudentsPage() {
                             }`}>
                               {student.status.charAt(0).toUpperCase() + student.status.slice(1)}
                             </span>
+                          </td>
+                          <td className="py-4 px-4">
+                            <button
+                              onClick={() => handleDeleteStudent(student.id, student.full_name)}
+                              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-semibold transition-colors"
+                            >
+                              Delete
+                            </button>
                           </td>
                         </tr>
                       ))}

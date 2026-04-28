@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
-type LevelKey = 'diploma' | 'certificate' | 'artisan' | 'level6' | 'level5' | 'level4';
+type LevelKey = 'diploma' | 'certificate' | 'artisan' | 'craft' | 'level6' | 'level5' | 'level4';
 type StudyMode = 'module' | 'short-course';
 
 interface SemesterConfig {
@@ -77,6 +77,7 @@ const LEVEL_MODULE_INDEX_MAP: Record<LevelKey, number> = {
   diploma: -1,
   certificate: -2,
   artisan: -3,
+  craft: -4,
   level6: -4,
   level5: -5,
   level4: -6
@@ -100,6 +101,7 @@ const getInitialFormData = () => ({
     diploma: emptyCourseType(),
     certificate: emptyCourseType(),
     artisan: emptyCourseType(),
+    craft: emptyCourseType(),
     level6: emptyCourseType(),
     level5: emptyCourseType(),
     level4: emptyCourseType()
@@ -225,6 +227,7 @@ export default function CoursesPage() {
     diploma: filteredCourses.filter((c: any) => c.course_types?.some((ct: any) => ct.enabled && ct.level === 'diploma')).length,
     certificate: filteredCourses.filter((c: any) => c.course_types?.some((ct: any) => ct.enabled && ct.level === 'certificate')).length,
     artisan: filteredCourses.filter((c: any) => c.course_types?.some((ct: any) => ct.enabled && ct.level === 'artisan')).length,
+    craft: filteredCourses.filter((c: any) => c.course_types?.some((ct: any) => ct.enabled && ct.level === 'craft')).length,
     level6: filteredCourses.filter((c: any) => c.course_types?.some((ct: any) => ct.enabled && ct.level === 'level6')).length,
     level5: filteredCourses.filter((c: any) => c.course_types?.some((ct: any) => ct.enabled && ct.level === 'level5')).length,
     level4: filteredCourses.filter((c: any) => c.course_types?.some((ct: any) => ct.enabled && ct.level === 'level4')).length,
@@ -241,10 +244,10 @@ export default function CoursesPage() {
       diploma: { bg: 'bg-blue-500/20', text: 'text-blue-300', border: 'border-blue-500/30' },
       certificate: { bg: 'bg-green-500/20', text: 'text-green-300', border: 'border-green-500/30' },
       artisan: { bg: 'bg-amber-500/20', text: 'text-amber-300', border: 'border-amber-500/30' },
+      craft: { bg: 'bg-teal-500/20', text: 'text-teal-300', border: 'border-teal-500/30' },
       level6: { bg: 'bg-purple-500/20', text: 'text-purple-300', border: 'border-purple-500/30' },
-      level5: { bg: 'bg-purple-500/20', text: 'text-purple-300', border: 'border-purple-500/30' },
-      level4: { bg: 'bg-purple-500/20', text: 'text-purple-300', border: 'border-purple-500/30' },
-      'short-course': { bg: 'bg-pink-500/20', text: 'text-pink-300', border: 'border-pink-500/30' },
+      level5: { bg: 'bg-blue-500/20', text: 'text-blue-300', border: 'border-blue-500/30' },
+      level4: { bg: 'bg-green-500/20', text: 'text-green-300', border: 'border-green-500/30' },
     };
     return colors[level] || colors.diploma;
   };
@@ -254,6 +257,7 @@ export default function CoursesPage() {
       diploma: 'Diploma',
       certificate: 'Certificate',
       artisan: 'Artisan',
+      craft: 'Craft',
       level6: 'Higher Diploma',
       level5: 'Diploma',
       level4: 'Certificate',
@@ -648,16 +652,18 @@ export default function CoursesPage() {
         const levelName = selectedLevel?.name?.toLowerCase() || 'diploma';
         
         // Map qualification level names to course_types.level allowed values
-        const levelMap: Record<string, string> = {
+        const levelMap: Record<string, LevelKey> = {
           'diploma': 'diploma',
           'certificate': 'certificate',
           'artisan': 'artisan',
+          'craft': 'craft',
           'artisan certificate': 'artisan',
-          'level 6': 'level6',
-          'level 5': 'level5',
-          'level 4': 'level4',
-          'level 3': 'level3',
+          'craft certificate': 'craft',
           'higher diploma': 'level6',
+          'diploma in': 'diploma',
+          'certificate in': 'certificate',
+          'artisan in': 'artisan',
+          'craft in': 'craft',
         };
         
         const mappedLevel = levelMap[levelName] || 'diploma';
@@ -844,7 +850,8 @@ export default function CoursesPage() {
         // ===== STEP 2: Save Course Type =====
         const level = courseFormData.qualification_level_id === '3998928f-5571-46f3-8116-1bdde4c46995' ? 'diploma' :
                      courseFormData.qualification_level_id === 'certificate' ? 'certificate' :
-                     courseFormData.qualification_level_id === 'artisan' ? 'artisan' : 'diploma';
+                     courseFormData.qualification_level_id === 'artisan' ? 'artisan' :
+                     courseFormData.qualification_level_id === 'craft' ? 'craft' : 'diploma';
 
         const { data: courseTypeData, error: courseTypeError } = await supabase.from('course_types').upsert([{
           course_id: courseId,
@@ -1383,6 +1390,7 @@ export default function CoursesPage() {
       diploma: emptyCourseType(),
       certificate: emptyCourseType(),
       artisan: emptyCourseType(),
+      craft: emptyCourseType(),
       level6: emptyCourseType(),
       level5: emptyCourseType(),
       level4: emptyCourseType()
@@ -1630,10 +1638,61 @@ export default function CoursesPage() {
   };
 
   const handleDeleteCourse = async (courseId: string) => {
-    if (!confirm('Are you sure you want to delete this course? This will affect both campuses.')) {
-      return;
-    }
     try {
+      // Check if there are any applications linked to this course
+      const { data: applications, error: appError } = await supabase
+        .from('applications')
+        .select('id')
+        .eq('course_id', courseId);
+
+      if (appError) throw appError;
+
+      if (applications && applications.length > 0) {
+        setError(`Cannot delete course: ${applications.length} student application(s) are enrolled in this course. Please reassign or delete the applications first.`);
+        return;
+      }
+
+      if (!confirm('Are you sure you want to delete this course? This will delete all related modules, semesters, and units. This action cannot be undone.')) {
+        return;
+      }
+
+      // First, get all course types for this course
+      const { data: courseTypes, error: ctError } = await supabase
+        .from('course_types')
+        .select('id')
+        .eq('course_id', courseId);
+
+      if (ctError) throw ctError;
+
+      if (courseTypes && courseTypes.length > 0) {
+        // For each course type, delete related data
+        for (const ct of courseTypes) {
+          // Get modules for this course type
+          const { data: modules, error: modError } = await supabase
+            .from('modules')
+            .select('id')
+            .eq('course_type_id', ct.id);
+
+          if (modError) throw modError;
+
+          if (modules && modules.length > 0) {
+            const modIds = modules.map((m: any) => m.id);
+
+            // Delete semesters first (due to foreign key constraint)
+            await supabase.from('semesters').delete().in('module_id', modIds);
+            // Delete modules
+            await supabase.from('modules').delete().in('id', modIds);
+          }
+
+          // Delete units for this course type
+          await supabase.from('units').delete().eq('course_type_id', ct.id);
+        }
+
+        // Delete course types
+        await supabase.from('course_types').delete().eq('course_id', courseId);
+      }
+
+      // Finally, delete the course
       const { error } = await supabase.from('courses').delete().eq('id', courseId);
       if (error) {
         setError(`Failed to delete course: ${error.message}`);
@@ -1641,8 +1700,8 @@ export default function CoursesPage() {
         await loadCourses();
         setError('Course deleted successfully!');
       }
-    } catch (err) {
-      setError('Failed to delete course. Please try again.');
+    } catch (err: any) {
+      setError(`Failed to delete course: ${err.message}`);
     }
   };
 
@@ -2516,20 +2575,37 @@ export default function CoursesPage() {
                 <p className="text-purple-200 text-sm">View and manage all campus courses</p>
               </div>
             </div>
-            <button
-              onClick={() => {
-                if (!editingCourse) {
-                  resetWizard();
-                  setFormData(getInitialFormData());
-                }
-                setViewMode('add');
-                setEditingCourse(null);
-              }}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition-colors"
-            >
-              <span className="hidden sm:inline">+ Add New Course</span>
-              <span className="sm:hidden">+ Add</span>
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  viewMode === 'list'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
+                }`}
+              >
+                <span className="hidden sm:inline">View Courses</span>
+                <span className="sm:hidden">View</span>
+              </button>
+              <button
+                onClick={() => {
+                  if (!editingCourse) {
+                    resetWizard();
+                    setFormData(getInitialFormData());
+                  }
+                  setViewMode('add');
+                  setEditingCourse(null);
+                }}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  viewMode === 'add'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
+                }`}
+              >
+                <span className="hidden sm:inline">+ Add New Course</span>
+                <span className="sm:hidden">+ Add</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -2613,6 +2689,7 @@ export default function CoursesPage() {
                         { value: 'diploma', label: 'Diploma' },
                         { value: 'certificate', label: 'Certificate' },
                         { value: 'artisan', label: 'Artisan' },
+                        { value: 'craft', label: 'Craft' },
                         { value: 'level6', label: 'Higher Diploma' },
                       ].map((filter) => (
                         <button
