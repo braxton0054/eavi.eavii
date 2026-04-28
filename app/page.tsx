@@ -11,29 +11,40 @@ export default function LandingPage() {
     <div className="min-h-screen bg-white font-sans text-gray-900">
       {/* Top Navigation Bar */}
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Image src="/logo.webp" alt="EAVI Logo" width={60} height={60} className="object-contain" />
-            <div className="hidden sm:block">
-              <span className="font-bold text-purple-900 text-2xl block">East Africa Vision Institute</span>
-              <span className="text-green-600 text-xs font-semibold">Accredited · TVETA Registered</span>
+        <div className="max-w-7xl mx-auto px-4">
+          {/* Top Bar - Logo & Accredited Badge */}
+          <div className="flex items-center justify-between py-3 border-b border-gray-100">
+            <div className="flex items-center gap-3">
+              <Image src="/logo.webp" alt="EAVI Logo" width={50} height={50} className="object-contain" />
+              <div className="hidden sm:block">
+                <span className="font-bold text-purple-900 text-xl block leading-tight">East Africa Vision Institute</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="bg-green-100 text-green-700 text-xs font-semibold px-3 py-1.5 rounded-full border border-green-200">
+                Accredited · TVETA Registered
+              </span>
             </div>
           </div>
           
-          {/* Main Navigation */}
-          <div className="hidden lg:flex items-center gap-6">
-            <Link href="/" className="text-gray-700 hover:text-purple-700 font-medium transition-colors">Home</Link>
-            <Link href="/courses" className="text-gray-700 hover:text-purple-700 font-medium transition-colors">Departments</Link>
-            <Link href="/downloads" className="text-gray-700 hover:text-purple-700 font-medium transition-colors">Downloads</Link>
-            <Link href="/contact" className="text-gray-700 hover:text-purple-700 font-medium transition-colors">Contact Us</Link>
-            <Link href="/campuses" className="text-gray-700 hover:text-purple-700 font-medium transition-colors">Campuses</Link>
-            <Link href="/gallery" className="text-gray-700 hover:text-purple-700 font-medium transition-colors">Gallery</Link>
-          </div>
+          {/* Main Navigation Bar */}
+          <div className="flex items-center justify-between py-3">
+            {/* Left Navigation */}
+            <div className="hidden lg:flex items-center gap-8">
+              <Link href="/" className="text-gray-700 hover:text-purple-700 font-semibold transition-colors text-sm">Home</Link>
+              <Link href="/courses" className="text-gray-700 hover:text-purple-700 font-semibold transition-colors text-sm">Departments</Link>
+              <Link href="/downloads" className="text-gray-700 hover:text-purple-700 font-semibold transition-colors text-sm">Downloads</Link>
+              <Link href="/contact" className="text-gray-700 hover:text-purple-700 font-semibold transition-colors text-sm">Contact Us</Link>
+              <Link href="/campuses" className="text-gray-700 hover:text-purple-700 font-semibold transition-colors text-sm">Campuses</Link>
+              <Link href="/gallery" className="text-gray-700 hover:text-purple-700 font-semibold transition-colors text-sm">Gallery</Link>
+            </div>
 
-          <div className="flex items-center gap-3">
-            <Link href="/login/admin" className="hidden sm:block px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold transition-colors border border-gray-300">Admin</Link>
-            <Link href="/login/lecturer" className="hidden sm:block px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold transition-colors border border-gray-300">Lecturer</Link>
-            <Link href="/login/student" className="bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-purple-800 transition-colors">Student Login</Link>
+            {/* Right Login Buttons */}
+            <div className="flex items-center gap-2">
+              <Link href="/login/admin" className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs font-semibold transition-colors border border-gray-300">Admin</Link>
+              <Link href="/login/lecturer" className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs font-semibold transition-colors border border-gray-300">Lecturer</Link>
+              <Link href="/login/student" className="bg-purple-700 text-white px-4 py-1.5 rounded text-xs font-semibold hover:bg-purple-800 transition-colors">Student Login</Link>
+            </div>
           </div>
         </div>
       </nav>
