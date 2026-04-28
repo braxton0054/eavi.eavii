@@ -7,44 +7,68 @@ export default function LandingPage() {
       {/* Top Navigation Bar */}
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Image src="/logo.webp" alt="EAVI Logo" width={40} height={40} className="object-contain" />
-            <span className="font-bold text-purple-900 text-lg hidden sm:block">EAVI</span>
+          <div className="flex items-center gap-3">
+            <Image src="/logo.webp" alt="EAVI Logo" width={60} height={60} className="object-contain" />
+            <span className="font-bold text-purple-900 text-2xl hidden sm:block">East Africa Vision Institute</span>
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/login/admin" className="text-sm font-medium text-gray-700 hover:text-purple-700 transition-colors">Admin</Link>
-            <Link href="/login/lecturer" className="text-sm font-medium text-gray-700 hover:text-purple-700 transition-colors">Lecturer</Link>
+            <Link href="/login/admin" className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold transition-colors border border-gray-300">Admin</Link>
+            <Link href="/login/lecturer" className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold transition-colors border border-gray-300">Lecturer</Link>
             <Link href="/login/student" className="bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-purple-800 transition-colors">Student Login</Link>
           </div>
         </div>
       </nav>
 
-      {/* Hero Section with Campus Image */}
-      <header className="relative min-h-[600px] flex items-center">
-        <div className="absolute inset-0">
-          <Image 
-            src="/hero background.webp" 
-            alt="EAVI Campus" 
-            fill 
-            className="object-cover"
-            priority
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-900/90 via-purple-800/70 to-transparent" />
+      {/* Hero Section - Clean Design without Background Image */}
+      <header className="relative min-h-[600px] flex items-center bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950">
+        {/* Animated Background Elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-indigo-600/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 w-72 h-72 bg-purple-500/15 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
         </div>
-        <div className="relative max-w-7xl mx-auto px-4 py-20 w-full">
+
+        <div className="relative z-10 max-w-7xl mx-auto px-4 py-20 w-full">
           <div className="max-w-2xl">
-            <span className="inline-block bg-green-600 text-white text-xs font-semibold px-3 py-1 rounded-full mb-4">Accredited · TVETA Registered</span>
-            <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 leading-tight">
+            <span className="inline-block bg-green-600 text-white text-sm font-semibold px-4 py-1.5 rounded-full mb-6">Accredited · TVETA Registered</span>
+            <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
               East Africa Vision Institute
             </h1>
-            <p className="text-xl text-purple-100 mb-8">
+            <p className="text-2xl text-purple-100 mb-10">
               Your Gateway to Quality Technical & Vocational Education in Eldoret
             </p>
             <div className="flex flex-wrap gap-4">
-              <Link href="/apply" className="bg-green-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-green-700 transition-colors shadow-lg">
+              <Link href="/apply" className="bg-green-600 text-white px-10 py-5 rounded-xl text-xl font-bold hover:bg-green-700 transition-colors shadow-xl hover:shadow-2xl transform hover:scale-105">
                 Apply Now
               </Link>
-              <Link href="/login/student" className="bg-white text-purple-900 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition-colors shadow-lg">
+              <div className="relative group">
+                <button className="bg-purple-600 text-white px-8 py-5 rounded-xl text-lg font-semibold hover:bg-purple-700 transition-colors shadow-xl hover:shadow-2xl flex items-center gap-2">
+                  Courses
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <div className="absolute top-full left-0 mt-2 w-72 bg-white rounded-xl shadow-2xl overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                  <div className="p-4 space-y-3">
+                    <div className="bg-purple-50 rounded-lg p-3">
+                      <h3 className="font-bold text-purple-900">KNEC Courses</h3>
+                      <p className="text-sm text-gray-600">Minimum Grade: C- (minus)</p>
+                    </div>
+                    <div className="bg-purple-50 rounded-lg p-3">
+                      <h3 className="font-bold text-purple-900">JP Courses</h3>
+                      <p className="text-sm text-gray-600">Minimum Grade: D (plain)</p>
+                    </div>
+                    <div className="bg-purple-50 rounded-lg p-3">
+                      <h3 className="font-bold text-purple-900">Short Courses</h3>
+                      <p className="text-sm text-gray-600">Open to all - No minimum grade</p>
+                    </div>
+                    <Link href="/courses" className="block text-center py-2 text-purple-600 font-semibold hover:bg-purple-50 rounded-lg transition-colors">
+                      View All Courses →
+                    </Link>
+                  </div>
+                </div>
+              </div>
+              <Link href="/login/student" className="bg-white/10 backdrop-blur-md border border-white/30 hover:border-purple-400 text-white px-8 py-5 rounded-xl text-lg font-semibold hover:bg-white/20 transition-colors shadow-lg flex items-center">
                 Student Portal
               </Link>
             </div>

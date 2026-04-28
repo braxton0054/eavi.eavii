@@ -6,7 +6,6 @@ import Link from 'next/link';
 
 export default function LoadingScreen() {
   const [mounted, setMounted] = useState(false);
-  const [galleryExpanded, setGalleryExpanded] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -211,57 +210,6 @@ export default function LoadingScreen() {
               </svg>
               Download Form
             </a>
-          </div>
-        </div>
-
-        {/* Image Gallery */}
-        <div className={`mb-16 transition-all duration-1000 delay-600 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-          <div className="text-center mb-8">
-            <h2 className="text-white font-bold text-2xl md:text-3xl mb-2">Campus Gallery</h2>
-            <p className="text-purple-200 text-sm">Explore our modern facilities and vibrant campus life</p>
-          </div>
-          <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-3 md:gap-4 space-y-3 md:space-y-4">
-            {(galleryExpanded ? [
-              'BK-4.jpg', 'BK-7.jpg', 'BK-9.jpg', 'BK-10.jpg', 'BK-11.jpg', 'BK-17.jpg',
-              'BK-18.jpg', 'BK-22.jpg', 'BK-23.jpg', 'BK-24.jpg', 'BK-34.jpg',
-              'IMG-20250902-WA0014.jpg', 'IMG-20251018-WA0061.jpg', 'IMG-20251025-WA0001.jpg',
-              'IMG-20251025-WA0007.jpg', 'IMG-20251025-WA0008.jpg', 'IMG-20251028-WA0010.jpg',
-              'IMG-20251028-WA0016.jpg', 'IMG-20251028-WA0017.jpg', 'IMG-20251030-WA0000.jpg',
-              'IMG-20251030-WA0005.jpg', 'IMG-20251030-WA0006.jpg', 'IMG-20251030-WA0007.jpg',
-              'IMG-20251030-WA0008.jpg', 'IMG-20251030-WA0010.jpg', 'IMG-20260206-WA0124.jpg',
-              'IMG-20260323-WA0006.jpg', 'IMG-20260324-WA0007.jpg', 'IMG-20260326-WA0099.jpg',
-              'IMG-20260326-WA0104.jpg', 'IMG-20260326-WA0106.jpg', 'IMG-20260326-WA0108.jpg',
-              'IMG-20260329-WA0069.jpg', 'IMG-20260329-WA0071.jpg'
-            ] : [
-              'BK-4.jpg', 'BK-7.jpg', 'BK-9.jpg', 'BK-10.jpg', 'BK-11.jpg', 'BK-17.jpg',
-              'BK-18.jpg', 'BK-22.jpg'
-            ]).map((img) => (
-              <Link key={img} href="/apply" className="relative break-inside-avoid group block">
-                <div className="relative rounded-xl overflow-hidden bg-white/5 border border-white/10 shadow-lg hover:shadow-2xl hover:shadow-purple-600/30 transition-all duration-300 hover:border-purple-400/50 cursor-pointer">
-                  <div className="relative aspect-[4/3] md:aspect-[3/4]">
-                    <Image
-                      src={`/${img}`}
-                      alt="Campus"
-                      fill
-                      className="object-cover transition-transform duration-500 group-hover:scale-110"
-                    />
-                  </div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-purple-900/90 via-purple-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end">
-                    <div className="p-4 translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-                      <p className="text-white text-sm font-semibold">Click to Apply</p>
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-          <div className="text-center mt-8">
-            <button
-              onClick={() => setGalleryExpanded(!galleryExpanded)}
-              className="px-6 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/30 hover:border-purple-400 text-white rounded-lg transition-all duration-300 text-sm font-semibold hover:shadow-lg"
-            >
-              {galleryExpanded ? 'Show Less' : 'View Full Gallery'}
-            </button>
           </div>
         </div>
 
