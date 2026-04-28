@@ -149,8 +149,14 @@ export default function ApplicationsPage() {
         .order('application_date', { ascending: false });
 
       // Filter by campus to show only this campus's applications
+      // Handle both 'main'/'west' and 'Main Campus'/'West Campus' formats
       if (campusCode && campusCode !== 'all') {
-        query = query.eq('campus', campusCode);
+        const campusVariants = [
+          campusCode,
+          campusCode === 'main' ? 'Main Campus' : campusCode === 'west' ? 'West Campus' : campusCode,
+          campusCode === 'Main Campus' ? 'main' : campusCode === 'West Campus' ? 'west' : campusCode
+        ];
+        query = query.in('campus', campusVariants);
       }
 
       const { data, error } = await query;

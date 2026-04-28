@@ -76,12 +76,17 @@ export default function StudentsPage() {
       let query = supabase
         .from('applications')
         .select('*, courses(name), course_types(level)')
-        .eq('status', 'enrolled')
         .order('application_date', { ascending: false });
 
       // Filter by campus to show only this campus's students
+      // Handle both 'main'/'west' and 'Main Campus'/'West Campus' formats
       if (campusCode && campusCode !== 'all') {
-        query = query.eq('campus', campusCode);
+        const campusVariants = [
+          campusCode,
+          campusCode === 'main' ? 'Main Campus' : campusCode === 'west' ? 'West Campus' : campusCode,
+          campusCode === 'Main Campus' ? 'main' : campusCode === 'West Campus' ? 'west' : campusCode
+        ];
+        query = query.in('campus', campusVariants);
       }
 
       const { data, error } = await query;
@@ -112,11 +117,13 @@ export default function StudentsPage() {
   const getCampusName = (campusCode: string) => {
     switch (campusCode) {
       case 'main':
+      case 'Main Campus':
         return 'Main Campus';
       case 'west':
+      case 'West Campus':
         return 'West Campus';
       default:
-        return 'Unknown Campus';
+        return campusCode || 'Unknown Campus';
     }
   };
 
@@ -173,44 +180,106 @@ export default function StudentsPage() {
                 <p className="text-purple-200">No enrolled students found.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-white/20">
-                      <th className="text-left py-3 px-4 text-white font-semibold text-sm">Name</th>
-                      <th className="text-left py-3 px-4 text-white font-semibold text-sm">Admission No.</th>
-                      <th className="text-left py-3 px-4 text-white font-semibold text-sm">Phone</th>
-                      <th className="text-left py-3 px-4 text-white font-semibold text-sm">Email</th>
-                      <th className="text-left py-3 px-4 text-white font-semibold text-sm">KCSE Grade</th>
-                      <th className="text-left py-3 px-4 text-white font-semibold text-sm">Course</th>
-                      <th className="text-left py-3 px-4 text-white font-semibold text-sm">Type</th>
-                      <th className="text-left py-3 px-4 text-white font-semibold text-sm">Semester</th>
-                      <th className="text-left py-3 px-4 text-white font-semibold text-sm">Class</th>
-                      <th className="text-left py-3 px-4 text-white font-semibold text-sm">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {students.map((student) => (
-                      <tr key={student.id} className="border-b border-white/10 hover:bg-white/5">
-                        <td className="py-4 px-4 text-white text-sm">{student.full_name}</td>
-                        <td className="py-4 px-4 text-white text-sm font-mono">{student.admission_number}</td>
-                        <td className="py-4 px-4 text-white text-sm">{student.phone}</td>
-                        <td className="py-4 px-4 text-white text-sm">{student.email || '-'}</td>
-                        <td className="py-4 px-4 text-white text-sm">{student.kcse_grade}</td>
-                        <td className="py-4 px-4 text-white text-sm">{student.course}</td>
-                        <td className="py-4 px-4 text-white text-sm capitalize">{student.course_type || '-'}</td>
-                        <td className="py-4 px-4 text-white text-sm">{student.current_semester || '-'}</td>
-                        <td className="py-4 px-4 text-white text-sm">{student.class_name || '-'}</td>
-                        <td className="py-4 px-4">
-                          <span className="px-3 py-1 rounded-full text-xs font-semibold border bg-green-500/20 border-green-500/50 text-green-400">
-                            {student.status.charAt(0).toUpperCase() + student.status.slice(1)}
-                          </span>
-                        </td>
+              <>
+                {/* Mobile Card Layout */}
+                <div className="md:hidden space-y-4">
+                  {students.map((student) => (
+                    <div key={student.id} className="bg-white/5 rounded-lg p-4 border border-white/10">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h3 className="text-white font-semibold text-sm">{student.full_name}</h3>
+                          <p className="text-purple-300 text-xs font-mono">{student.admission_number}</p>
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${
+                          student.status === 'enrolled' 
+                            ? 'bg-green-500/20 border-green-500/50 text-green-400'
+                            : student.status === 'pending'
+                            ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400'
+                            : 'bg-red-500/20 border-red-500/50 text-red-400'
+                        }`}>
+                          {student.status.charAt(0).toUpperCase() + student.status.slice(1)}
+                        </span>
+                      </div>
+                      <div className="space-y-2 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-purple-300">Phone:</span>
+                          <span className="text-white">{student.phone}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-purple-300">Email:</span>
+                          <span className="text-white truncate ml-2">{student.email || '-'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-purple-300">KCSE Grade:</span>
+                          <span className="text-white">{student.kcse_grade}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-purple-300">Course:</span>
+                          <span className="text-white text-right">{student.course}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-purple-300">Type:</span>
+                          <span className="text-white capitalize">{student.course_type || '-'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-purple-300">Semester:</span>
+                          <span className="text-white">{student.current_semester || '-'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-purple-300">Class:</span>
+                          <span className="text-white">{student.class_name || '-'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop Table Layout */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-white/20">
+                        <th className="text-left py-3 px-4 text-white font-semibold text-sm">Name</th>
+                        <th className="text-left py-3 px-4 text-white font-semibold text-sm">Admission No.</th>
+                        <th className="text-left py-3 px-4 text-white font-semibold text-sm">Phone</th>
+                        <th className="text-left py-3 px-4 text-white font-semibold text-sm">Email</th>
+                        <th className="text-left py-3 px-4 text-white font-semibold text-sm">KCSE Grade</th>
+                        <th className="text-left py-3 px-4 text-white font-semibold text-sm">Course</th>
+                        <th className="text-left py-3 px-4 text-white font-semibold text-sm">Type</th>
+                        <th className="text-left py-3 px-4 text-white font-semibold text-sm">Semester</th>
+                        <th className="text-left py-3 px-4 text-white font-semibold text-sm">Class</th>
+                        <th className="text-left py-3 px-4 text-white font-semibold text-sm">Status</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {students.map((student) => (
+                        <tr key={student.id} className="border-b border-white/10 hover:bg-white/5">
+                          <td className="py-4 px-4 text-white text-sm">{student.full_name}</td>
+                          <td className="py-4 px-4 text-white text-sm font-mono">{student.admission_number}</td>
+                          <td className="py-4 px-4 text-white text-sm">{student.phone}</td>
+                          <td className="py-4 px-4 text-white text-sm">{student.email || '-'}</td>
+                          <td className="py-4 px-4 text-white text-sm">{student.kcse_grade}</td>
+                          <td className="py-4 px-4 text-white text-sm">{student.course}</td>
+                          <td className="py-4 px-4 text-white text-sm capitalize">{student.course_type || '-'}</td>
+                          <td className="py-4 px-4 text-white text-sm">{student.current_semester || '-'}</td>
+                          <td className="py-4 px-4 text-white text-sm">{student.class_name || '-'}</td>
+                          <td className="py-4 px-4">
+                            <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${
+                              student.status === 'enrolled' 
+                                ? 'bg-green-500/20 border-green-500/50 text-green-400'
+                                : student.status === 'pending'
+                                ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400'
+                                : 'bg-red-500/20 border-red-500/50 text-red-400'
+                            }`}>
+                              {student.status.charAt(0).toUpperCase() + student.status.slice(1)}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
         </div>

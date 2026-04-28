@@ -142,14 +142,6 @@ export default function LecturerDashboard() {
                   name
                 )
               )
-            ),
-            short_course_config (
-              fee,
-              payment_type,
-              number_of_months,
-              monthly_fees,
-              practical_fee,
-              has_exams
             )
           )
         `);
@@ -168,26 +160,36 @@ export default function LecturerDashboard() {
   }, [supabase, router]);
 
   const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      router.push('/login/lecturer');
-      return;
-    }
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/login/lecturer');
+        setLoading(false);
+        return;
+      }
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push('/login/lecturer');
+        setLoading(false);
+        return;
+      }
+
       const userMetadata = user.user_metadata;
       if (userMetadata?.role !== 'lecturer') {
         router.push('/login/lecturer');
+        setLoading(false);
         return;
       }
-      setLecturerInfo(userMetadata);
+      
+      // Store lecturer info with user id
+      setLecturerInfo({ ...userMetadata, id: user.id });
       
       // Check if lecturer has any assignments
       const { data: assignmentsData } = await supabase
         .from('lecturer_assignments')
         .select('*')
-        .eq('lecturer_id', lecturerInfo.id);
+        .eq('lecturer_id', user.id);
       
       if (assignmentsData && assignmentsData.length > 0) {
         setAssignments(assignmentsData);
@@ -196,8 +198,12 @@ export default function LecturerDashboard() {
         setShowSetup(true);
         setViewMode('setup');
       }
+    } catch (err) {
+      console.error('Auth check error:', err);
+      router.push('/login/lecturer');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleSetupSubmit = async (e: React.FormEvent) => {
@@ -211,7 +217,7 @@ export default function LecturerDashboard() {
       
       // Save lecturer assignment
       const { error } = await supabase.from('lecturer_assignments').insert([{
-        lecturer_id: lecturerInfo.id,
+        lecturer_id: lecturerInfo?.id,
         campus: setupData.campus,
         course_id: setupData.course,
         units: unitCodes
@@ -227,7 +233,7 @@ export default function LecturerDashboard() {
       const { data: assignmentsData } = await supabase
         .from('lecturer_assignments')
         .select('*')
-        .eq('lecturer_id', lecturerInfo.id);
+        .eq('lecturer_id', lecturerInfo?.id);
       
       if (assignmentsData) {
         setAssignments(assignmentsData);
