@@ -68,27 +68,40 @@ export default function StudentDashboard() {
   }, [supabase, router]);
 
   const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      router.push('/login/student');
-      return;
-    }
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/login/student');
+        setLoading(false);
+        return;
+      }
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push('/login/student');
+        setLoading(false);
+        return;
+      }
+
       const userMetadata = user.user_metadata;
       if (userMetadata?.role !== 'student') {
         router.push('/login/student');
+        setLoading(false);
         return;
       }
-      
+
       const admissionNumber = userMetadata.admission_number;
       if (admissionNumber) {
-        loadStudentInfo(admissionNumber);
-        loadExamMarks(admissionNumber);
-        loadCourses();
-        loadPayments(admissionNumber);
+        await loadStudentInfo(admissionNumber);
+        await loadExamMarks(admissionNumber);
+        await loadCourses();
+        await loadPayments(admissionNumber);
       }
+    } catch (err) {
+      console.error('Auth check error:', err);
+      router.push('/login/student');
+    } finally {
+      setLoading(false);
     }
   };
 

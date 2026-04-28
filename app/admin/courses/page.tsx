@@ -2473,20 +2473,6 @@ export default function CoursesPage() {
     }
   };
 
-  // Navigation items for sidebar
-  const navItems = [
-    { label: 'Dashboard', href: '/admin/dashboard', active: false },
-    { label: 'Courses', href: '/admin/courses', active: true },
-    { label: 'Students', href: '/admin/students', active: false },
-    { label: 'Staff', href: '/admin/lecturers', active: false },
-    { label: 'Exams', href: '/admin/exams', active: false },
-    { label: 'Reports', href: '/admin/reports', active: false },
-    { label: 'Settings', href: '/admin/settings', active: false },
-  ];
-
-  // Mobile menu state
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
   // Get course type color for card stripe
   const getCourseTypeColor = (level: string) => {
     const colors: Record<string, string> = {
@@ -2504,102 +2490,51 @@ export default function CoursesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen w-full bg-[#f4f6f9] flex items-center justify-center">
-        <div className="text-gray-600 text-xl">Loading...</div>
+      <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950 flex items-center justify-center">
+        <div className="text-white text-xl">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen w-full flex bg-[#f4f6f9]">
-      {/* Desktop Sidebar - Hidden on mobile */}
-      <aside className="hidden lg:flex w-[220px] min-h-screen bg-[#1a1d27] fixed left-0 top-0 flex-col">
-        {/* Logo */}
-        <div className="p-6 border-b border-white/10">
-          <div className="w-10 h-10 bg-[#7c3aed] rounded-lg flex items-center justify-center mb-3">
-            <span className="text-white font-bold text-lg">W</span>
+    <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950">
+      <div className="relative z-10 w-full">
+        {/* Header */}
+        <div className="bg-white/10 backdrop-blur-md border-b border-white/20">
+          <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Link href="/admin/dashboard" className="relative w-12 h-12">
+                <Image
+                  src="/logo.webp"
+                  alt="EAVI Logo"
+                  fill
+                  className="object-contain"
+                />
+              </Link>
+              <div>
+                <h1 className="text-xl md:text-2xl font-bold text-white">Course Management</h1>
+                <p className="text-purple-200 text-sm">View and manage all campus courses</p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                if (!editingCourse) {
+                  resetWizard();
+                  setFormData(getInitialFormData());
+                }
+                setViewMode('add');
+                setEditingCourse(null);
+              }}
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-semibold transition-colors"
+            >
+              <span className="hidden sm:inline">+ Add New Course</span>
+              <span className="sm:hidden">+ Add</span>
+            </button>
           </div>
-          <h2 className="text-white font-bold text-sm">West Campus</h2>
-          <p className="text-gray-400 text-xs">Management Portal</p>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 py-4">
-          {navItems.map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className={`flex items-center px-6 py-3 text-sm transition-colors ${
-                item.active
-                  ? 'bg-[#7c3aed] text-white font-bold'
-                  : 'text-[#9ca3af] hover:bg-white/5 hover:text-white'
-              }`}
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 lg:ml-[220px]">
-        {/* Top Bar - Mobile Responsive */}
-        <header className="bg-white border-b border-[#e5e7eb] px-4 lg:px-6 py-4 flex items-center justify-between sticky top-0 z-20">
-          {/* Mobile Menu Button */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-            <div>
-              <h1 className="text-lg lg:text-xl font-bold text-gray-900">Course Management</h1>
-              <p className="hidden sm:block text-gray-500 text-sm">View and manage all campus courses</p>
-            </div>
-          </div>
-          <button
-            onClick={() => {
-              if (!editingCourse) {
-                resetWizard();
-                setFormData(getInitialFormData());
-              }
-              setViewMode('add');
-              setEditingCourse(null);
-            }}
-            className="px-3 lg:px-4 py-2 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-lg text-sm font-semibold transition-colors whitespace-nowrap"
-          >
-            <span className="hidden sm:inline">+ Add New Course</span>
-            <span className="sm:hidden">+ Add</span>
-          </button>
-        </header>
-
-        {/* Mobile Menu Dropdown */}
-        {mobileMenuOpen && (
-          <div className="lg:hidden bg-[#1a1d27] border-b border-white/10">
-            <nav className="py-2">
-              {navItems.map((item) => (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center px-4 py-3 text-sm transition-colors ${
-                    item.active
-                      ? 'bg-[#7c3aed] text-white font-bold'
-                      : 'text-[#9ca3af] hover:bg-white/5 hover:text-white'
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
-          </div>
-        )}
-
         {/* Content Area */}
-        <div className="p-6">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-6">
           {error && (
             <div
               className={`mb-6 p-4 rounded-lg ${error.includes('successfully') ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
@@ -2614,49 +2549,49 @@ export default function CoursesPage() {
                 {/* 4 Stat Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {/* Total Courses */}
-                  <div className="bg-white rounded-xl border border-[#e5e7eb] overflow-hidden shadow-sm">
-                    <div className="h-[3px] bg-[#7c3aed]"></div>
+                  <div className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden">
+                    <div className="h-[3px] bg-purple-400"></div>
                     <div className="p-4">
-                      <p className="text-gray-500 text-xs uppercase tracking-wide">Total Courses</p>
-                      <p className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
-                      <p className="text-gray-400 text-xs mt-1">All programs combined</p>
+                      <p className="text-purple-200 text-xs uppercase tracking-wide">Total Courses</p>
+                      <p className="text-2xl font-bold text-white mt-1">{stats.total}</p>
+                      <p className="text-purple-300 text-xs mt-1">All programs combined</p>
                     </div>
                   </div>
                   {/* KNEC Courses */}
-                  <div className="bg-white rounded-xl border border-[#e5e7eb] overflow-hidden shadow-sm">
-                    <div className="h-[3px] bg-[#3b82f6]"></div>
+                  <div className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden">
+                    <div className="h-[3px] bg-blue-400"></div>
                     <div className="p-4">
-                      <p className="text-gray-500 text-xs uppercase tracking-wide">KNEC Courses</p>
-                      <p className="text-2xl font-bold text-gray-900 mt-1">{stats.knec}</p>
-                      <p className="text-gray-400 text-xs mt-1">Diploma & Certificate</p>
+                      <p className="text-purple-200 text-xs uppercase tracking-wide">KNEC Courses</p>
+                      <p className="text-2xl font-bold text-white mt-1">{stats.knec}</p>
+                      <p className="text-purple-300 text-xs mt-1">Diploma & Certificate</p>
                     </div>
                   </div>
                   {/* Artisan Programs */}
-                  <div className="bg-white rounded-xl border border-[#e5e7eb] overflow-hidden shadow-sm">
-                    <div className="h-[3px] bg-[#f59e0b]"></div>
+                  <div className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden">
+                    <div className="h-[3px] bg-amber-400"></div>
                     <div className="p-4">
-                      <p className="text-gray-500 text-xs uppercase tracking-wide">Artisan Programs</p>
-                      <p className="text-2xl font-bold text-gray-900 mt-1">{stats.artisan}</p>
-                      <p className="text-gray-400 text-xs mt-1">Vocational training</p>
+                      <p className="text-purple-200 text-xs uppercase tracking-wide">Artisan Programs</p>
+                      <p className="text-2xl font-bold text-white mt-1">{stats.artisan}</p>
+                      <p className="text-purple-300 text-xs mt-1">Vocational training</p>
                     </div>
                   </div>
                   {/* Diploma Programs */}
-                  <div className="bg-white rounded-xl border border-[#e5e7eb] overflow-hidden shadow-sm">
-                    <div className="h-[3px] bg-[#7c3aed]"></div>
+                  <div className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden">
+                    <div className="h-[3px] bg-purple-400"></div>
                     <div className="p-4">
-                      <p className="text-gray-500 text-xs uppercase tracking-wide">Diploma Programs</p>
-                      <p className="text-2xl font-bold text-gray-900 mt-1">{stats.diploma}</p>
-                      <p className="text-gray-400 text-xs mt-1">Professional courses</p>
+                      <p className="text-purple-200 text-xs uppercase tracking-wide">Diploma Programs</p>
+                      <p className="text-2xl font-bold text-white mt-1">{stats.diploma}</p>
+                      <p className="text-purple-300 text-xs mt-1">Professional courses</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Search & Filter Toolbar */}
-                <div className="bg-white rounded-xl border border-[#e5e7eb] p-4 shadow-sm">
+                <div className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 p-4">
                   <div className="flex flex-col lg:flex-row gap-4">
                     {/* Search Input */}
                     <div className="flex-1 relative">
-                      <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                       </svg>
                       <input
@@ -2664,15 +2599,15 @@ export default function CoursesPage() {
                         placeholder="Search by course name, ID, or department..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 bg-[#f9fafb] border border-[#e5e7eb] rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#7c3aed] focus:border-transparent"
+                        className="w-full pl-10 pr-4 py-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                       />
                     </div>
 
-                    <div className="h-px lg:h-8 lg:w-px bg-[#e5e7eb]"></div>
+                    <div className="h-px lg:h-8 lg:w-px bg-white/20"></div>
 
                     {/* Course Type Filters */}
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-gray-500 text-sm whitespace-nowrap">Course Type:</span>
+                      <span className="text-purple-200 text-sm whitespace-nowrap">Course Type:</span>
                       {[
                         { value: 'all', label: 'All' },
                         { value: 'diploma', label: 'Diploma' },
@@ -2685,8 +2620,8 @@ export default function CoursesPage() {
                           onClick={() => setLevelFilter(filter.value)}
                           className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
                             levelFilter === filter.value
-                              ? 'bg-[#7c3aed] text-white'
-                              : 'border border-[#e5e7eb] text-gray-600 hover:border-[#7c3aed] hover:text-[#7c3aed]'
+                              ? 'bg-purple-600 text-white'
+                              : 'border border-white/20 text-purple-200 hover:border-purple-400 hover:text-white'
                           }`}
                         >
                           {filter.label}
@@ -2696,8 +2631,8 @@ export default function CoursesPage() {
                   </div>
 
                   {/* Exam Body Filters */}
-                  <div className="flex items-center gap-2 mt-4 pt-4 border-t border-[#e5e7eb] flex-wrap">
-                    <span className="text-gray-500 text-sm whitespace-nowrap">Exam Body:</span>
+                  <div className="flex items-center gap-2 mt-4 pt-4 border-t border-white/20 flex-wrap">
+                    <span className="text-purple-200 text-sm whitespace-nowrap">Exam Body:</span>
                     {[
                       { value: 'all', label: 'All' },
                       { value: 'KNEC', label: 'KNEC' },
@@ -2722,8 +2657,8 @@ export default function CoursesPage() {
 
                 {/* Results Bar */}
                 <div className="flex items-center justify-between">
-                  <p className="text-gray-600 text-sm">
-                    <span className="font-bold text-gray-900">{filteredCourses.length}</span> courses matched your filters
+                  <p className="text-purple-200 text-sm">
+                    <span className="font-bold text-white">{filteredCourses.length}</span> courses matched your filters
                   </p>
                   <div className="flex items-center gap-2">
                     {stats.diploma > 0 && (
@@ -2745,8 +2680,8 @@ export default function CoursesPage() {
                 </div>
 
                 {filteredCourses.length === 0 ? (
-                  <div className="text-center py-12 bg-white rounded-xl border border-[#e5e7eb]">
-                    <p className="text-gray-500">No courses found matching your criteria.</p>
+                  <div className="text-center py-12 bg-white/10 backdrop-blur-md rounded-xl border border-white/20">
+                    <p className="text-purple-200">No courses found matching your criteria.</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
@@ -2771,13 +2706,13 @@ export default function CoursesPage() {
                       return (
                         <div 
                           key={course.id} 
-                          className="bg-white rounded-[14px] border border-[#e5e7eb] overflow-hidden transition-all hover:border-[#7c3aed] hover:shadow-lg hover:shadow-purple-100"
+                          className="bg-white/10 backdrop-blur-md rounded-[14px] border border-white/20 overflow-hidden transition-all hover:border-purple-400 hover:shadow-lg hover:shadow-purple-900/20"
                           style={{ borderTopWidth: '5px', borderTopColor: stripeColor }}
                         >
                           {/* Card Header */}
-                          <div className="p-4 border-b border-[#e5e7eb]">
+                          <div className="p-4 border-b border-white/20">
                             <div className="flex items-start justify-between gap-2 mb-2">
-                              <span className="font-mono text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">{course.id}</span>
+                              <span className="font-mono text-xs text-purple-300 bg-white/10 px-2 py-1 rounded">{course.id}</span>
                               <div className="flex gap-1">
                                 {/* Show only the first enabled level */}
                                 {(() => {
@@ -2795,17 +2730,17 @@ export default function CoursesPage() {
                                 })()}
                               </div>
                             </div>
-                            <h3 className="font-bold text-gray-900 mb-1 line-clamp-2">{course.name}</h3>
-                            <span className="text-xs text-[#7c3aed] font-medium">{course.departments?.name || 'Unknown'}</span>
+                            <h3 className="font-bold text-white mb-1 line-clamp-2">{course.name}</h3>
+                            <span className="text-xs text-purple-300 font-medium">{course.departments?.name || 'Unknown'}</span>
                           </div>
 
                           {/* Card Body - Units */}
                           <div className="p-4">
                             <div className="flex items-center gap-2 mb-3">
-                              <span className="px-2 py-1 bg-purple-50 text-purple-700 text-xs font-medium rounded">
+                              <span className="px-2 py-1 bg-purple-600/30 text-purple-200 text-xs font-medium rounded">
                                 {courseUnits.length} Units
                               </span>
-                              {isKNEC && <span className="text-xs text-gray-500">Module Based</span>}
+                              {isKNEC && <span className="text-xs text-purple-300">Module Based</span>}
                             </div>
                             
                             {courseUnits.length > 0 ? (
@@ -2858,13 +2793,13 @@ export default function CoursesPage() {
                           <div className="p-4 pt-0 flex gap-2">
                             <button
                               onClick={() => handleEditCourse(course)}
-                              className="flex-1 px-4 py-2 bg-purple-50 hover:bg-purple-100 text-[#5b21b6] border border-purple-200 rounded-lg text-sm font-semibold transition-colors"
+                              className="flex-1 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-semibold transition-colors shadow-sm"
                             >
                               Edit
                             </button>
                             <button
                               onClick={() => handleDeleteCourse(course.id)}
-                              className="flex-1 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-800 border border-red-200 rounded-lg text-sm font-semibold transition-colors"
+                              className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-colors shadow-sm"
                             >
                               Delete
                             </button>
@@ -2914,18 +2849,18 @@ export default function CoursesPage() {
                       </button>
                     </div>
 
-                    <div className="bg-white rounded-xl p-6 border border-[#e5e7eb] shadow-sm space-y-4">
+                    <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 space-y-4">
                       <div>
-                        <label className="block text-gray-700 font-medium mb-2">
+                        <label className="block text-purple-200 font-medium mb-2">
                           Department *
                           {selectedCourseType && selectedCourseType !== 'INSTALL' && (
-                            <span className="ml-2 text-xs text-[#7c3aed] font-normal">({selectedCourseType} only)</span>
+                            <span className="ml-2 text-xs text-purple-300 font-normal">({selectedCourseType} only)</span>
                           )}
                         </label>
                         <select
                           value={courseFormData.department_id}
                           onChange={(e) => setCourseFormData({ ...courseFormData, department_id: e.target.value })}
-                          className="w-full px-4 py-3 bg-white border border-[#e5e7eb] rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#7c3aed] focus:border-transparent"
+                          className="w-full px-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                           required
                         >
                           <option value="">Select Department</option>
@@ -2934,43 +2869,45 @@ export default function CoursesPage() {
                           ))}
                         </select>
                         {filteredDepartments.length === 0 && (
-                          <p className="text-amber-600 text-xs mt-2">
+                          <p className="text-amber-400 text-xs mt-2">
                             No departments found for {selectedCourseType}. Please add a department first.
                           </p>
                         )}
                         
                         {/* Add New Department Toggle */}
-                        <div className="mt-3 pt-3 border-t border-[#e5e7eb]">
+                        <div className="mt-3 pt-3 border-t border-white/20">
                           <button
                             type="button"
                             onClick={() => setShowAddDepartment(!showAddDepartment)}
-                            className="text-sm text-[#7c3aed] hover:text-[#5b21b6] flex items-center gap-2 font-medium"
+                            className="w-full px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-2"
                           >
-                            <span>{showAddDepartment ? '−' : '+'}</span>
-                            {showAddDepartment ? 'Cancel' : `Add New ${selectedCourseType === 'INSTALL' ? '' : selectedCourseType + ' '}Department`}
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            Add New {selectedCourseType === 'INSTALL' ? '' : selectedCourseType + ' '}Department
                           </button>
                           
                           {showAddDepartment && (
-                            <div className="mt-3 space-y-3 bg-[#f9fafb] rounded-lg p-4 border border-[#e5e7eb]">
+                            <div className="mt-3 space-y-3 bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/20">
                               <div>
-                                <label className="text-gray-600 text-xs mb-1 block font-medium">Department Name</label>
+                                <label className="text-purple-200 text-xs mb-1 block font-medium">Department Name</label>
                                 <input
                                   type="text"
                                   value={newDepartment.name}
                                   onChange={(e) => setNewDepartment({ ...newDepartment, name: e.target.value })}
                                   placeholder="e.g., Electrical Engineering"
-                                  className="w-full px-3 py-2 bg-white border border-[#e5e7eb] rounded-lg text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#7c3aed] focus:border-transparent"
+                                  className="w-full px-3 py-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-white text-sm placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                 />
                               </div>
                               <div>
-                                <label className="text-gray-600 text-xs mb-1 block font-medium">Department Code</label>
+                                <label className="text-purple-200 text-xs mb-1 block font-medium">Department Code</label>
                                 <input
                                   type="text"
                                   value={newDepartment.code}
                                   onChange={(e) => setNewDepartment({ ...newDepartment, code: e.target.value.toUpperCase() })}
                                   placeholder="e.g., EE"
                                   maxLength={5}
-                                  className="w-full px-3 py-2 bg-white border border-[#e5e7eb] rounded-lg text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#7c3aed] focus:border-transparent"
+                                  className="w-full px-3 py-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-white text-sm placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                 />
                               </div>
                               <button
@@ -2986,21 +2923,23 @@ export default function CoursesPage() {
                         </div>
 
                         {/* Delete Department Toggle */}
-                        <div className="mt-2 pt-2 border-t border-[#e5e7eb]">
+                        <div className="mt-2 pt-2 border-t border-white/20">
                           <button
                             type="button"
                             onClick={() => {
                               setShowDeleteDepartment(!showDeleteDepartment);
                               setShowAddDepartment(false); // Close add form if open
                             }}
-                            className="text-sm text-red-600 hover:text-red-700 flex items-center gap-2 font-medium"
+                            className="w-full px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-2"
                           >
-                            <span>{showDeleteDepartment ? '−' : '×'}</span>
-                            {showDeleteDepartment ? 'Cancel' : 'Delete Department'}
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Delete Department
                           </button>
 
                           {showDeleteDepartment && (
-                            <div className="mt-3 space-y-3 bg-red-50 rounded-lg p-4 border border-red-200">
+                            <div className="mt-3 space-y-3 bg-red-600/20 backdrop-blur-sm rounded-lg p-4 border border-red-500/30">
                               <div>
                                 <label className="text-red-700 text-xs mb-1 block font-medium">Select Department to Delete</label>
                                 <select
@@ -3034,7 +2973,7 @@ export default function CoursesPage() {
                       </div>
 
                       <div>
-                        <label className="block text-gray-700 font-medium mb-2">Qualification Level *</label>
+                        <label className="block text-purple-200 font-medium mb-2">Qualification Level *</label>
                         <select
                           value={courseFormData.qualification_level_id}
                           onChange={(e) => {
@@ -3055,7 +2994,7 @@ export default function CoursesPage() {
                             }
                             setCourseFormData(newFormData);
                           }}
-                          className="w-full px-4 py-3 bg-white border border-[#e5e7eb] rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#7c3aed] focus:border-transparent"
+                          className="w-full px-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                           required
                         >
                           <option value="">Select Qualification Level</option>
@@ -3085,7 +3024,7 @@ export default function CoursesPage() {
                       </div>
 
                       <div>
-                        <label className="block text-gray-700 font-medium mb-2">
+                        <label className="block text-purple-200 font-medium mb-2">
                           {selectedCourseType === 'KNEC' ? 'KNEC Code' : 
                            selectedCourseType === 'CDACC' ? 'CDACC Code' :
                            selectedCourseType === 'JP' ? 'JP Code' : 'Course Code'} *
@@ -3100,29 +3039,29 @@ export default function CoursesPage() {
                             selectedCourseType === 'JP' ? 'e.g., JP-101, JP-102' : 
                             'e.g., SHORT-001'
                           }
-                          className="w-full px-4 py-3 bg-white border border-[#e5e7eb] rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#7c3aed] focus:border-transparent"
+                          className="w-full px-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                           required
                         />
                       </div>
 
                       <div>
-                        <label className="block text-gray-700 font-medium mb-2">Course Name *</label>
+                        <label className="block text-purple-200 font-medium mb-2">Course Name *</label>
                         <input
                           type="text"
                           value={courseFormData.course_name}
                           onChange={(e) => setCourseFormData({ ...courseFormData, course_name: e.target.value })}
                           placeholder="e.g., Computer Science"
-                          className="w-full px-4 py-3 bg-white border border-[#e5e7eb] rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#7c3aed] focus:border-transparent"
+                          className="w-full px-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                           required
                         />
                       </div>
 
                       <div>
-                        <label className="block text-gray-700 font-medium mb-2">Minimum KCSE Grade *</label>
+                        <label className="block text-purple-200 font-medium mb-2">Minimum KCSE Grade *</label>
                         <select
                           value={courseFormData.min_kcse_grade}
                           onChange={(e) => setCourseFormData({ ...courseFormData, min_kcse_grade: e.target.value })}
-                          className="w-full px-4 py-3 bg-white border border-[#e5e7eb] rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#7c3aed] focus:border-transparent"
+                          className="w-full px-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                           required
                         >
                           <option value="">Select Grade</option>
@@ -3133,25 +3072,25 @@ export default function CoursesPage() {
                       </div>
 
                       <div className="flex items-center gap-4">
-                        <label className="text-gray-700 font-medium">Is Modular?</label>
+                        <label className="text-purple-200 font-medium">Is Modular?</label>
                         <button
                           type="button"
                           onClick={() => setCourseFormData({ ...courseFormData, is_modular: !courseFormData.is_modular })}
-                          className={`w-16 h-8 rounded-full transition-colors ${courseFormData.is_modular ? 'bg-[#7c3aed]' : 'bg-gray-300'}`}
+                          className={`w-16 h-8 rounded-full transition-colors ${courseFormData.is_modular ? 'bg-purple-600' : 'bg-gray-300'}`}
                         >
                           <div className={`w-6 h-6 bg-white rounded-full transition-transform ${courseFormData.is_modular ? 'translate-x-8' : 'translate-x-1'}`} />
                         </button>
-                        <span className="text-[#7c3aed] text-sm font-medium">{courseFormData.is_modular ? 'YES - Multiple modules' : 'NO - Single module'}</span>
+                        <span className="text-purple-300 text-sm font-medium">{courseFormData.is_modular ? 'YES - Multiple modules' : 'NO - Single module'}</span>
                       </div>
 
                       {/* CDACC Payment Mode */}
                       {selectedCourseType === 'CDACC' && courseFormData.is_modular && (
                         <div>
-                          <label className="block text-gray-700 font-medium mb-2">Payment Mode *</label>
+                          <label className="block text-purple-200 font-medium mb-2">Payment Mode *</label>
                           <select
                             value={courseFormData.cdacc_payment_mode}
                             onChange={(e) => setCourseFormData({ ...courseFormData, cdacc_payment_mode: e.target.value as 'per_semester' | 'once_per_stage' })}
-                            className="w-full px-4 py-3 bg-white border border-[#e5e7eb] rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#7c3aed] focus:border-transparent"
+                            className="w-full px-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                           >
                             <option value="per_semester">Per Semester (with semester fees)</option>
                             <option value="once_per_stage">Once per Stage (no semesters)</option>
@@ -3162,13 +3101,13 @@ export default function CoursesPage() {
                       {/* JP Exam Fee */}
                       {selectedCourseType === 'JP' && (
                         <div>
-                          <label className="block text-gray-700 font-medium mb-2">JP Exam Fee (KES) *</label>
+                          <label className="block text-purple-200 font-medium mb-2">JP Exam Fee (KES) *</label>
                           <input
                             type="number"
                             value={courseFormData.jp_exam_fee}
                             onChange={(e) => setCourseFormData({ ...courseFormData, jp_exam_fee: parseInt(e.target.value) || 0 })}
                             placeholder="e.g., 5000"
-                            className="w-full px-4 py-3 bg-white border border-[#e5e7eb] rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#7c3aed] focus:border-transparent"
+                            className="w-full px-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                             min="0"
                           />
                         </div>
@@ -3177,18 +3116,18 @@ export default function CoursesPage() {
                       {/* Total course duration */}
                       {selectedCourseType !== 'INSTALL' && (
                         <div>
-                          <label className="block text-gray-700 font-medium mb-2">Total Course Duration (months) *</label>
+                          <label className="block text-purple-200 font-medium mb-2">Total Course Duration (months) *</label>
                           <input
                             type="number"
                             value={courseFormData.total_duration_months}
                             onChange={(e) => setCourseFormData({ ...courseFormData, total_duration_months: parseInt(e.target.value) || 0 })}
                             placeholder="e.g., 18"
-                            className="w-full px-4 py-3 bg-white border border-[#e5e7eb] rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#7c3aed] focus:border-transparent"
+                            className="w-full px-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                             min="3"
                             step="3"
                             required
                           />
-                          <p className="text-gray-500 text-xs mt-2">
+                          <p className="text-purple-300 text-xs mt-2">
                             Total duration for the entire course (sum of all modules)
                           </p>
                         </div>
@@ -3196,15 +3135,15 @@ export default function CoursesPage() {
 
                       {/* Fee fields only for INSTALL/Short courses */}
                       {selectedCourseType === 'INSTALL' && (
-                        <div className="bg-[#f9fafb] rounded-lg p-4 border border-[#e5e7eb] space-y-4 mt-4">
-                          <h5 className="text-gray-900 font-semibold">Fee Structure</h5>
+                        <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20 space-y-4 mt-4">
+                          <h5 className="text-white font-semibold">Fee Structure</h5>
                           
                           <div>
-                            <label className="text-gray-600 text-sm mb-1 block font-medium">Payment Mode</label>
+                            <label className="text-purple-200 text-sm mb-1 block font-medium">Payment Mode</label>
                             <select
                               value={courseFormData.payment_mode}
                               onChange={(e) => setCourseFormData({ ...courseFormData, payment_mode: e.target.value as 'Once' | 'Monthly' | 'Per Semester' })}
-                              className="w-full px-3 py-2 bg-white border border-[#e5e7eb] rounded-lg text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#7c3aed] focus:border-transparent"
+                              className="w-full px-3 py-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                             >
                               <option value="Once">Once (Full Payment)</option>
                               <option value="Monthly">Monthly</option>
@@ -3214,35 +3153,35 @@ export default function CoursesPage() {
 
                           <div className="grid grid-cols-2 gap-3">
                             <div>
-                              <label className="text-gray-600 text-sm mb-1 block font-medium">First Installment (KES)</label>
+                              <label className="text-purple-200 text-sm mb-1 block font-medium">First Installment (KES)</label>
                               <input
                                 type="number"
                                 value={courseFormData.first_installment || ''}
                                 onChange={(e) => setCourseFormData({ ...courseFormData, first_installment: parseInt(e.target.value) || 0 })}
                                 placeholder="e.g., 5000"
-                                className="w-full px-3 py-2 bg-white border border-[#e5e7eb] rounded-lg text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#7c3aed] focus:border-transparent"
+                                className="w-full px-3 py-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-white text-sm placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                               />
                             </div>
                             <div>
-                              <label className="text-gray-600 text-sm mb-1 block font-medium">Subsequent Installment (KES)</label>
+                              <label className="text-purple-200 text-sm mb-1 block font-medium">Subsequent Installment (KES)</label>
                               <input
                                 type="number"
                                 value={courseFormData.subsequent_installment || ''}
                                 onChange={(e) => setCourseFormData({ ...courseFormData, subsequent_installment: parseInt(e.target.value) || 0 })}
                                 placeholder="e.g., 3000"
-                                className="w-full px-3 py-2 bg-white border border-[#e5e7eb] rounded-lg text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#7c3aed] focus:border-transparent"
+                                className="w-full px-3 py-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-white text-sm placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                               />
                             </div>
                           </div>
 
                           <div>
-                            <label className="text-gray-600 text-sm mb-1 block font-medium">Practical Fee (KES)</label>
+                            <label className="text-purple-200 text-sm mb-1 block font-medium">Practical Fee (KES)</label>
                             <input
                               type="number"
                               value={courseFormData.practical_fee || ''}
                               onChange={(e) => setCourseFormData({ ...courseFormData, practical_fee: parseInt(e.target.value) || 0 })}
                               placeholder="e.g., 2000"
-                              className="w-full px-3 py-2 bg-white border border-[#e5e7eb] rounded-lg text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#7c3aed] focus:border-transparent"
+                              className="w-full px-3 py-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-white text-sm placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                             />
                           </div>
 
@@ -3287,30 +3226,30 @@ export default function CoursesPage() {
                   <div className="space-y-6">
                     <h2 className="text-2xl font-bold text-gray-900">Add {selectedCourseType === 'CDACC' ? 'Stages' : 'Modules'}</h2>
 
-                    <div className="bg-white rounded-xl p-6 border border-[#e5e7eb] shadow-sm space-y-4">
+                    <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 space-y-4">
                       {modulesData.map((module, moduleIndex) => {
                         const isKNEC = selectedCourseType === 'KNEC';
                         const isCdaccOncePerStage = selectedCourseType === 'CDACC' && courseFormData.cdacc_payment_mode === 'once_per_stage';
                         const semesterCount = isCdaccOncePerStage ? 0 : (courseFormData.is_modular ? 3 : Math.ceil(module.duration_months / 3));
                         const additionalFeeOptions = ['Practical Fee', 'Admission Fee', 'Lab Fee', 'Library Fee', 'Registration Fee'];
                         return (
-                          <div key={moduleIndex} className="bg-[#f9fafb] rounded-lg p-4 border border-[#e5e7eb]">
+                          <div key={moduleIndex} className="bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/20">
                             <div className="flex items-center justify-between mb-3">
-                              <h5 className="text-gray-900 font-semibold text-lg">
+                              <h5 className="text-white font-semibold text-lg">
                                 {module.label || (courseFormData.is_modular ? `${selectedCourseType === 'CDACC' ? 'Stage' : 'Module'} ${moduleIndex + 1}` : 'Single Module')}
                               </h5>
-                              <span className="text-[#7c3aed] text-xs bg-purple-100 px-2 py-1 rounded font-medium">
+                              <span className="text-purple-300 text-xs bg-purple-600/30 px-2 py-1 rounded font-medium">
                                 {module.duration_months} months · {semesterCount > 0 ? `${semesterCount} semesters` : 'no semesters'}
                               </span>
                             </div>
                             <div className={isKNEC || isCdaccOncePerStage ? 'grid grid-cols-2 gap-3 mb-4' : 'mb-4'}>
                               <div>
-                                <label className="text-gray-600 text-sm mb-1 block font-medium">Duration (months)</label>
+                                <label className="text-purple-200 text-sm mb-1 block font-medium">Duration (months)</label>
                                 <input
                                   type="number"
                                   value={module.duration_months}
                                   onChange={(e) => handleModuleDurationChange(moduleIndex, parseInt(e.target.value) || 0)}
-                                  className="w-full px-3 py-2 bg-white border border-[#e5e7eb] rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#7c3aed] focus:border-transparent"
+                                  className="w-full px-3 py-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                   min="3"
                                   step="3"
                                   required
@@ -3318,7 +3257,7 @@ export default function CoursesPage() {
                               </div>
                               {isKNEC && (
                                 <div>
-                                  <label className="text-gray-600 text-sm mb-1 block font-medium">Exam Fee (KES)</label>
+                                  <label className="text-purple-200 text-sm mb-1 block font-medium">Exam Fee (KES)</label>
                                   <input
                                     type="number"
                                     value={module.exam_fee || ''}
@@ -3328,13 +3267,13 @@ export default function CoursesPage() {
                                       setModulesData(updated);
                                     }}
                                     placeholder="e.g., 5000"
-                                    className="w-full px-3 py-2 bg-white border border-[#e5e7eb] rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#7c3aed] focus:border-transparent"
+                                    className="w-full px-3 py-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                   />
                                 </div>
                               )}
                               {isCdaccOncePerStage && (
                                 <div>
-                                  <label className="text-gray-600 text-sm mb-1 block font-medium">Stage Fee (KES)</label>
+                                  <label className="text-purple-200 text-sm mb-1 block font-medium">Stage Fee (KES)</label>
                                   <input
                                     type="number"
                                     value={module.fee || ''}
@@ -3344,7 +3283,7 @@ export default function CoursesPage() {
                                       setModulesData(updated);
                                     }}
                                     placeholder="e.g., 45000"
-                                    className="w-full px-3 py-2 bg-white border border-[#e5e7eb] rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#7c3aed] focus:border-transparent"
+                                    className="w-full px-3 py-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                   />
                                 </div>
                               )}
@@ -4012,7 +3951,7 @@ export default function CoursesPage() {
               </div>
             )}
           </div>
-        </main>
+        </div>
       </div>
   );
 }

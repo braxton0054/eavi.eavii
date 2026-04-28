@@ -34,10 +34,21 @@ export default function AdminDashboard() {
 
   const loadStats = async (campusCode: string) => {
     try {
+      // Build campus variants for filtering (handle both 'main'/'west' and 'Main Campus'/'West Campus')
+      const getCampusVariants = (code: string) => {
+        if (!code || code === 'all') return null;
+        return [
+          code,
+          code === 'main' ? 'Main Campus' : code === 'west' ? 'West Campus' : code,
+          code === 'Main Campus' ? 'main' : code === 'West Campus' ? 'west' : code
+        ];
+      };
+      const campusVariants = getCampusVariants(campusCode);
+
       // Load applications stats filtered by campus
       let appsQuery = supabase.from('applications').select('status');
-      if (campusCode && campusCode !== 'all') {
-        appsQuery = appsQuery.eq('campus', campusCode);
+      if (campusVariants) {
+        appsQuery = appsQuery.in('campus', campusVariants);
       }
       const { data: applications } = await appsQuery;
 
@@ -47,15 +58,15 @@ export default function AdminDashboard() {
 
       // Load lecturers count filtered by campus
       let lecturersQuery = supabase.from('lecturers').select('*', { count: 'exact', head: true });
-      if (campusCode && campusCode !== 'all') {
-        lecturersQuery = lecturersQuery.eq('campus', campusCode);
+      if (campusVariants) {
+        lecturersQuery = lecturersQuery.in('campus', campusVariants);
       }
       const { count: lecturersCount } = await lecturersQuery;
 
       // Load students count from applications table with enrolled status filtered by campus
       let studentsQuery = supabase.from('applications').select('*', { count: 'exact', head: true }).eq('status', 'enrolled');
-      if (campusCode && campusCode !== 'all') {
-        studentsQuery = studentsQuery.eq('campus', campusCode);
+      if (campusVariants) {
+        studentsQuery = studentsQuery.in('campus', campusVariants);
       }
       const { count: studentsCount } = await studentsQuery;
 
@@ -67,8 +78,8 @@ export default function AdminDashboard() {
         .eq('status', 'completed')
         .gte('payment_date', monthStart);
 
-      if (campusCode && campusCode !== 'all') {
-        revenueQuery = revenueQuery.eq('applications.campus', campusCode);
+      if (campusVariants) {
+        revenueQuery = revenueQuery.in('applications.campus', campusVariants);
       }
       const { data: revenueData } = await revenueQuery;
 
@@ -93,8 +104,8 @@ export default function AdminDashboard() {
         .order('payment_date', { ascending: false })
         .limit(5);
       
-      if (campusCode && campusCode !== 'all') {
-        recentPaymentsQuery = recentPaymentsQuery.eq('applications.campus', campusCode);
+      if (campusVariants) {
+        recentPaymentsQuery = recentPaymentsQuery.in('applications.campus', campusVariants);
       }
       const { data: recentPaymentsData } = await recentPaymentsQuery;
       setRecentPayments(recentPaymentsData || []);
@@ -395,23 +406,6 @@ export default function AdminDashboard() {
             </Link>
 
             <Link
-              href="/admin/course-enrollment"
-              className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-colors duration-300"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-cyan-600 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-white">Course Enrollment</h3>
-                  <p className="text-purple-200 text-sm">Assign units to courses</p>
-                </div>
-              </div>
-            </Link>
-
-            <Link
               href="/admin/lecturers"
               className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-colors duration-300"
             >
@@ -492,23 +486,6 @@ export default function AdminDashboard() {
                 <div>
                   <h3 className="text-lg font-semibold text-white">Reporting Dates</h3>
                   <p className="text-purple-200 text-sm">Set student reporting dates</p>
-                </div>
-              </div>
-            </Link>
-
-            <Link
-              href="/admin/fee-structure"
-              className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-colors duration-300"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-indigo-500 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-white">Manage Fees</h3>
-                  <p className="text-purple-200 text-sm">Create and edit fee structures</p>
                 </div>
               </div>
             </Link>
