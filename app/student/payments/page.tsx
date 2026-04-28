@@ -212,7 +212,7 @@ export default function StudentPaymentsPage() {
                 <div className="mt-3">
                   <div className="w-full bg-white/10 rounded-full h-2">
                     <div
-                      className="bg-purple-600 h-2 rounded-full transition-all duration-300"
+                      className="bg-green-600 h-2 rounded-full transition-all duration-300"
                       style={{ width: `${Math.min((totalPaid / totalDue) * 100, 100)}%` }}
                     />
                   </div>

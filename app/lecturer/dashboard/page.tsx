@@ -700,7 +700,7 @@ export default function LecturerDashboard() {
               <div className="mt-6 pt-6 border-t border-white/20">
                 <button
                   onClick={() => setShowSetup(true)}
-                  className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors duration-300 text-base font-semibold"
+                  className="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-300 text-base font-semibold"
                 >
                   Add Assignment for Another Campus
                 </button>
@@ -892,7 +892,7 @@ export default function LecturerDashboard() {
 
             <button
               onClick={() => setViewMode('setup')}
-              className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors duration-300 text-base font-semibold"
+              className="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-300 text-base font-semibold"
             >
               Add Another Course
             </button>
@@ -909,7 +909,7 @@ export default function LecturerDashboard() {
                 setLockSemester(false);
                 setLockUnit(false);
               }}
-              className="mb-4 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm font-semibold"
+              className="mb-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-semibold"
             >
               ← Back to Dashboard
             </button>
@@ -1213,7 +1213,7 @@ export default function LecturerDashboard() {
                   }));
                   setMarksData({ ...marksData, marks: newMarks });
                 }}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm font-semibold"
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-semibold"
               >
                 Clear All Absent
               </button>

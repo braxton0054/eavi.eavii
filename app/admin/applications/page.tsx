@@ -587,13 +587,13 @@ export default function ApplicationsPage() {
               <div className="flex flex-col sm:flex-row gap-2">
                 <button
                   onClick={() => setShowAddStudentModal(true)}
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-xs md:text-sm font-semibold"
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-xs md:text-sm font-semibold"
                 >
                   Add Existing Student
                 </button>
                 <Link
                   href="/admin/dashboard"
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors duration-300 text-xs md:text-sm font-semibold text-center"
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-300 text-xs md:text-sm font-semibold text-center"
                 >
                   Back to Dashboard
                 </Link>

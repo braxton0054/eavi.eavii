@@ -183,7 +183,7 @@ export default function BridgeManagement() {
                         <button
                           onClick={() => handleMerge(group.id)}
                           disabled={timeToSync.days > 0}
-                          className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors duration-300 font-semibold"
+                          className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors duration-300 font-semibold"
                         >
                           Merge to Main Intake
                         </button>

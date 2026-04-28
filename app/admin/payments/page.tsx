@@ -110,7 +110,12 @@ export default function PaymentsPage() {
       .select(`*,application:applications!inner(full_name,admission_number,course_id,campus)`)
       .order('payment_date', { ascending: false });
     if (campusFilter && campusFilter !== 'all') {
-      query = query.eq('applications.campus', campusFilter);
+      const campusVariants = [
+        campusFilter,
+        campusFilter === 'main' ? 'Main Campus' : campusFilter === 'west' ? 'West Campus' : campusFilter,
+        campusFilter === 'Main Campus' ? 'main' : campusFilter === 'West Campus' ? 'west' : campusFilter
+      ];
+      query = query.in('applications.campus', campusVariants);
     }
     const { data, error } = await query;
     if (error) { console.error('Error loading payments:', error); }
@@ -119,12 +124,22 @@ export default function PaymentsPage() {
 
   const loadApplications = useCallback(async (campusFilter: string) => {
     if (!supabase) return;
-    const { data, error } = await supabase
+    let query = supabase
       .from('applications')
       .select('id, full_name, admission_number, course_id, current_semester, current_module, course_type_id, total_balance, exam_body, courses(name), course_types(level)')
-      .eq('campus', campusFilter)
       .eq('status', 'enrolled')
       .order('full_name', { ascending: true });
+    
+    if (campusFilter && campusFilter !== 'all') {
+      const campusVariants = [
+        campusFilter,
+        campusFilter === 'main' ? 'Main Campus' : campusFilter === 'west' ? 'West Campus' : campusFilter,
+        campusFilter === 'Main Campus' ? 'main' : campusFilter === 'West Campus' ? 'west' : campusFilter
+      ];
+      query = query.in('campus', campusVariants);
+    }
+    
+    const { data, error } = await query;
     if (error) { console.error('Error loading applications:', error); }
     else { setApplications(data || []); }
   }, [supabase]);
@@ -306,12 +321,12 @@ export default function PaymentsPage() {
 
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-            <button onClick={() => setShowForm(true)} className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl transition-colors duration-300 font-semibold">Record Payment</button>
+            <button onClick={() => setShowForm(true)} className="px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-xl transition-all duration-300 font-semibold shadow-lg shadow-purple-600/30 hover:shadow-purple-600/50">Record Payment</button>
             <div className="flex flex-wrap items-center gap-2">
               <label className="text-white text-sm">Exam Body:</label>
               <button
                 onClick={() => setSelectedExamBody('all')}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${selectedExamBody === 'all' ? 'bg-purple-600 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${selectedExamBody === 'all' ? 'bg-green-600 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}
               >
                 All
               </button>
@@ -364,7 +379,7 @@ export default function PaymentsPage() {
                       <button
                         type="button"
                         onClick={() => setSelectedExamBody('all')}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${selectedExamBody === 'all' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${selectedExamBody === 'all' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                       >
                         All
                       </button>
@@ -385,7 +400,7 @@ export default function PaymentsPage() {
                       <button
                         type="button"
                         onClick={() => setSelectedExamBody('JP')}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${selectedExamBody === 'JP' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${selectedExamBody === 'JP' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                       >
                         JP
                       </button>
@@ -528,7 +543,7 @@ export default function PaymentsPage() {
                     <button type="button" onClick={() => { setShowForm(false); setShowReceipt(false); setSelectedApplication(null); setReceiptNumber(''); setFeeTypes(DEFAULT_FEE_TYPES); setSelectedExamBody('all'); setSearchQuery(''); }}
                       className="flex-1 px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl transition-colors duration-200 font-semibold">Cancel
                     </button>
-                    <button type="submit" className="flex-1 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl transition-colors duration-200 font-semibold shadow-lg shadow-purple-500/20">
+                    <button type="submit" className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-xl transition-all duration-200 font-semibold shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50">
                       Record Payment
                     </button>
                   </div>
@@ -559,7 +574,7 @@ export default function PaymentsPage() {
                   </div>
                 </div>
                 <div className="flex gap-3">
-                  <button onClick={handleNewPayment} className="flex-1 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl transition-colors duration-200 font-semibold">Record Another Payment</button>
+                  <button onClick={handleNewPayment} className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-xl transition-all duration-200 font-semibold shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50">Record Another Payment</button>
                   <button onClick={() => { setShowReceipt(false); setShowForm(false); setSelectedApplication(null); setReceiptNumber(''); }}
                     className="flex-1 px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl transition-colors duration-200 font-semibold">Close
                   </button>

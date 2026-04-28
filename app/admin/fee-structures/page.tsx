@@ -477,13 +477,13 @@ export default function FeeStructuresPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => setGenerateAll(false)}
-                    className={`flex-1 px-4 py-2 rounded-lg transition-colors duration-300 ${!generateAll ? 'bg-purple-600 text-white' : 'bg-white/20 text-white'}`}
+                    className={`flex-1 px-4 py-2 rounded-lg transition-colors duration-300 ${!generateAll ? 'bg-green-600 text-white' : 'bg-white/20 text-white'}`}
                   >
                     Single
                   </button>
                   <button
                     onClick={() => setGenerateAll(true)}
-                    className={`flex-1 px-4 py-2 rounded-lg transition-colors duration-300 ${generateAll ? 'bg-purple-600 text-white' : 'bg-white/20 text-white'}`}
+                    className={`flex-1 px-4 py-2 rounded-lg transition-colors duration-300 ${generateAll ? 'bg-green-600 text-white' : 'bg-white/20 text-white'}`}
                   >
                     All
                   </button>
@@ -504,7 +504,7 @@ export default function FeeStructuresPage() {
             {/* Generate Button */}
             <button
               onClick={generatePDF}
-              className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors duration-300 text-base font-semibold shadow-lg hover:shadow-xl"
+              className="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-300 text-base font-semibold shadow-lg hover:shadow-xl"
             >
               Generate Fee Structure
             </button>

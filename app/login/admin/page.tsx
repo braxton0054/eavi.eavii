@@ -175,7 +175,7 @@ export default function AdminLogin() {
                   onClick={() => setResetMode(m as any)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                     resetMode === m
-                      ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg'
+                      ? 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg shadow-green-600/30'
                       : 'text-purple-200 hover:text-white hover:bg-white/10'
                   }`}
                 >
@@ -238,8 +238,8 @@ export default function AdminLogin() {
                           onClick={() => setFormData(p => ({...p, campus: c}))}
                           className={`flex-1 py-3 px-4 rounded-xl text-sm font-semibold capitalize transition-all ${
                             formData.campus === c
-                              ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg shadow-purple-600/30'
-                              : 'bg-white/10 backdrop-blur-md border border-white/20 text-purple-200 hover:text-white hover:border-purple-400'
+                              ? 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg shadow-green-600/30'
+                              : 'bg-white/10 backdrop-blur-md border border-white/20 text-purple-200 hover:text-white hover:border-green-400'
                           }`}
                         >
                           <span className="flex items-center justify-center gap-2">
@@ -256,7 +256,7 @@ export default function AdminLogin() {
                   <button 
                     type="submit" 
                     disabled={loading} 
-                    className="w-full py-4 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl font-bold text-lg shadow-lg shadow-purple-600/30 hover:shadow-purple-600/50 hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full py-4 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl font-bold text-lg shadow-lg shadow-green-600/30 hover:shadow-green-600/50 hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {loading ? (
                       <span className="flex items-center justify-center gap-2">
@@ -308,7 +308,7 @@ export default function AdminLogin() {
                   />
                   <button 
                     type="submit" 
-                    className="w-full py-4 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl font-bold text-lg shadow-lg shadow-purple-600/30 hover:shadow-purple-600/50 hover:scale-[1.02] transition-all"
+                    className="w-full py-4 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl font-bold text-lg shadow-lg shadow-green-600/30 hover:shadow-green-600/50 hover:scale-[1.02] transition-all"
                   >
                     Send Reset Link
                   </button>

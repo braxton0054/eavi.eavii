@@ -157,7 +157,7 @@ export default function StudentsPage() {
             </div>
             <Link
               href="/admin/dashboard"
-              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors duration-300 text-sm font-semibold"
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-300 text-sm font-semibold"
             >
               Back to Dashboard
             </Link>

@@ -98,12 +98,22 @@ export default function InstallmentsPage() {
   };
 
   const loadApplications = async (campusFilter: string) => {
-    const { data, error } = await supabase
+    let query = supabase
       .from('applications')
       .select('id, full_name, admission_number, course_id')
-      .eq('campus', campusFilter)
       .eq('status', 'enrolled')
       .order('full_name', { ascending: true });
+
+    if (campusFilter && campusFilter !== 'all') {
+      const campusVariants = [
+        campusFilter,
+        campusFilter === 'main' ? 'Main Campus' : campusFilter === 'west' ? 'West Campus' : campusFilter,
+        campusFilter === 'Main Campus' ? 'main' : campusFilter === 'West Campus' ? 'west' : campusFilter
+      ];
+      query = query.in('campus', campusVariants);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error loading applications:', error);
@@ -223,7 +233,7 @@ export default function InstallmentsPage() {
             <div className="flex gap-2">
               <button
                 onClick={() => setShowForm(true)}
-                className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors duration-300 font-semibold"
+                className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-300 font-semibold"
               >
                 Create Installment Plan
               </button>
@@ -317,7 +327,7 @@ export default function InstallmentsPage() {
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors duration-300 font-semibold"
+                      className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-300 font-semibold"
                     >
                       Create Plan
                     </button>

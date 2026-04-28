@@ -1014,7 +1014,7 @@ export default function StudentDashboard() {
               <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
                 <button
                   onClick={() => generateFeeStructurePDF()}
-                  className="w-full md:w-auto px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm font-semibold"
+                  className="w-full md:w-auto px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm font-semibold"
                 >
                   Download Fee Structure
                 </button>
@@ -1079,7 +1079,7 @@ export default function StudentDashboard() {
                                         setPreviewPeriod(periodNumber);
                                         setShowResultPreview(true);
                                       }}
-                                      className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-semibold transition-colors"
+                                      className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-semibold transition-colors"
                                     >
                                       View Results
                                     </button>

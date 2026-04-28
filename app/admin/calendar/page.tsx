@@ -265,7 +265,7 @@ export default function AcademicCalendar() {
                 resetForm();
                 setShowForm(true);
               }}
-              className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors duration-300 font-semibold"
+              className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-300 font-semibold"
             >
               Add New Term
             </button>
@@ -450,7 +450,7 @@ export default function AcademicCalendar() {
                   <div className="flex gap-3 pt-4">
                     <button
                       type="submit"
-                      className="flex-1 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors duration-300 font-semibold"
+                      className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-300 font-semibold"
                     >
                       {editingCalendar ? 'Update' : 'Create'}
                     </button>

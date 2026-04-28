@@ -81,7 +81,7 @@ export default function PaymentReceipt({
       <div className="flex gap-2">
         <button
           onClick={handlePrint}
-          className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors duration-300 font-semibold"
+          className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-300 font-semibold"
         >
           Print Receipt
         </button>

@@ -19,6 +19,11 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "EAVI College Management System",
   description: "East Africa Vision Institute - Student Management System",
+  icons: {
+    icon: "/favicon.ico?v=2",
+    shortcut: "/favicon.ico?v=2",
+    apple: "/favicon.ico?v=2",
+  },
 };
 
 export default function RootLayout({
@@ -31,6 +36,10 @@ export default function RootLayout({
       lang="en"
       className={cn("h-full", "antialiased", poppins.variable, inter.variable, "font-sans", geist.variable)}
     >
+      <head>
+        <link rel="icon" href="/favicon.ico?v=3" sizes="any" />
+        <link rel="shortcut icon" href="/favicon.ico?v=3" />
+      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

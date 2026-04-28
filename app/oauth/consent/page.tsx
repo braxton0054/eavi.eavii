@@ -151,7 +151,7 @@ export default function OAuthConsent() {
           </div>
           <button
             onClick={() => window.history.back()}
-            className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors duration-300 text-base font-semibold"
+            className="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-300 text-base font-semibold"
           >
             Go Back
           </button>
@@ -204,7 +204,7 @@ export default function OAuthConsent() {
               <button
                 onClick={handleApprove}
                 disabled={approving}
-                className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors duration-300 text-base font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-300 text-base font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {approving ? 'Authorizing...' : 'Authorize'}
               </button>

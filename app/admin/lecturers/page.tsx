@@ -343,7 +343,7 @@ export default function LecturersPage() {
                       });
                     }
                   }}
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors duration-300 text-sm font-semibold"
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-300 text-sm font-semibold"
                 >
                   {viewMode === 'add' ? 'View All Lecturers' : 'Add New Lecturer'}
                 </button>
@@ -444,7 +444,7 @@ export default function LecturersPage() {
                           <p className="text-purple-200 text-sm">Lecturer Number: {lecturer.lecturer_number}</p>
                           <button
                             onClick={() => handleCopyLecturerNumber(lecturer.lecturer_number)}
-                            className="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-semibold transition-colors"
+                            className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-semibold transition-colors"
                             title="Copy lecturer number"
                           >
                             Copy

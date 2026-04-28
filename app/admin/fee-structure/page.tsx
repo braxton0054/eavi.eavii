@@ -268,7 +268,7 @@ export default function FeeStructurePage() {
                 resetForm();
                 setShowForm(true);
               }}
-              className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors duration-300 font-semibold"
+              className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-300 font-semibold"
             >
               Add New Fee Structure
             </button>
@@ -433,7 +433,7 @@ export default function FeeStructurePage() {
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors duration-300 font-semibold"
+                      className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-300 font-semibold"
                     >
                       {editingFee ? 'Update' : 'Create'}
                     </button>

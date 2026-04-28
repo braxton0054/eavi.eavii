@@ -494,7 +494,7 @@ export default function CourseEnrollmentPage() {
                 onClick={() => setViewMode('assign')}
                 className={`px-3 py-2 md:px-4 md:py-2 rounded-lg transition-colors duration-300 text-xs md:text-sm font-semibold border ${
                   viewMode === 'assign'
-                    ? 'bg-purple-600 text-white border-purple-600'
+                    ? 'bg-green-600 text-white border-green-600'
                     : 'bg-white/10 hover:bg-white/20 text-white border-white/20'
                 }`}
               >
@@ -504,7 +504,7 @@ export default function CourseEnrollmentPage() {
                 onClick={() => setViewMode('view')}
                 className={`px-3 py-2 md:px-4 md:py-2 rounded-lg transition-colors duration-300 text-xs md:text-sm font-semibold border ${
                   viewMode === 'view'
-                    ? 'bg-purple-600 text-white border-purple-600'
+                    ? 'bg-green-600 text-white border-green-600'
                     : 'bg-white/10 hover:bg-white/20 text-white border-white/20'
                 }`}
               >
@@ -623,7 +623,7 @@ export default function CourseEnrollmentPage() {
                       <button
                         onClick={() => addUnit(LEVEL_MODULE_INDEX_MAP[selectedLevel], -1, 'short')}
                         disabled={saving || !unitInputs['short']?.trim()}
-                        className="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-lg font-semibold transition-colors"
+                        className="px-6 py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg font-semibold transition-colors"
                       >
                         Add Unit
                       </button>
@@ -790,7 +790,7 @@ export default function CourseEnrollmentPage() {
                                       <button
                                         onClick={() => addUnit(module.module_index, semester.semester_index, inputKey)}
                                         disabled={saving || !unitInputs[inputKey]?.trim()}
-                                        className="px-4 py-2 md:px-5 md:py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-lg text-xs md:text-sm font-semibold transition-colors"
+                                        className="px-4 py-2 md:px-5 md:py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg text-xs md:text-sm font-semibold transition-colors"
                                       >
                                         Add Unit
                                       </button>
@@ -891,7 +891,7 @@ export default function CourseEnrollmentPage() {
                 <h2 className="text-xl md:text-2xl font-bold text-white">All Courses with Units</h2>
                 <button
                   onClick={() => window.print()}
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs md:text-sm font-semibold transition-colors self-start sm:self-auto"
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs md:text-sm font-semibold transition-colors self-start sm:self-auto"
                 >
                   Print
                 </button>

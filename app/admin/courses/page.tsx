@@ -2525,7 +2525,7 @@ export default function CoursesPage() {
                 setViewMode('add');
                 setEditingCourse(null);
               }}
-              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-semibold transition-colors"
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition-colors"
             >
               <span className="hidden sm:inline">+ Add New Course</span>
               <span className="sm:hidden">+ Add</span>
@@ -2620,7 +2620,7 @@ export default function CoursesPage() {
                           onClick={() => setLevelFilter(filter.value)}
                           className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
                             levelFilter === filter.value
-                              ? 'bg-purple-600 text-white'
+                              ? 'bg-green-600 text-white'
                               : 'border border-white/20 text-purple-200 hover:border-purple-400 hover:text-white'
                           }`}
                         >
@@ -2793,7 +2793,7 @@ export default function CoursesPage() {
                           <div className="p-4 pt-0 flex gap-2">
                             <button
                               onClick={() => handleEditCourse(course)}
-                              className="flex-1 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-semibold transition-colors shadow-sm"
+                              className="flex-1 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition-colors shadow-sm"
                             >
                               Edit
                             </button>
@@ -2879,7 +2879,7 @@ export default function CoursesPage() {
                           <button
                             type="button"
                             onClick={() => setShowAddDepartment(!showAddDepartment)}
-                            className="w-full px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-2"
+                            className="w-full px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-2"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -3076,7 +3076,7 @@ export default function CoursesPage() {
                         <button
                           type="button"
                           onClick={() => setCourseFormData({ ...courseFormData, is_modular: !courseFormData.is_modular })}
-                          className={`w-16 h-8 rounded-full transition-colors ${courseFormData.is_modular ? 'bg-purple-600' : 'bg-gray-300'}`}
+                          className={`w-16 h-8 rounded-full transition-colors ${courseFormData.is_modular ? 'bg-green-600' : 'bg-gray-300'}`}
                         >
                           <div className={`w-6 h-6 bg-white rounded-full transition-transform ${courseFormData.is_modular ? 'translate-x-8' : 'translate-x-1'}`} />
                         </button>
