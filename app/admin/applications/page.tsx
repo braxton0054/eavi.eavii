@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/client';
 import { useRouter } from 'next/navigation';
 import { getCourseTypeConfig, getUnitsForPeriod } from '@/lib/course-structure';
+import Papa from 'papaparse';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,6 +37,11 @@ export default function ApplicationsPage() {
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const [showEnrollModal, setShowEnrollModal] = useState(false);
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false);
+  const [csvData, setCsvData] = useState<any[]>([]);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [importProgress, setImportProgress] = useState({ current: 0, total: 0, success: 0, failed: 0 });
+  const [importErrors, setImportErrors] = useState<string[]>([]);
 
   useEffect(() => {
     setSupabase(createClient());
@@ -555,6 +561,148 @@ export default function ApplicationsPage() {
     }
   };
 
+  // Bulk Import Functions
+  const handleCSVUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setCsvFile(file);
+    setImportErrors([]);
+    
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const validData = results.data.filter((row: any) => 
+          row.full_name && row.phone && row.admission_number
+        );
+        setCsvData(validData);
+        setImportProgress({ current: 0, total: validData.length, success: 0, failed: 0 });
+      },
+      error: (error) => {
+        setImportErrors(['Failed to parse CSV: ' + error.message]);
+      }
+    });
+  };
+
+  const generateClassNameFromDate = (dateStr: string): string => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return '';
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                        'July', 'August', 'September', 'October', 'November', 'December'];
+    const month = monthNames[date.getMonth()];
+    const year = date.getFullYear();
+    return `${month} ${year}`;
+  };
+
+  const handleBulkImport = async () => {
+    if (csvData.length === 0) {
+      setImportErrors(['No valid data to import']);
+      return;
+    }
+
+    setEnrolling(true);
+    setImportErrors([]);
+    const errors: string[] = [];
+    let successCount = 0;
+    let failedCount = 0;
+
+    for (let i = 0; i < csvData.length; i++) {
+      const row = csvData[i];
+      setImportProgress(prev => ({ ...prev, current: i + 1 }));
+
+      try {
+        // Validate required fields
+        if (!row.full_name || !row.phone || !row.kcse_grade || 
+            !row.course || !row.course_type || !row.campus || !row.gender || 
+            !row.admission_number || !row.application_date) {
+          errors.push(`Row ${i + 1}: Missing required fields`);
+          failedCount++;
+          continue;
+        }
+
+        // Find course_id
+        const course = allCourses.find(c => 
+          c.name.toLowerCase() === row.course.toLowerCase() ||
+          c.id === row.course
+        );
+        
+        if (!course) {
+          errors.push(`Row ${i + 1}: Course "${row.course}" not found`);
+          failedCount++;
+          continue;
+        }
+
+        // Find course_type_id
+        const courseTypeData = course.course_types?.find((ct: any) => 
+          ct.level.toLowerCase() === row.course_type.toLowerCase()
+        );
+        
+        if (!courseTypeData) {
+          errors.push(`Row ${i + 1}: Course type "${row.course_type}" not found for ${row.course}`);
+          failedCount++;
+          continue;
+        }
+
+        // Generate class name
+        const className = generateClassNameFromDate(row.application_date);
+
+        // Insert student
+        const { error: insertError } = await supabase
+          .from('applications')
+          .insert([{
+            full_name: row.full_name,
+            phone: row.phone,
+            email: row.email || null,
+            kcse_grade: row.kcse_grade,
+            course_id: course.id,
+            course_type_id: courseTypeData.id,
+            campus: row.campus.toLowerCase(),
+            gender: row.gender.toLowerCase(),
+            admission_number: row.admission_number,
+            application_date: row.application_date,
+            status: 'enrolled',
+            current_semester: parseInt(row.current_semester) || 1,
+            class_name: className
+          }]);
+
+        if (insertError) {
+          errors.push(`Row ${i + 1}: ${insertError.message}`);
+          failedCount++;
+        } else {
+          successCount++;
+        }
+      } catch (err) {
+        errors.push(`Row ${i + 1}: Failed to import`);
+        failedCount++;
+      }
+    }
+
+    setImportProgress(prev => ({ ...prev, success: successCount, failed: failedCount }));
+    setImportErrors(errors);
+    
+    if (successCount > 0) {
+      loadApplications(campus);
+    }
+    
+    setEnrolling(false);
+  };
+
+  const downloadTemplate = () => {
+    const template = `full_name,phone,email,kcse_grade,course,course_type,campus,gender,admission_number,application_date,current_semester
+John Doe,0712345678,john@example.com,B+,Diploma in ICT,Diploma,main,male,EAVI/2024/001,2024-01-15,1
+Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,west,female,EAVI/2024/002,2024-01-15,1`;
+    
+    const blob = new Blob([template], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'student_import_template.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950 flex items-center justify-center">
@@ -590,6 +738,12 @@ export default function ApplicationsPage() {
                   className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-xs md:text-sm font-semibold"
                 >
                   Add Existing Student
+                </button>
+                <button
+                  onClick={() => setShowBulkImportModal(true)}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-xs md:text-sm font-semibold"
+                >
+                  Bulk Import (CSV)
                 </button>
                 <Link
                   href="/admin/dashboard"
@@ -1073,6 +1227,130 @@ export default function ApplicationsPage() {
                 }}
                 disabled={enrolling}
                 className="flex-1 py-3 bg-white/10 hover:bg-white/20 border border-white/30 text-white rounded-lg transition-colors duration-300 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Import Modal */}
+      {showBulkImportModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 md:p-8 border border-white/20 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-bold text-white mb-4">Bulk Import Students (CSV)</h3>
+            <p className="text-purple-200 text-sm mb-6">
+              Import multiple existing students from a CSV file.
+            </p>
+
+            {error && (
+              <div className="mb-4 p-3 rounded-lg bg-red-500/20 border border-red-500/50">
+                <p className="text-sm text-red-200">{error}</p>
+              </div>
+            )}
+
+            <div className="mb-6">
+              <button
+                onClick={downloadTemplate}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm font-semibold mb-4"
+              >
+                Download CSV Template
+              </button>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-white font-medium mb-2 text-sm">
+                Upload CSV File *
+              </label>
+              <input
+                type="file"
+                accept=".csv"
+                onChange={handleCSVUpload}
+                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700"
+              />
+              {csvFile && (
+                <p className="text-green-400 text-sm mt-2">
+                  Selected: {csvFile.name} ({csvData.length} students)
+                </p>
+              )}
+            </div>
+
+            {csvData.length > 0 && (
+              <div className="mb-6">
+                <h4 className="text-white font-semibold mb-3">Preview (First 5 rows)</h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-white/20">
+                        <th className="text-left py-2 px-2 text-purple-200">Name</th>
+                        <th className="text-left py-2 px-2 text-purple-200">Phone</th>
+                        <th className="text-left py-2 px-2 text-purple-200">Course</th>
+                        <th className="text-left py-2 px-2 text-purple-200">Type</th>
+                        <th className="text-left py-2 px-2 text-purple-200">Campus</th>
+                        <th className="text-left py-2 px-2 text-purple-200">Admission No</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {csvData.slice(0, 5).map((row, idx) => (
+                        <tr key={idx} className="border-b border-white/10">
+                          <td className="py-2 px-2 text-white">{row.full_name}</td>
+                          <td className="py-2 px-2 text-white">{row.phone}</td>
+                          <td className="py-2 px-2 text-white">{row.course}</td>
+                          <td className="py-2 px-2 text-white">{row.course_type}</td>
+                          <td className="py-2 px-2 text-white">{row.campus}</td>
+                          <td className="py-2 px-2 text-white font-mono">{row.admission_number}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {importProgress.total > 0 && (
+              <div className="mb-6 p-4 bg-white/5 rounded-lg">
+                <p className="text-white text-sm mb-2">
+                  Progress: {importProgress.current} / {importProgress.total}
+                </p>
+                <div className="w-full bg-white/20 rounded-full h-2 mb-2">
+                  <div
+                    className="bg-green-500 h-2 rounded-full transition-all"
+                    style={{ width: `${(importProgress.current / importProgress.total) * 100}%` }}
+                  />
+                </div>
+                <p className="text-green-400 text-sm">Success: {importProgress.success}</p>
+                <p className="text-red-400 text-sm">Failed: {importProgress.failed}</p>
+              </div>
+            )}
+
+            {importErrors.length > 0 && (
+              <div className="mb-6 p-4 bg-red-500/20 rounded-lg max-h-40 overflow-y-auto">
+                <h4 className="text-red-300 font-semibold mb-2">Errors ({importErrors.length})</h4>
+                {importErrors.map((err, idx) => (
+                  <p key={idx} className="text-red-200 text-xs mb-1">{err}</p>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleBulkImport}
+                disabled={enrolling || csvData.length === 0}
+                className="flex-1 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors duration-300 text-sm font-semibold"
+              >
+                {enrolling ? 'Importing...' : `Import ${csvData.length} Students`}
+              </button>
+              <button
+                onClick={() => {
+                  setShowBulkImportModal(false);
+                  setCsvData([]);
+                  setCsvFile(null);
+                  setImportErrors([]);
+                  setImportProgress({ current: 0, total: 0, success: 0, failed: 0 });
+                }}
+                disabled={enrolling}
+                className="flex-1 py-3 bg-white/10 hover:bg-white/20 border border-white/30 text-white rounded-lg transition-colors duration-300 text-sm font-semibold disabled:opacity-50"
               >
                 Cancel
               </button>
