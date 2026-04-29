@@ -215,6 +215,13 @@ export default function CoursesPage() {
 
     if (levelFilter === 'all') return true;
 
+    // Craft filter shows both 'craft' and 'certificate' levels (merged)
+    if (levelFilter === 'craft') {
+      return course.course_types?.some((ct: any) =>
+        ct.enabled && (ct.level === 'craft' || ct.level === 'certificate')
+      );
+    }
+
     const hasLevel = course.course_types?.some((ct: any) =>
       ct.enabled && ct.level === levelFilter
     );
@@ -225,9 +232,9 @@ export default function CoursesPage() {
   const stats = {
     total: filteredCourses.length,
     diploma: filteredCourses.filter((c: any) => c.course_types?.some((ct: any) => ct.enabled && ct.level === 'diploma')).length,
-    certificate: filteredCourses.filter((c: any) => c.course_types?.some((ct: any) => ct.enabled && ct.level === 'certificate')).length,
+    // Craft Certificate includes both 'craft' and 'certificate' levels (merged)
+    craft: filteredCourses.filter((c: any) => c.course_types?.some((ct: any) => ct.enabled && (ct.level === 'craft' || ct.level === 'certificate'))).length,
     artisan: filteredCourses.filter((c: any) => c.course_types?.some((ct: any) => ct.enabled && ct.level === 'artisan')).length,
-    craft: filteredCourses.filter((c: any) => c.course_types?.some((ct: any) => ct.enabled && ct.level === 'craft')).length,
     level6: filteredCourses.filter((c: any) => c.course_types?.some((ct: any) => ct.enabled && ct.level === 'level6')).length,
     level5: filteredCourses.filter((c: any) => c.course_types?.some((ct: any) => ct.enabled && ct.level === 'level5')).length,
     level4: filteredCourses.filter((c: any) => c.course_types?.some((ct: any) => ct.enabled && ct.level === 'level4')).length,
@@ -255,12 +262,12 @@ export default function CoursesPage() {
   const getLevelLabel = (level: string) => {
     const labels: Record<string, string> = {
       diploma: 'Diploma',
-      certificate: 'Certificate',
-      artisan: 'Artisan',
-      craft: 'Craft',
+      certificate: 'Craft Certificate',
+      artisan: 'Artisan Certificate',
+      craft: 'Craft Certificate',
       level6: 'Higher Diploma',
       level5: 'Diploma',
-      level4: 'Certificate',
+      level4: 'Craft Certificate',
     };
     return labels[level] || level;
   };
@@ -499,11 +506,26 @@ export default function CoursesPage() {
 
       setSavedCourseId(courseId);
 
-      // Save course_type
-      const level = courseFormData.qualification_level_id;
+      // Save course_type — map qualification_level_id (UUID) to valid level string
+      const selectedLevel = qualificationLevels.find(l => l.id === courseFormData.qualification_level_id);
+      const levelName = selectedLevel?.name?.toLowerCase() || 'diploma';
+      const levelMap: Record<string, LevelKey> = {
+        'diploma': 'diploma',
+        'certificate': 'certificate',
+        'artisan': 'artisan',
+        'craft': 'craft',
+        'artisan certificate': 'artisan',
+        'craft certificate': 'craft',
+        'higher diploma': 'level6',
+        'diploma in': 'diploma',
+        'certificate in': 'certificate',
+        'artisan in': 'artisan',
+        'craft in': 'craft',
+      };
+      const mappedLevel = levelMap[levelName] || 'diploma';
       const { data: courseTypeData, error: courseTypeError } = await supabase.from('course_types').upsert([{
         course_id: courseId,
-        level: level,
+        level: mappedLevel,
         duration_months: courseFormData.total_duration_months,
         study_mode: selectedCourseType === 'INSTALL' ? 'short-course' : 'module',
         enabled: true,
@@ -1264,17 +1286,65 @@ export default function CoursesPage() {
         // Fetch all units separately to avoid PostgREST relationship errors
         let coursesWithUnits = data || [];
         try {
-          const { data: unitsData, error: unitsError } = await supabase.from('v_units_by_module_semester').select('*');
+          // Get all course IDs first
+          const courseIds = coursesWithUnits.map((c: any) => c.id);
+          console.log('Course IDs to fetch units for:', courseIds.length);
+          
+          // Find Artisan courses
+          const artisanCourses = coursesWithUnits.filter((c: any) => 
+            c.course_types?.some((ct: any) => ct.level === 'artisan')
+          );
+          console.log('Artisan courses found:', artisanCourses.map((c: any) => ({ id: c.id, name: c.name })));
+          
+          // Fetch units directly from units table (avoids view row limits)
+          const { data: rawUnits, error: unitsError } = await supabase
+            .from('units')
+            .select('*, courses!inner(exam_body)');
+          
+          // Manually expand KNEC units for all 3 semesters
+          const unitsData: any[] = [];
+          (rawUnits || []).forEach((u: any) => {
+            const isKNEC = u.courses?.exam_body === 'KNEC';
+            if (isKNEC) {
+              // Add unit for all 3 semesters
+              for (let sem = 1; sem <= 3; sem++) {
+                unitsData.push({
+                  ...u,
+                  semester_index: sem,
+                  exam_body: 'KNEC'
+                });
+              }
+            } else {
+              unitsData.push({
+                ...u,
+                exam_body: u.courses?.exam_body
+              });
+            }
+          });
+          console.log('Loaded units from view:', unitsData?.length || 0, 'rows');
+          if (unitsError) {
+            console.error('Error loading units:', unitsError);
+          }
           if (!unitsError && unitsData) {
+            // Check for Artisan courses
+            const uniqueCourseIds = [...new Set(unitsData.map((u: any) => u.course_id))];
+            console.log('Unique course_ids in view:', uniqueCourseIds.length);
+            
+            // Check if Artisan course IDs are in the view
+            const artisanCourseIds = artisanCourses.map((c: any) => c.id);
+            const artisanInView = artisanCourseIds.filter((id: string) => uniqueCourseIds.includes(id));
+            console.log('Artisan course IDs in view:', artisanInView);
+            
             coursesWithUnits = coursesWithUnits.map((course: any) => {
               const courseUnits = unitsData.filter((u: any) => u.course_id === course.id);
-              // Deduplicate units by unit_code to avoid showing duplicates from the view
-              const uniqueUnits = Array.from(new Map(courseUnits.map((u: any) => [u.unit_code || u.name, u])).values());
+              const isArtisan = course.course_types?.some((ct: any) => ct.level === 'artisan');
+              if (isArtisan) {
+                console.log('Mapping units for Artisan course', course.id, ':', courseUnits.length, 'units');
+              }
               return {
                 ...course,
-                units: uniqueUnits,
-                // Store raw units with module info for KNEC display
-                rawUnits: courseUnits
+                // Use all rows from the view (KNEC units expanded per semester)
+                units: courseUnits,
               };
             });
           }
@@ -2687,9 +2757,8 @@ export default function CoursesPage() {
                       {[
                         { value: 'all', label: 'All' },
                         { value: 'diploma', label: 'Diploma' },
-                        { value: 'certificate', label: 'Certificate' },
-                        { value: 'artisan', label: 'Artisan' },
-                        { value: 'craft', label: 'Craft' },
+                        { value: 'craft', label: 'Craft Certificate' },
+                        { value: 'artisan', label: 'Artisan Certificate' },
                         { value: 'level6', label: 'Higher Diploma' },
                       ].map((filter) => (
                         <button
@@ -2766,19 +2835,24 @@ export default function CoursesPage() {
                       const isExpanded = expandedUnits[course.id];
                       const isKNEC = course.id.startsWith('KNEC-');
                       const courseUnits = course.units || [];
+                      // DEBUG: Log units for KNEC-1803
+                      if (course.id === 'KNEC-1803') {
+                        console.log('KNEC-1803 raw units:', courseUnits);
+                        console.log('Unique semester_indexes:', [...new Set(courseUnits.map((u: any) => u.semester_index))]);
+                      }
                       const displayUnits = isExpanded ? courseUnits : courseUnits.slice(0, 3);
                       const primaryLevel = course.course_types?.find((ct: any) => ct?.enabled)?.level || 'diploma';
                       const stripeColor = getCourseTypeColor(primaryLevel);
 
-                      // Group units by module for KNEC courses
-                      const unitsByModule = isKNEC
-                        ? courseUnits.reduce((acc: any, u: any) => {
+                      // Group units by module → semester for all courses
+                      const unitsByModuleSemester = courseUnits.reduce((acc: any, u: any) => {
                             const modIdx = u.module_index || 1;
-                            if (!acc[modIdx]) acc[modIdx] = [];
-                            acc[modIdx].push(u);
+                            const semIdx = u.semester_index || 1;
+                            if (!acc[modIdx]) acc[modIdx] = {};
+                            if (!acc[modIdx][semIdx]) acc[modIdx][semIdx] = [];
+                            acc[modIdx][semIdx].push(u);
                             return acc;
-                          }, {})
-                        : {};
+                          }, {});
 
                       return (
                         <div 
@@ -2790,21 +2864,15 @@ export default function CoursesPage() {
                           <div className="p-4 border-b border-white/20">
                             <div className="flex items-start justify-between gap-2 mb-2">
                               <span className="font-mono text-xs text-purple-300 bg-white/10 px-2 py-1 rounded">{course.id}</span>
-                              <div className="flex gap-1">
-                                {/* Show only the first enabled level */}
-                                {(() => {
-                                  const enabledTypes = course.course_types?.filter((ct: any) => ct?.enabled) || [];
-                                  const primaryType = enabledTypes[0];
-                                  if (!primaryType) return null;
-                                  return (
-                                    <span
-                                      key={primaryType.id || primaryType.level}
-                                      className={`px-2 py-1 rounded-full text-xs font-semibold border ${getLevelBadgeColor(primaryType.level).bg} ${getLevelBadgeColor(primaryType.level).text} ${getLevelBadgeColor(primaryType.level).border}`}
-                                    >
-                                      {getLevelLabel(primaryType.level)}
-                                    </span>
-                                  );
-                                })()}
+                              <div className="flex gap-1 flex-wrap">
+                                {course.course_types?.filter((ct: any) => ct?.enabled).map((ct: any) => (
+                                  <span
+                                    key={ct.id || ct.level}
+                                    className={`px-2 py-1 rounded-full text-xs font-semibold border ${getLevelBadgeColor(ct.level).bg} ${getLevelBadgeColor(ct.level).text} ${getLevelBadgeColor(ct.level).border}`}
+                                  >
+                                    {getLevelLabel(ct.level)}
+                                  </span>
+                                ))}
                               </div>
                             </div>
                             <h3 className="font-bold text-white mb-1 line-clamp-2">{course.name}</h3>
@@ -2821,27 +2889,32 @@ export default function CoursesPage() {
                             </div>
                             
                             {courseUnits.length > 0 ? (
-                              isKNEC && isExpanded ? (
-                                // KNEC expanded view: show grouped by module
+                              isExpanded ? (
+                                // Expanded view: show grouped by module → semester
                                 <div className="space-y-2">
-                                  {Object.entries(unitsByModule).sort((a, b) => Number(a[0]) - Number(b[0])).map(([modIdx, units]: [string, any]) => (
+                                  {Object.entries(unitsByModuleSemester).sort((a, b) => Number(a[0]) - Number(b[0])).map(([modIdx, semesters]: [string, any]) => (
                                     <div key={modIdx} className="bg-gray-50 rounded p-2">
                                       <span className="text-xs font-semibold text-gray-600 block mb-1">Module {modIdx}</span>
-                                      <div className="flex flex-wrap gap-1">
-                                        {(units as any[]).map((u: any, i: number) => (
-                                          <span
-                                            key={i}
-                                            className="inline-block bg-white border border-gray-200 text-gray-700 text-xs px-2 py-1 rounded"
-                                          >
-                                            {u.unit_code ? `${u.unit_code} - ` : ''}{u.name}
-                                          </span>
-                                        ))}
-                                      </div>
+                                      {Object.entries(semesters).sort((a: any, b: any) => Number(a[0]) - Number(b[0])).map(([semIdx, units]: [string, any]) => (
+                                        <div key={semIdx} className="ml-2 mb-1.5">
+                                          <span className="text-[10px] font-medium text-purple-500 block mb-0.5">Semester {semIdx}</span>
+                                          <div className="flex flex-wrap gap-1">
+                                            {(units as any[]).map((u: any, i: number) => (
+                                              <span
+                                                key={i}
+                                                className="inline-block bg-white border border-gray-200 text-gray-700 text-xs px-2 py-1 rounded"
+                                              >
+                                                {u.unit_code ? `${u.unit_code} - ` : ''}{u.name}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      ))}
                                     </div>
                                   ))}
                                 </div>
                               ) : (
-                                // Standard view: show first 3 units
+                                // Collapsed view: show first 3 units flat
                                 <div className="flex flex-wrap gap-1.5">
                                   {displayUnits.map((u: any, i: number) => (
                                     <span
@@ -2851,7 +2924,7 @@ export default function CoursesPage() {
                                       {u.unit_code ? `${u.unit_code} - ` : ''}{u.name}
                                     </span>
                                   ))}
-                                  {!isExpanded && courseUnits.length > 3 && (
+                                  {courseUnits.length > 3 && (
                                     <button
                                       onClick={() => toggleUnits(course.id)}
                                       className="text-xs text-[#7c3aed] hover:underline font-medium"

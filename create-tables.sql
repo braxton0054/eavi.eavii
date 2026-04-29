@@ -71,7 +71,7 @@ CREATE TRIGGER trg_courses_updated_at
 CREATE TABLE course_types (
   id              UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
   course_id       TEXT        NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-  level           TEXT        NOT NULL CHECK (level IN ('diploma', 'certificate', 'artisan', 'level6', 'level5', 'level4')),
+  level           TEXT        NOT NULL CHECK (level IN ('diploma', 'certificate', 'artisan', 'craft', 'level6', 'level5', 'level4')),
   enabled         BOOLEAN     NOT NULL DEFAULT false,
   min_kcse_grade  TEXT        NOT NULL,
   study_mode      TEXT        NOT NULL CHECK (study_mode IN ('module', 'short-course')),

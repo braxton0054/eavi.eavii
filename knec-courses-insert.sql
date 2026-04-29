@@ -29,7 +29,7 @@ ON CONFLICT DO NOTHING;
 
 INSERT INTO qualification_levels (id, name, level_order, created_at) VALUES
   ('artisan-level', 'Artisan', 1, NOW()),
-  ('craft-level', 'Craft/Certificate', 2, NOW()),
+  ('craft-level', 'Craft', 2, NOW()),
   ('diploma-level', 'Diploma', 3, NOW()),
   ('higher-diploma-level', 'Higher Diploma', 4, NOW())
 ON CONFLICT DO NOTHING;
