@@ -202,8 +202,10 @@ export default function AdmissionLetter({ studentData }: AdmissionLetterProps) {
         if (module.semesters) {
           module.semesters.forEach((semester: any, semIndex: number) => {
             semesterCount++;
+            // Each module starts with Semester 1
+            const semesterNum = semIndex + 1;
             tableBody.push([
-              { text: `Sem ${semesterCount} (Mod ${modIndex + 1})`, style: 'tableCell', alignment: 'center' },
+              { text: `Sem ${semesterNum} (Mod ${modIndex + 1})`, style: 'tableCell', alignment: 'center' },
               { text: semester.fee.toLocaleString(), style: 'tableCell', alignment: 'right' }
             ]);
             totalFee += semester.fee;
@@ -211,7 +213,7 @@ export default function AdmissionLetter({ studentData }: AdmissionLetterProps) {
         }
       });
 
-      durationText = `${courseData.duration_months} Months (${courseData.modules.length} Modules, ${semesterCount} Semesters)`;
+      durationText = `${courseData.duration_months} Months (${courseData.modules.length} Modules, ${semesterCount / courseData.modules.length} Semesters per Module)`;
       paymentNote = 'NB: All fees are payable before the start of each semester.';
     } else if (studyMode === 'short-course') {
       const shortCourseConfig = courseData.short_course_config;
