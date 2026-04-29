@@ -508,6 +508,40 @@ export default function AdminDashboard() {
             </Link>
 
             <Link
+              href="/admin/applications"
+              className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-colors duration-300"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-cyan-600 rounded-lg flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Admission Letters</h3>
+                  <p className="text-purple-200 text-sm">Generate admission letters for applicants</p>
+                </div>
+              </div>
+            </Link>
+
+            <Link
+              href="/admin/fee-structure"
+              className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-colors duration-300"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-rose-600 rounded-lg flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Fee Structure</h3>
+                  <p className="text-purple-200 text-sm">Set and manage course fees</p>
+                </div>
+              </div>
+            </Link>
+
+            <Link
               href="/admin/payments"
               className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-colors duration-300"
             >
