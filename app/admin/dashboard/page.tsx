@@ -5,6 +5,37 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { createClient } from '@/lib/client';
 import { useRouter } from 'next/navigation';
+import Chatbot from '@/components/Chatbot';
+
+// Type definitions for dashboard data
+interface SystemLog {
+  id: string;
+  log_type: 'error' | 'warning' | 'info';
+  module?: string;
+  message: string;
+  context?: string;
+  created_at: string;
+}
+
+interface StudentFinancial {
+  student_id: string;
+  full_name: string;
+  admission_number: string;
+  course: string;
+  campus: string;
+  total_balance: number;
+  total_paid: number;
+  status: string;
+}
+
+interface AIIssue {
+  id: string;
+  issue_type: string;
+  description: string;
+  occurrences: number;
+  last_seen: string;
+  solution?: string;
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +58,8 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [campus, setCampus] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
+  
+  // Core stats
   const [stats, setStats] = useState({
     totalApplications: 0,
     pendingApplications: 0,
@@ -36,14 +69,178 @@ export default function AdminDashboard() {
     totalRevenueThisMonth: 0,
     paymentBreakdown: [] as { method: string; amount: number; percentage: number }[]
   });
+  
+  // Financial dashboard data
+  const [studentFinancials, setStudentFinancials] = useState<StudentFinancial[]>([]);
+  const [financialStats, setFinancialStats] = useState({
+    totalStudents: 0,
+    fullyPaid: 0,
+    unpaidStudents: 0,
+    totalOutstanding: 0
+  });
+  const [financialFilter, setFinancialFilter] = useState({ campus: 'all', course: 'all', status: 'all' });
+  const [financialPage, setFinancialPage] = useState(0);
+  const FINANCIAL_PAGE_SIZE = 10;
+  
+  // System logs and alerts
+  const [systemLogs, setSystemLogs] = useState<SystemLog[]>([]);
+  const [criticalAlerts, setCriticalAlerts] = useState<SystemLog[]>([]);
+  const [warningAlerts, setWarningAlerts] = useState<SystemLog[]>([]);
+  const [dismissedWarnings, setDismissedWarnings] = useState<Set<string>>(new Set());
+  const [showSystemLogs, setShowSystemLogs] = useState(false);
+  const [aiIssues, setAIIssues] = useState<AIIssue[]>([]);
+  
+  // Legacy data
   const [recentPayments, setRecentPayments] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
-    setSupabase(createClient());
+    const client = createClient();
+    setSupabase(client);
+    
+    // Get current user
+    const getUser = async () => {
+      const { data: { user } } = await client.auth.getUser();
+      setCurrentUser(user);
+    };
+    getUser();
   }, []);
   const [viewedNotifications, setViewedNotifications] = useState<Set<string>>(new Set());
+
+  // Send email alert to developer
+  const sendEmailAlert = async (alerts: SystemLog[], alertType: 'critical' | 'warning') => {
+    try {
+      const response = await fetch('/api/send-alert-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          alerts,
+          alertType,
+          systemInfo: {
+            campus: campus || 'all',
+            adminEmail: adminEmail || 'Unknown'
+          }
+        })
+      });
+
+      if (!response.ok) {
+        console.error('Failed to send email alert:', await response.text());
+      } else {
+        console.log(`Email alert sent for ${alerts.length} ${alertType} alerts`);
+      }
+    } catch (err) {
+      console.error('Error sending email alert:', err);
+    }
+  };
+
+  // Track which alerts have been emailed
+  const [emailedAlertIds, setEmailedAlertIds] = useState<Set<string>>(new Set());
+
+  // Load system logs and alerts
+  const loadSystemLogs = async () => {
+    try {
+      // Fetch critical errors (last 24 hours)
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      
+      const { data: criticalLogs } = await supabase
+        .from('system_logs')
+        .select('*')
+        .eq('log_type', 'error')
+        .gte('created_at', yesterday.toISOString())
+        .order('created_at', { ascending: false })
+        .limit(10);
+      
+      // Fetch warning logs (last 7 days)
+      const lastWeek = new Date();
+      lastWeek.setDate(lastWeek.getDate() - 7);
+      
+      const { data: warningLogs } = await supabase
+        .from('system_logs')
+        .select('*')
+        .eq('log_type', 'warning')
+        .gte('created_at', lastWeek.toISOString())
+        .order('created_at', { ascending: false })
+        .limit(20);
+      
+      // Fetch all recent logs for display
+      const { data: allLogs } = await supabase
+        .from('system_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+      
+      // Fetch AI known issues
+      const { data: issues } = await supabase
+        .from('ai_issue_memory')
+        .select('*')
+        .order('last_seen', { ascending: false })
+        .limit(10);
+      
+      const newCriticalAlerts = criticalLogs || [];
+      const newWarningAlerts = warningLogs || [];
+      
+      // Send email for new critical alerts (not yet emailed)
+      const newCriticalToEmail = newCriticalAlerts.filter((a: SystemLog) => !emailedAlertIds.has(a.id));
+      if (newCriticalToEmail.length > 0) {
+        await sendEmailAlert(newCriticalToEmail, 'critical');
+        setEmailedAlertIds(prev => new Set([...prev, ...newCriticalToEmail.map((a: SystemLog) => a.id)]));
+      }
+      
+      // Send email for new warning alerts (not yet emailed, limit to prevent spam)
+      const newWarningsToEmail = newWarningAlerts.filter((a: SystemLog) => !emailedAlertIds.has(a.id)).slice(0, 5);
+      if (newWarningsToEmail.length > 0) {
+        await sendEmailAlert(newWarningsToEmail, 'warning');
+        setEmailedAlertIds(prev => new Set([...prev, ...newWarningsToEmail.map((a: SystemLog) => a.id)]));
+      }
+      
+      setCriticalAlerts(newCriticalAlerts);
+      setWarningAlerts(newWarningAlerts);
+      setSystemLogs(allLogs || []);
+      setAIIssues(issues || []);
+    } catch (err) {
+      console.error('Error loading system logs:', err);
+    }
+  };
+
+  // Load student financial data from v_student_financials
+  const loadStudentFinancials = async (campusCode: string, page: number = 0) => {
+    try {
+      let query = supabase
+        .from('v_student_financials')
+        .select('*')
+        .range(page * FINANCIAL_PAGE_SIZE, (page + 1) * FINANCIAL_PAGE_SIZE - 1);
+      
+      if (campusCode && campusCode !== 'all') {
+        query = query.eq('campus', campusCode);
+      }
+      
+      if (financialFilter.status !== 'all') {
+        query = query.eq('status', financialFilter.status);
+      }
+      
+      const { data } = await query;
+      const financials = data || [];
+      setStudentFinancials(financials);
+      
+      // Calculate financial statistics
+      const totalStudents = financials.length;
+      const fullyPaid = financials.filter((s: StudentFinancial) => s.total_balance === 0).length;
+      const unpaidStudents = financials.filter((s: StudentFinancial) => s.total_balance > 0).length;
+      const totalOutstanding = financials.reduce((sum: number, s: StudentFinancial) => sum + (s.total_balance || 0), 0);
+      
+      setFinancialStats({
+        totalStudents,
+        fullyPaid,
+        unpaidStudents,
+        totalOutstanding
+      });
+    } catch (err) {
+      console.error('Error loading student financials:', err);
+    }
+  };
 
   const loadStats = async (campusCode: string) => {
     try {
@@ -132,6 +329,12 @@ export default function AdminDashboard() {
         totalRevenueThisMonth: totalRevenue,
         paymentBreakdown
       });
+      
+      // Load system logs and financial data
+      await Promise.all([
+        loadSystemLogs(),
+        loadStudentFinancials(campusCode, 0)
+      ]);
     } catch (err) {
       console.error('Error loading stats:', err);
     }
@@ -217,11 +420,24 @@ export default function AdminDashboard() {
 
       // Load notifications
       await loadNotifications(userCampus);
+      
+      // Load system logs and financial data
+      await loadSystemLogs();
+      await loadStudentFinancials(userCampus, 0);
 
       setLoading(false);
     };
+    
+    // Auto-refresh system logs every 30 seconds
+    const logRefreshInterval = setInterval(() => {
+      if (supabase) loadSystemLogs();
+    }, 30000);
 
     checkAuth();
+    
+    return () => {
+      // Cleanup interval on unmount
+    };
   }, [supabase, router]);
 
   const handleLogout = async () => {
@@ -237,8 +453,27 @@ export default function AdminDashboard() {
       case 'west':
         return 'West Campus';
       default:
-        return 'Unknown Campus';
+        return 'All Campuses';
     }
+  };
+  
+  // Get log severity color
+  const getLogColor = (type: string) => {
+    switch (type) {
+      case 'error':
+        return 'bg-red-500';
+      case 'warning':
+        return 'bg-yellow-500';
+      case 'info':
+        return 'bg-blue-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
+  
+  // Dismiss warning alert
+  const dismissWarning = (id: string) => {
+    setDismissedWarnings(prev => new Set([...prev, id]));
   };
 
   // Icon SVGs map
@@ -448,6 +683,233 @@ export default function AdminDashboard() {
             </p>
           </div>
 
+          {/* CRITICAL ALERTS BANNER */}
+          {criticalAlerts.length > 0 && (
+            <div className="mb-6 bg-red-600 border border-red-400 rounded-xl p-4">
+              <div className="flex items-center gap-3 mb-2">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <h3 className="text-white font-bold text-lg">Critical System Issues ({criticalAlerts.length})</h3>
+              </div>
+              <div className="space-y-2">
+                {criticalAlerts.slice(0, 3).map((alert) => (
+                  <div key={alert.id} className="bg-red-700/50 rounded-lg p-3 flex justify-between items-center">
+                    <div>
+                      <p className="text-white font-medium">{alert.message}</p>
+                      <p className="text-red-200 text-sm">{alert.module} • {new Date(alert.created_at).toLocaleString()}</p>
+                    </div>
+                    <span className="px-2 py-1 bg-red-500 text-white text-xs rounded">CRITICAL</span>
+                  </div>
+                ))}
+              </div>
+              <button 
+                onClick={() => setShowSystemLogs(true)}
+                className="mt-3 text-white underline text-sm hover:text-red-200"
+              >
+                View all system logs →
+              </button>
+            </div>
+          )}
+          
+          {/* WARNING ALERTS */}
+          {warningAlerts.filter(w => !dismissedWarnings.has(w.id)).length > 0 && (
+            <div className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {warningAlerts.filter(w => !dismissedWarnings.has(w.id)).slice(0, 6).map((warning) => (
+                <div key={warning.id} className="bg-yellow-500/20 border border-yellow-400 rounded-xl p-4 relative">
+                  <button 
+                    onClick={() => dismissWarning(warning.id)}
+                    className="absolute top-2 right-2 text-yellow-300 hover:text-white"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg className="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span className="text-yellow-400 font-semibold text-sm">WARNING</span>
+                  </div>
+                  <p className="text-white text-sm">{warning.message}</p>
+                  <p className="text-yellow-200/70 text-xs mt-1">{warning.module} • {new Date(warning.created_at).toLocaleDateString()}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* FINANCIAL DASHBOARD SECTION */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-white">Financial Overview</h3>
+              <div className="flex gap-2">
+                <select 
+                  value={financialFilter.campus}
+                  onChange={(e) => {
+                    setFinancialFilter(prev => ({ ...prev, campus: e.target.value }));
+                    loadStudentFinancials(e.target.value, 0);
+                  }}
+                  className="bg-white/10 border border-white/20 text-white rounded-lg px-3 py-1 text-sm"
+                >
+                  <option value="all" className="text-gray-900">All Campuses</option>
+                  <option value="main" className="text-gray-900">Main Campus</option>
+                  <option value="west" className="text-gray-900">West Campus</option>
+                </select>
+                <button
+                  onClick={() => setShowSystemLogs(!showSystemLogs)}
+                  className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium"
+                >
+                  {showSystemLogs ? 'Hide' : 'Show'} System Logs
+                </button>
+              </div>
+            </div>
+            
+            {/* Financial Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="glass-neu p-4">
+                <p className="text-purple-300 text-xs uppercase mb-1">Total Students</p>
+                <p className="text-2xl font-bold text-white">{financialStats.totalStudents}</p>
+              </div>
+              <div className="glass-neu p-4">
+                <p className="text-purple-300 text-xs uppercase mb-1">Fully Paid</p>
+                <p className="text-2xl font-bold text-green-400">{financialStats.fullyPaid}</p>
+              </div>
+              <div className="glass-neu p-4">
+                <p className="text-purple-300 text-xs uppercase mb-1">With Balance</p>
+                <p className="text-2xl font-bold text-yellow-400">{financialStats.unpaidStudents}</p>
+              </div>
+              <div className="glass-neu p-4">
+                <p className="text-purple-300 text-xs uppercase mb-1">Total Outstanding</p>
+                <p className="text-xl font-bold text-red-400">KES {financialStats.totalOutstanding.toLocaleString()}</p>
+              </div>
+            </div>
+            
+            {/* Student Financial Table (Limited Rows) */}
+            <div className="glass-neu p-4 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/20">
+                    <th className="text-left py-2 px-3 text-purple-300 font-semibold">Student</th>
+                    <th className="text-left py-2 px-3 text-purple-300 font-semibold">Campus</th>
+                    <th className="text-right py-2 px-3 text-purple-300 font-semibold">Balance</th>
+                    <th className="text-right py-2 px-3 text-purple-300 font-semibold">Paid</th>
+                    <th className="text-center py-2 px-3 text-purple-300 font-semibold">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {studentFinancials.slice(0, FINANCIAL_PAGE_SIZE).map((student) => (
+                    <tr key={student.student_id} className="border-b border-white/10 hover:bg-white/5">
+                      <td className="py-2 px-3 text-white">
+                        <p className="font-medium">{student.full_name}</p>
+                        <p className="text-purple-300 text-xs">{student.admission_number}</p>
+                      </td>
+                      <td className="py-2 px-3 text-white">{student.campus}</td>
+                      <td className="py-2 px-3 text-right text-red-400">KES {student.total_balance?.toLocaleString()}</td>
+                      <td className="py-2 px-3 text-right text-green-400">KES {student.total_paid?.toLocaleString()}</td>
+                      <td className="py-2 px-3 text-center">
+                        <span className={`px-2 py-1 rounded-full text-xs ${student.total_balance === 0 ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
+                          {student.total_balance === 0 ? 'Paid' : 'Balance'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              
+              {/* Pagination */}
+              <div className="flex justify-between items-center mt-4">
+                <button
+                  onClick={() => {
+                    const newPage = Math.max(0, financialPage - 1);
+                    setFinancialPage(newPage);
+                    loadStudentFinancials(campus, newPage);
+                  }}
+                  disabled={financialPage === 0}
+                  className="px-3 py-1 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white rounded-lg text-sm"
+                >
+                  ← Previous
+                </button>
+                <span className="text-purple-300 text-sm">Page {financialPage + 1}</span>
+                <button
+                  onClick={() => {
+                    const newPage = financialPage + 1;
+                    setFinancialPage(newPage);
+                    loadStudentFinancials(campus, newPage);
+                  }}
+                  disabled={studentFinancials.length < FINANCIAL_PAGE_SIZE}
+                  className="px-3 py-1 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white rounded-lg text-sm"
+                >
+                  Next →
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* SYSTEM LOGS PANEL (Collapsible) */}
+          {showSystemLogs && (
+            <div className="glass-neu p-4 mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-white">System Logs</h3>
+                <button
+                  onClick={() => setShowSystemLogs(false)}
+                  className="text-purple-300 hover:text-white"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {systemLogs.map((log) => (
+                  <div key={log.id} className="flex items-start gap-3 p-2 rounded-lg hover:bg-white/5">
+                    <div className={`w-2 h-2 rounded-full mt-2 ${getLogColor(log.log_type)}`} />
+                    <div className="flex-1">
+                      <p className="text-white text-sm">{log.message}</p>
+                      <p className="text-purple-300 text-xs">{log.module} • {new Date(log.created_at).toLocaleString()}</p>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded text-xs ${
+                      log.log_type === 'error' ? 'bg-red-500/20 text-red-400' :
+                      log.log_type === 'warning' ? 'bg-yellow-500/20 text-yellow-400' :
+                      'bg-blue-500/20 text-blue-400'
+                    }`}>
+                      {log.log_type}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* AI KNOWN ISSUES */}
+          {aiIssues.length > 0 && (
+            <div className="glass-neu p-4 mb-8">
+              <h3 className="text-lg font-bold text-white mb-4">Known System Issues</h3>
+              <div className="space-y-3">
+                {aiIssues.slice(0, 5).map((issue) => (
+                  <div key={issue.id} className="bg-white/5 rounded-lg p-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-white font-medium">{issue.description}</p>
+                        <p className="text-purple-300 text-sm">Type: {issue.issue_type}</p>
+                        {issue.solution && (
+                          <p className="text-green-400 text-sm mt-1">Fix: {issue.solution}</p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <span className="px-2 py-1 bg-red-500/20 text-red-400 text-xs rounded">
+                          {issue.occurrences} occurrences
+                        </span>
+                        <p className="text-purple-300 text-xs mt-1">
+                          Last: {new Date(issue.last_seen).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8">
             {/* Total Applications */}
@@ -630,6 +1092,11 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+      <Chatbot 
+        userId={currentUser?.id}
+        campus={campus}
+        userEmail={currentUser?.email}
+      />
     </div>
   );
 }

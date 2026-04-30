@@ -204,15 +204,27 @@ export default function ApplicationsPage() {
     // Load available classes for this course and campus
     if (supabase && application.course && application.campus) {
       const normalizedCampus = application.campus.toLowerCase().includes('west') ? 'west' : 'main';
-      const { data: classesData } = await supabase
-        .from('classes')
-        .select('id, class_name, semester, module_index, intake_month, is_active')
-        .eq('course_id', application.course)
-        .eq('campus', normalizedCampus)
-        .eq('is_active', true)
-        .order('class_name');
       
-      setAvailableClasses(classesData || []);
+      // Try to load classes - if table doesn't exist or no classes, show message
+      try {
+        const { data: classesData, error: classesError } = await supabase
+          .from('classes')
+          .select('id, class_name, semester, module_index, intake_month, is_active')
+          .eq('course_id', application.course)
+          .eq('campus', normalizedCampus)
+          .eq('is_active', true)
+          .order('class_name');
+        
+        if (classesError) {
+          console.log('Classes table error:', classesError);
+          setAvailableClasses([]);
+        } else {
+          setAvailableClasses(classesData || []);
+        }
+      } catch (err) {
+        console.log('Classes table may not exist yet');
+        setAvailableClasses([]);
+      }
     }
     
     setShowEnrollModal(true);
@@ -311,84 +323,69 @@ export default function ApplicationsPage() {
       return;
     }
 
-    if (!selectedClassId) {
-      setError('Please select a class');
-      return;
-    }
-
     setEnrolling(true);
     setError('');
 
     try {
-      // Get selected class details
-      const selectedClass = availableClasses.find(c => c.id === selectedClassId);
-      if (!selectedClass) {
-        throw new Error('Selected class not found');
-      }
-
-      // Calculate initial balance from first semester fee
-      let initialBalance = 0;
-      if (selectedApplication?.course_type_id) {
-        // Get module and semester data for first semester
-        const { data: module } = await supabase
-          .from('modules')
-          .select('*, semesters(*)')
-          .eq('course_type_id', selectedApplication.course_type_id)
-          .eq('module_index', 1)
+      // Auto-generate class name based on enrollment date, course name, and course type
+      const enrollmentDate = selectedApplication?.application_date || new Date().toISOString().split('T')[0];
+      const date = new Date(enrollmentDate);
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                          'July', 'August', 'September', 'October', 'November', 'December'];
+      const month = monthNames[date.getMonth()];
+      const year = date.getFullYear();
+      
+      // Generate class name: "CourseName - CourseType - Month Year"
+      const courseName = selectedApplication?.course || 'Unknown';
+      const courseType = selectedApplication?.course_type || 'General';
+      const className = `${courseName} - ${courseType} - ${month} ${year}`;
+      
+      // Check if class already exists
+      const normalizedCampus = selectedApplication?.campus?.toLowerCase().includes('west') ? 'west' : 'main';
+      let classId = selectedClassId;
+      
+      const { data: existingClass } = await supabase
+        .from('classes')
+        .select('id, semester, module_index')
+        .eq('class_name', className)
+        .eq('campus', normalizedCampus)
+        .single();
+      
+      if (existingClass) {
+        classId = existingClass.id;
+      } else {
+        // Create new class
+        const { data: newClass, error: classError } = await supabase
+          .from('classes')
+          .insert([{
+            class_name: className,
+            course_id: selectedApplication?.course,
+            campus: normalizedCampus,
+            semester: 1,
+            module_index: 1,
+            intake: month,
+            intake_month: month,
+            is_active: true
+          }])
+          .select()
           .single();
-
-        if (module) {
-          // Check if short course
-          const { data: courseType } = await supabase
-            .from('course_types')
-            .select('*, courses(*)')
-            .eq('id', selectedApplication.course_type_id)
-            .single();
-
-          const examBody = courseType?.courses?.exam_body || 'internal';
-
-          if (examBody === 'internal' && courseType?.study_mode === 'short-course') {
-            // Short course fees - use course_id link
-            const { data: shortCourse } = await supabase
-              .from('short_courses')
-              .select('*')
-              .eq('course_id', courseType.course_id)
-              .single();
-            if (shortCourse) {
-              initialBalance = shortCourse.first_installment + shortCourse.subsequent_installment + shortCourse.practical_fee;
-            }
-          } else if (examBody === 'CDACC' && module.semesters && module.semesters.length === 0) {
-            // CDACC once_per_stage
-            initialBalance = module.fee + module.exam_fee;
-          } else {
-            // Standard modular courses
-            const semester = module.semesters?.find((s: any) => s.semester_index === 1);
-            if (semester) {
-              // Get additional fees for KNEC
-              const { data: additionalFees } = await supabase
-                .from('semester_additional_fees')
-                .select('amount')
-                .eq('semester_id', semester.id);
-              const additionalFeesTotal = additionalFees?.reduce((sum: number, f: any) => sum + f.amount, 0) || 0;
-              // JP: add course-level exam fee
-              const jpCourseExamFee = examBody === 'JP' ? (courseType?.exam_fee || 0) : 0;
-              initialBalance = semester.fee + semester.practical_fee + module.exam_fee + additionalFeesTotal + jpCourseExamFee;
-            }
-          }
+        
+        if (classError) {
+          setError('Failed to create class: ' + classError.message);
+          return;
         }
+        classId = newClass.id;
       }
 
       // Update application status and admission number in Supabase
-      // Use selected class's semester and module
       const { error: updateError } = await supabase
         .from('applications')
         .update({
           status: 'enrolled',
           admission_number: newAdmissionNumber,
-          current_module: selectedClass.module_index,
-          current_semester: selectedClass.semester,
-          class_id: selectedClassId,
-          total_balance: initialBalance
+          current_module: 1,
+          current_semester: 1,
+          class_id: classId
         })
         .eq('id', selectedApplication?.id);
 
@@ -555,14 +552,10 @@ export default function ApplicationsPage() {
   };
 
   const getCampusName = (campusCode: string) => {
-    switch (campusCode) {
-      case 'main':
-        return 'Main Campus';
-      case 'west':
-        return 'West Campus';
-      default:
-        return 'Unknown Campus';
-    }
+    const lowerCode = campusCode?.toLowerCase() || '';
+    if (lowerCode.includes('main')) return 'Main Campus';
+    if (lowerCode.includes('west')) return 'West Campus';
+    return campusCode || 'Unknown Campus';
   };
 
   const getStatusColor = (status: string) => {
@@ -1006,33 +999,15 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                 id="admissionNumber"
                 value={newAdmissionNumber}
                 onChange={(e) => setNewAdmissionNumber(e.target.value)}
-                placeholder="Enter admission number"
-                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                placeholder="e.g., EAVI/2024/001"
+                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
               />
             </div>
 
-            <div className="mb-6">
-              <label htmlFor="classSelect" className="block text-white font-medium mb-2 text-sm">
-                Class / Intake *
-              </label>
-              {availableClasses.length === 0 ? (
-                <p className="text-orange-300 text-sm">No classes found for this course. Please create a class first.</p>
-              ) : (
-                <select
-                  id="classSelect"
-                  value={selectedClassId}
-                  onChange={(e) => setSelectedClassId(e.target.value)}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
-                  required
-                >
-                  <option value="">Select a class</option>
-                  {availableClasses.map((cls) => (
-                    <option key={cls.id} value={cls.id}>
-                      {cls.class_name} — {cls.intake_month} (Sem {cls.semester}, Mod {cls.module_index})
-                    </option>
-                  ))}
-                </select>
-              )}
+            <div className="mb-4 p-3 bg-purple-500/20 border border-purple-500/50 rounded-lg">
+              <p className="text-purple-200 text-sm">
+                <span className="font-semibold">Auto-generated Class:</span> {selectedApplication?.course} - {selectedApplication?.course_type} - {new Date(selectedApplication?.application_date || new Date()).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              </p>
             </div>
 
             <div className="flex gap-3">

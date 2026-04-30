@@ -400,9 +400,33 @@ export default function ClassesPage() {
             </div>
           </div>
         </div>
-
+        
+        {/* Tab Navigation */}
+        <div className="max-w-7xl mx-auto px-4 md:px-6 pt-6">
+          <div className="glass-neu p-2 flex gap-2">
+            <button
+              onClick={() => setActiveTab('classes')}
+              className={`flex-1 py-3 px-6 rounded-xl font-semibold transition-all ${
+                activeTab === 'classes' ? 'glass-neu-btn text-white' : 'text-purple-200 hover:text-white'
+              }`}
+            >
+              Classes & Intakes
+            </button>
+            <button
+              onClick={() => setActiveTab('bridge')}
+              className={`flex-1 py-3 px-6 rounded-xl font-semibold transition-all ${
+                activeTab === 'bridge' ? 'glass-neu-btn text-white' : 'text-purple-200 hover:text-white'
+              }`}
+            >
+              Bridge Enrollment
+            </button>
+          </div>
+        </div>
+        
         {/* Main Content */}
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-8">
+          {activeTab === 'classes' ? (
+            <>
           {error && (
             <div className="mb-6 p-4 bg-red-500/20 border border-red-500 rounded-lg text-red-200 text-sm">
               {error}
@@ -535,6 +559,8 @@ export default function ClassesPage() {
               </table>
             )}
           </div>
+            </>
+          ) : null}
         </div>
       </div>
 
