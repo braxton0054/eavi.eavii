@@ -17,8 +17,8 @@ export async function POST(request: NextRequest) {
       port: parseInt(process.env.SMTP_PORT || '587'),
       secure: false,
       auth: {
-        user: process.env.SMTP_USER || 'braxtonkipchumba3@gmail.com',
-        pass: process.env.SMTP_PASSWORD || 'wvphudinszropnrb',
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASSWORD,
       },
     });
 
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
 
     // Send email
     const info = await transporter.sendMail({
-      from: `"EAVI System Alerts" <${process.env.SMTP_FROM_EMAIL || 'braxtonkipchumba3@gmail.com'}>`,
+      from: `"EAVI System Alerts" <${process.env.SMTP_FROM_EMAIL}>`,
       to: DEVELOPER_EMAIL,
       subject: `🚨 [${alertType.toUpperCase()}] EAVI System Alerts - ${alerts.length} issue${alerts.length > 1 ? 's' : ''} detected`,
       html: emailHtml,
