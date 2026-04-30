@@ -264,7 +264,7 @@ async function updateIssueMemory(message: string, aiResponse: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, userId, campus } = await request.json();
+    const { message, userId, campus, userRole, userName } = await request.json();
 
     if (!message) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
@@ -333,12 +333,17 @@ export async function POST(request: NextRequest) {
     let responseLabel = '';
     const usedMemory = (aiMemory.longTermMemory?.length ?? 0) > 0 || (aiMemory.chatHistory?.length ?? 0) > 0;
 
+    // Build user context for the AI
+    const userContext = userRole || userName 
+      ? `\n\nCURRENT USER CONTEXT:\n- Role: ${userRole || 'Unknown'}\n- Name: ${userName || 'Unknown'}\n- Campus: ${finalCampus}\n- User ID: ${finalUserId}\n\nIMPORTANT: You already know this user's role. DO NOT ask them to identify themselves or their role. Address them directly based on their role.`
+      : '';
+
     // Build the comprehensive EAVI system prompt
     const basePrompt = `====================================================
 EAST AFRICA VISION INSTITUTE (EAVI) – AI SYSTEM PROMPT
 ====================================================
 
-YOU ARE: EAVI (AI CHATBOT FOR EAVI COLLEGE)
+YOU ARE: EAVI (AI CHATBOT FOR EAVI COLLEGE)${userContext}
 
 ----------------------------------------------------
 1. INSTITUTION KNOWLEDGE BASE (STATIC CONTEXT)

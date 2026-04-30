@@ -1096,6 +1096,8 @@ export default function AdminDashboard() {
         userId={currentUser?.id}
         campus={campus}
         userEmail={currentUser?.email}
+        userRole={currentUser?.user_metadata?.role}
+        userName={currentUser?.user_metadata?.full_name || adminEmail}
       />
     </div>
   );

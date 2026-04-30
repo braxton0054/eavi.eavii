@@ -15,12 +15,14 @@ interface ChatbotProps {
   userId?: string;
   campus?: string;
   userEmail?: string;
+  userRole?: string;
+  userName?: string;
 }
 
-export default function Chatbot({ userId = '00000000-0000-0000-0000-000000000000', campus = 'main', userEmail = '' }: ChatbotProps) {
+export default function Chatbot({ userId = '00000000-0000-0000-0000-000000000000', campus = 'main', userEmail = '', userRole = '', userName = '' }: ChatbotProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: `Hello! I am EAVI, your AI assistant for East Africa Vision Institute. I can help with student records, fees, courses, and system diagnostics. How can I assist you today?`, isDiagnostic: false, responseLabel: 'Information' }
+    { role: 'assistant', content: `Hello${userName ? `, ${userName}` : ''}! I am EAVI, your AI assistant for East Africa Vision Institute. I can see you're logged in as ${userRole || 'a user'}. How can I assist you today?`, isDiagnostic: false, responseLabel: 'Information' }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -59,7 +61,7 @@ export default function Chatbot({ userId = '00000000-0000-0000-0000-000000000000
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: userMessage, userId, campus }),
+        body: JSON.stringify({ message: userMessage, userId, campus, userRole, userName }),
       });
 
       if (!response.ok) {
@@ -111,7 +113,7 @@ export default function Chatbot({ userId = '00000000-0000-0000-0000-000000000000
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: analyzeMessage, userId, campus }),
+        body: JSON.stringify({ message: analyzeMessage, userId, campus, userRole, userName }),
       });
 
       if (!response.ok) {
