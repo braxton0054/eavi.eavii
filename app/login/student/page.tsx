@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { createClient } from '@/lib/client';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 // Password strength calculator
 const calculatePasswordStrength = (password: string): { strength: number; label: string; color: string } => {
@@ -39,6 +39,27 @@ export default function StudentLogin() {
   useEffect(() => {
     const client = createClient();
     setSupabase(client);
+
+    // Handle email confirmation code from URL
+    const searchParams = new URLSearchParams(window.location.search);
+    const code = searchParams.get('code');
+    const confirmed = searchParams.get('confirmed');
+
+    if (confirmed) {
+      setSuccess('Email confirmed successfully! You can now log in.');
+    }
+
+    if (code) {
+      // Exchange the code for a session
+      client.auth.exchangeCodeForSession(code).then(({ error }: { error: any }) => {
+        if (error) {
+          console.error('Error exchanging code for session:', error);
+          setError('Email confirmation failed. The link may be expired or invalid.');
+        } else {
+          setSuccess('Email confirmed successfully! You can now log in.');
+        }
+      });
+    }
 
     // Check if already logged in
     client.auth.getSession().then(({ data: { session } }: { data: { session: any } }) => {
@@ -115,7 +136,7 @@ export default function StudentLogin() {
           email: formData.email,
           password: formData.password,
           options: {
-            emailRedirectTo: `${window.location.origin}/login/student`,
+            emailRedirectTo: 'https://www.eavi.shop/login/student',
             data: {
               admission_number: formData.admissionNumber,
               role: 'student',
@@ -127,6 +148,12 @@ export default function StudentLogin() {
 
         if (error) {
           setError(error.message);
+          return;
+        }
+
+        // Check if user was created but no confirmation email was sent (email already exists)
+        if (data.user && data.user.identities && data.user.identities.length === 0) {
+          setError('This email is already registered. Please use the "Forgot Password" option or log in with your existing account.');
           return;
         }
 

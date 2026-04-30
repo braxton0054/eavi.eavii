@@ -132,3 +132,126 @@ body {
     @apply font-sans;
   }
 }
+
+@layer components {
+  /* Light Neumorphism */
+  .neu {
+    @apply bg-[#e0e5ec] rounded-2xl;
+    box-shadow: 8px 8px 16px #b8bcc2,
+                -8px -8px 16px #ffffff;
+  }
+
+  .neu-inset {
+    @apply bg-[#e0e5ec] rounded-2xl;
+    box-shadow: inset 6px 6px 10px #b8bcc2,
+                inset -6px -6px 10px #ffffff;
+  }
+
+  .neu-btn {
+    @apply bg-[#e0e5ec] rounded-xl transition-all duration-200 ease-in-out;
+    box-shadow: 5px 5px 10px #b8bcc2,
+                -5px -5px 10px #ffffff;
+  }
+
+  .neu-btn:hover {
+    box-shadow: 7px 7px 14px #b8bcc2,
+                -7px -7px 14px #ffffff;
+  }
+
+  .neu-btn:active {
+    box-shadow: inset 5px 5px 10px #b8bcc2,
+                inset -5px -5px 10px #ffffff;
+  }
+
+  .neu-input {
+    @apply bg-[#e0e5ec] rounded-xl;
+    box-shadow: inset 4px 4px 8px #b8bcc2,
+                inset -4px -4px 8px #ffffff;
+  }
+
+  .neu-card {
+    @apply bg-[#e0e5ec] rounded-2xl p-6;
+    box-shadow: 8px 8px 16px #b8bcc2,
+                -8px -8px 16px #ffffff;
+  }
+
+  /* Dark Neumorphism */
+  .dark-neu {
+    @apply bg-[#1e1e1e] rounded-2xl;
+    box-shadow: 8px 8px 16px #141414,
+                -8px -8px 16px #2a2a2a;
+  }
+
+  .dark-neu-inset {
+    @apply bg-[#1e1e1e] rounded-2xl;
+    box-shadow: inset 6px 6px 10px #141414,
+                inset -6px -6px 10px #2a2a2a;
+  }
+
+  .dark-neu-btn {
+    @apply bg-[#1e1e1e] rounded-xl transition-all duration-200 ease-in-out;
+    box-shadow: 5px 5px 10px #141414,
+                -5px -5px 10px #2a2a2a;
+  }
+
+  .dark-neu-btn:hover {
+    box-shadow: 7px 7px 14px #141414,
+                -7px -7px 14px #2a2a2a;
+  }
+
+  .dark-neu-btn:active {
+    box-shadow: inset 5px 5px 10px #141414,
+                inset -5px -5px 10px #2a2a2a;
+  }
+
+  .dark-neu-input {
+    @apply bg-[#1e1e1e] rounded-xl;
+    box-shadow: inset 4px 4px 8px #141414,
+                inset -4px -4px 8px #2a2a2a;
+  }
+
+  .dark-neu-card {
+    @apply bg-[#1e1e1e] rounded-2xl p-6;
+    box-shadow: 8px 8px 16px #141414,
+                -8px -8px 16px #2a2a2a;
+  }
+
+  /* Hybrid Glassmorphism + Neumorphism for dark themes */
+  .glass-neu {
+    @apply backdrop-blur-md rounded-2xl;
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 12px 12px 24px rgba(0, 0, 0, 0.4),
+                -12px -12px 24px rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .glass-neu-inset {
+    @apply backdrop-blur-md rounded-2xl;
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: inset 8px 8px 16px rgba(0, 0, 0, 0.4),
+                inset -8px -8px 16px rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .glass-neu-btn {
+    @apply backdrop-blur-md rounded-xl transition-all duration-200 ease-in-out;
+    background: rgba(34, 197, 94, 0.3);
+    box-shadow: 6px 6px 12px rgba(0, 0, 0, 0.3),
+                -6px -6px 12px rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .glass-neu-btn:hover {
+    background: rgba(34, 197, 94, 0.4);
+    box-shadow: 8px 8px 16px rgba(0, 0, 0, 0.4),
+                -8px -8px 16px rgba(255, 255, 255, 0.1);
+    transform: translateY(-1px);
+  }
+
+  .glass-neu-btn:active {
+    background: rgba(34, 197, 94, 0.2);
+    box-shadow: inset 4px 4px 8px rgba(0, 0, 0, 0.3),
+                inset -4px -4px 8px rgba(255, 255, 255, 0.05);
+    transform: translateY(0);
+  }
+}

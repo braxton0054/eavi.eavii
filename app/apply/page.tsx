@@ -504,20 +504,12 @@ export default function ApplyPage() {
                   <span className="text-white font-medium">{submittedData.full_name}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-purple-300">Admission Number:</span>
-                  <span className="text-white font-medium">{submittedData.admission_number}</span>
-                </div>
-                <div className="flex justify-between">
                   <span className="text-purple-300">Course:</span>
                   <span className="text-white font-medium">{submittedData.course}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-purple-300">Campus:</span>
                   <span className="text-white font-medium">{submittedData.campus}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-purple-300">Status:</span>
-                  <span className="text-yellow-400 font-medium capitalize">{submittedData.status}</span>
                 </div>
               </div>
             </div>
@@ -710,7 +702,7 @@ export default function ApplyPage() {
                     return hasExamBodyInModules || matchesByPrefix;
                   })
                   .map(course => (
-                    <option key={course.id} value={course.id} className="text-gray-900">{course.name} ({course.id})</option>
+                    <option key={course.id} value={course.id} className="text-gray-900">{course.name}</option>
                   ))}
               </select>
               {formData.examBody && courses.filter(course => {

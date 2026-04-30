@@ -25,16 +25,43 @@ export default function ResetPassword() {
   useEffect(() => {
     if (!supabase) return;
 
+    // Check for email confirmation code first
+    const searchParams = new URLSearchParams(window.location.search);
+    const code = searchParams.get('code');
+
+    if (code) {
+      // This is an email confirmation link, exchange code for session
+      supabase.auth.exchangeCodeForSession(code).then(({ error }: { error: any }) => {
+        if (error) {
+          console.error('Error exchanging code for session:', error);
+          setError('Email confirmation failed. The link may be expired or invalid.');
+        } else {
+          // Email confirmed, redirect to appropriate login page based on role
+          supabase.auth.getSession().then(({ data: { session } }: { data: { session: any } }) => {
+            const role = session?.user?.user_metadata?.role;
+            if (role === 'student') {
+              router.push('/login/student?confirmed=true');
+            } else if (role === 'lecturer') {
+              router.push('/login/lecturer?confirmed=true');
+            } else {
+              router.push('/login/admin?confirmed=true');
+            }
+          });
+        }
+      });
+      return;
+    }
+
     // Check if user is authenticated (they should be after clicking the email link)
     const checkSession = async () => {
       const { data: { session }, error } = await supabase.auth.getSession();
-      
+
       if (error) {
         console.error('Session check error:', error);
         setError('Invalid or expired reset link. Please request a new password reset.');
         return;
       }
-      
+
       if (!session) {
         // Try to get session from URL params (some providers use hash)
         const hash = window.location.hash;
@@ -50,7 +77,7 @@ export default function ResetPassword() {
       }
     };
     checkSession();
-  }, [supabase]);
+  }, [supabase, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -8,6 +8,19 @@ import { useRouter } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
+// Neumorphism color palette
+const COLORS = {
+  base: '#e0e5ec',
+  shadowDark: '#b8bec7',
+  shadowLight: '#ffffff',
+  text: '#2d3748',
+  muted: '#718096',
+  accent: '#4a90d9',
+  danger: '#e74c3c',
+  success: '#27ae60',
+  warning: '#f39c12'
+};
+
 export default function AdminDashboard() {
   const router = useRouter();
   const [supabase, setSupabase] = useState<any>(null);
@@ -228,32 +241,129 @@ export default function AdminDashboard() {
     }
   };
 
+  // Icon SVGs map
+  const icons: Record<string, string> = {
+    applications: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+    courses: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253',
+    classes: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
+    lecturers: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
+    students: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',
+    results: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
+    calendar: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
+    reporting: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
+    'fee-pdf': 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z',
+    admission: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+    'fee-structure': 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+    payments: 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z',
+    financial: 'M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z',
+    reports: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'
+  };
+
+  // Icon colors for different action cards
+  const iconColors: Record<string, string> = {
+    applications: '#a78bfa',      // Purple
+    courses: '#60a5fa',           // Blue
+    classes: '#34d399',           // Green
+    lecturers: '#fb923c',         // Orange
+    students: '#4ade80',          // Light Green
+    results: '#f87171',           // Red
+    calendar: '#2dd4bf',          // Teal
+    reporting: '#fbbf24',         // Yellow
+    'fee-pdf': '#c084fc',         // Violet
+    admission: '#38bdf8',         // Light Blue
+    'fee-structure': '#f472b6',   // Pink
+    payments: '#22d3ee',          // Cyan
+    financial: '#818cf8',         // Indigo
+    reports: '#5eead4'            // Teal Green
+  };
+
+  // Action Card Component
+  const ActionCard = ({ href, icon, title, description }: { href: string; icon: string; title: string; description: string }) => (
+    <Link
+      href={href}
+      className="glass-neu hover:bg-white/20 transition-colors duration-300 block p-4"
+    >
+      <div className="flex items-center gap-3">
+        <div 
+          className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+          style={{ backgroundColor: iconColors[icon] || '#a78bfa' }}
+        >
+          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icons[icon] || icons.applications} />
+          </svg>
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-base font-semibold text-white truncate leading-tight">
+            {title}
+          </h3>
+          <p className="text-xs text-purple-200 truncate leading-tight">
+            {description}
+          </p>
+        </div>
+      </div>
+    </Link>
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950 flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
+        <div 
+          className="px-8 py-4 rounded-2xl"
+          style={{ 
+            background: 'rgba(255,255,255,0.1)',
+            backdropFilter: 'blur(10px)',
+            color: 'white'
+          }}
+        >
+          Loading...
+        </div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950">
+      <style jsx global>{`
+        :root {
+          --base: ${COLORS.base};
+          --shadow-dark: ${COLORS.shadowDark};
+          --shadow-light: ${COLORS.shadowLight};
+          --text: ${COLORS.text};
+          --muted: ${COLORS.muted};
+          --accent: ${COLORS.accent};
+          --raised: 6px 6px 12px ${COLORS.shadowDark}, -6px -6px 12px ${COLORS.shadowLight};
+          --raised-sm: 3px 3px 7px ${COLORS.shadowDark}, -3px -3px 7px ${COLORS.shadowLight};
+          --inset: inset 4px 4px 8px ${COLORS.shadowDark}, inset -4px -4px 8px ${COLORS.shadowLight};
+        }
+      `}</style>
       <div className="relative z-10 w-full">
         {/* Header */}
         <div className="bg-white/10 backdrop-blur-md border-b border-white/20">
           <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href="/" className="relative w-12 h-12">
-                <Image
-                  src="/logo.webp"
-                  alt="EAVI Logo"
-                  fill
-                  className="object-contain"
-                />
-              </Link>
+              <div
+                className="relative w-12 h-12 rounded-xl flex items-center justify-center"
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                }}
+              >
+                <Link href="/" className="relative w-8 h-8">
+                  <Image
+                    src="/logo.webp"
+                    alt="EAVI Logo"
+                    fill
+                    className="object-contain"
+                  />
+                </Link>
+              </div>
               <div>
-                <h1 className="text-xl md:text-2xl font-bold text-white">Admin Dashboard</h1>
-                <p className="text-purple-200 text-sm">{getCampusName(campus)}</p>
+                <h1 className="text-xl md:text-2xl font-bold text-white">
+                  Admin Dashboard
+                </h1>
+                <p className="text-purple-200 text-sm">
+                  {getCampusName(campus)}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -263,7 +373,6 @@ export default function AdminDashboard() {
                   onClick={() => {
                     setShowNotifications(!showNotifications);
                     if (!showNotifications) {
-                      // Mark all current notifications as viewed
                       setViewedNotifications(new Set(notifications.map(n => n.id)));
                     }
                   }}
@@ -341,268 +450,128 @@ export default function AdminDashboard() {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8">
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
-              <div className="text-purple-300 text-sm mb-2">Total Applications</div>
-              <div className="text-3xl md:text-4xl font-bold text-white">{stats.totalApplications}</div>
+            {/* Total Applications */}
+            <div className="glass-neu p-5">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-purple-300 text-xs uppercase tracking-wider mb-1">Total Applications</p>
+                  <p className="text-2xl md:text-3xl font-bold text-white truncate">{stats.totalApplications}</p>
+                </div>
+              </div>
             </div>
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
-              <div className="text-purple-300 text-sm mb-2">Pending</div>
-              <div className="text-3xl md:text-4xl font-bold text-yellow-400">{stats.pendingApplications}</div>
+
+            {/* Pending */}
+            <div className="glass-neu p-5">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-yellow-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-purple-300 text-xs uppercase tracking-wider mb-1">Pending</p>
+                  <p className="text-2xl md:text-3xl font-bold text-yellow-400 truncate">{stats.pendingApplications}</p>
+                </div>
+              </div>
             </div>
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
-              <div className="text-purple-300 text-sm mb-2">Approved</div>
-              <div className="text-3xl md:text-4xl font-bold text-green-400">{stats.approvedApplications}</div>
+
+            {/* Approved */}
+            <div className="glass-neu p-5">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-purple-300 text-xs uppercase tracking-wider mb-1">Approved</p>
+                  <p className="text-2xl md:text-3xl font-bold text-green-400 truncate">{stats.approvedApplications}</p>
+                </div>
+              </div>
             </div>
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
-              <div className="text-purple-300 text-sm mb-2">Total Students</div>
-              <div className="text-3xl md:text-4xl font-bold text-blue-400">{stats.totalStudents}</div>
+
+            {/* Total Students */}
+            <div className="glass-neu p-5">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-purple-300 text-xs uppercase tracking-wider mb-1">Total Students</p>
+                  <p className="text-2xl md:text-3xl font-bold text-blue-400 truncate">{stats.totalStudents}</p>
+                </div>
+              </div>
             </div>
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
-              <div className="text-purple-300 text-sm mb-2">Total Lecturers</div>
-              <div className="text-3xl md:text-4xl font-bold text-purple-400">{stats.totalLecturers}</div>
+
+            {/* Total Lecturers */}
+            <div className="glass-neu p-5">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-pink-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-purple-300 text-xs uppercase tracking-wider mb-1">Total Lecturers</p>
+                  <p className="text-2xl md:text-3xl font-bold text-pink-400 truncate">{stats.totalLecturers}</p>
+                </div>
+              </div>
             </div>
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
-              <div className="text-purple-300 text-sm mb-2">Revenue (This Month)</div>
-              <div className="text-3xl md:text-4xl font-bold text-emerald-400">
-                <span className="text-sm font-normal mr-1">KES</span>
-                {stats.totalRevenueThisMonth.toLocaleString()}
+
+            {/* Revenue */}
+            <div className="glass-neu p-5">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-emerald-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-purple-300 text-xs uppercase tracking-wider mb-1">Revenue (Month)</p>
+                  <p className="text-xl md:text-2xl font-bold text-emerald-400 truncate">
+                    KES {stats.totalRevenueThisMonth.toLocaleString()}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Quick Actions */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
-            <Link
-              href="/admin/applications"
-              className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-colors duration-300"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-white">Applications</h3>
-                  <p className="text-purple-200 text-sm">View and manage applications</p>
-                </div>
-              </div>
-            </Link>
-
-            <Link
-              href="/admin/courses"
-              className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-colors duration-300"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-white">Courses</h3>
-                </div>
-              </div>
-            </Link>
-
-            <Link
-              href="/admin/lecturers"
-              className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-colors duration-300"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-orange-600 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-white">Lecturers</h3>
-                  <p className="text-purple-200 text-sm">Manage lecturers</p>
-                </div>
-              </div>
-            </Link>
-
-            <Link
-              href="/admin/students"
-              className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-colors duration-300"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-white">Students</h3>
-                  <p className="text-purple-200 text-sm">Manage student records</p>
-                </div>
-              </div>
-            </Link>
-
-            <Link
-              href="/admin/results"
-              className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-colors duration-300"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-pink-600 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-white">Results</h3>
-                  <p className="text-purple-200 text-sm">View exam results</p>
-                </div>
-              </div>
-            </Link>
-
-            <Link
-              href="/admin/calendar"
-              className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-colors duration-300"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-teal-600 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-white">Academic Calendar</h3>
-                  <p className="text-purple-200 text-sm">Manage term dates and exams</p>
-                </div>
-              </div>
-            </Link>
-
-            <Link
-              href="/admin/reporting-dates"
-              className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-colors duration-300"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-amber-600 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-white">Reporting Dates</h3>
-                  <p className="text-purple-200 text-sm">Set student reporting dates</p>
-                </div>
-              </div>
-            </Link>
-
-            <Link
-              href="/admin/fee-structures"
-              className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-colors duration-300"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-indigo-600 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-white">Generate Fee PDFs</h3>
-                  <p className="text-purple-200 text-sm">Generate course fee structures</p>
-                </div>
-              </div>
-            </Link>
-
-            <Link
-              href="/admin/applications"
-              className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-colors duration-300"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-cyan-600 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-white">Admission Letters</h3>
-                  <p className="text-purple-200 text-sm">Generate admission letters for applicants</p>
-                </div>
-              </div>
-            </Link>
-
-            <Link
-              href="/admin/fee-structure"
-              className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-colors duration-300"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-rose-600 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-white">Fee Structure</h3>
-                  <p className="text-purple-200 text-sm">Set and manage course fees</p>
-                </div>
-              </div>
-            </Link>
-
-            <Link
-              href="/admin/payments"
-              className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-colors duration-300"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-emerald-600 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-white">Fee Payments</h3>
-                  <p className="text-purple-200 text-sm">Record and manage payments</p>
-                </div>
-              </div>
-            </Link>
-
-            <Link
-              href="/admin/financial-reports"
-              className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-colors duration-300"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-blue-700 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-white">Financial Reports</h3>
-                  <p className="text-purple-200 text-sm">Revenue analysis and charts</p>
-                </div>
-              </div>
-            </Link>
-
-            <Link
-              href="/admin/reports"
-              className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-colors duration-300"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-white">Reports</h3>
-                  <p className="text-purple-200 text-sm">View and print student reports</p>
-                </div>
-              </div>
-            </Link>
+            <ActionCard href="/admin/applications" icon="applications" title="Applications" description="View and manage applications" />
+            <ActionCard href="/admin/courses" icon="courses" title="Courses" description="Manage course catalog" />
+            <ActionCard href="/admin/classes" icon="classes" title="Classes" description="Manage classes & intakes" />
+            <ActionCard href="/admin/lecturers" icon="lecturers" title="Lecturers" description="Manage lecturers" />
+            <ActionCard href="/admin/students" icon="students" title="Students" description="Manage student records" />
+            <ActionCard href="/admin/results" icon="results" title="Results" description="View exam results" />
+            <ActionCard href="/admin/calendar" icon="calendar" title="Academic Calendar" description="Manage term dates" />
+            <ActionCard href="/admin/reporting-dates" icon="reporting" title="Reporting Dates" description="Set reporting dates" />
+            <ActionCard href="/admin/fee-structures" icon="fee-pdf" title="Generate Fee PDFs" description="Generate fee structures" />
+            <ActionCard href="/admin/applications" icon="admission" title="Admission Letters" description="Generate admission letters" />
+            <ActionCard href="/admin/fee-structure" icon="fee-structure" title="Fee Structure" description="Set course fees" />
+            <ActionCard href="/admin/payments" icon="payments" title="Fee Payments" description="Record & manage payments" />
+            <ActionCard href="/admin/financial-reports" icon="financial" title="Financial Reports" description="Revenue analysis" />
+            <ActionCard href="/admin/reports" icon="reports" title="Reports" description="View & print reports" />
           </div>
 
           {/* Recent Activity & Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+            {/* Recent Payments */}
+            <div className="glass-neu">
               <h3 className="text-xl font-semibold text-white mb-4">Recent Payments</h3>
               <div className="space-y-4">
                 {recentPayments.length === 0 ? (
                   <p className="text-purple-200 text-sm">No recent payments to display.</p>
                 ) : (
                   recentPayments.map((payment) => (
-                    <div key={payment.id} className="flex justify-between items-center p-3 bg-white/5 rounded-lg border border-white/10">
+                    <div key={payment.id} className="flex justify-between items-center p-3 glass-neu-inset">
                       <div>
                         <p className="text-white font-medium text-sm">{payment.applications?.full_name}</p>
                         <p className="text-purple-300 text-xs capitalize">{payment.payment_type} - {payment.payment_method}</p>
@@ -623,7 +592,8 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+            {/* Payment Methods Chart */}
+            <div className="glass-neu">
               <h3 className="text-xl font-semibold text-white mb-4">Payment Methods (This Month)</h3>
               {stats.paymentBreakdown.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-48 text-purple-200">
@@ -639,7 +609,7 @@ export default function AdminDashboard() {
                       </div>
                       <div className="w-full bg-white/10 rounded-full h-2.5">
                         <div 
-                          className="bg-emerald-500 h-2.5 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.5)]" 
+                          className="bg-emerald-500 h-2.5 rounded-full" 
                           style={{ width: `${item.percentage}%` }}
                         ></div>
                       </div>

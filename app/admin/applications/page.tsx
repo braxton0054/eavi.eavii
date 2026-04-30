@@ -25,7 +25,8 @@ interface Application {
   status: 'pending' | 'enrolled' | 'rejected';
   current_module?: number;
   current_semester?: number;
-  class_name?: string;
+  class_id?: string;
+  classes?: { class_name: string };
 }
 
 export default function ApplicationsPage() {
@@ -49,6 +50,10 @@ export default function ApplicationsPage() {
   const [newAdmissionNumber, setNewAdmissionNumber] = useState('');
   const [enrolling, setEnrolling] = useState(false);
   const [error, setError] = useState('');
+  
+  // Class selection for enrollment
+  const [availableClasses, setAvailableClasses] = useState<any[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState('');
 
   // Manual student entry form data
   const [newStudent, setNewStudent] = useState({
@@ -151,7 +156,7 @@ export default function ApplicationsPage() {
     try {
       let query = supabase
         .from('applications')
-        .select('*, courses(name), course_types(level)')
+        .select('*, courses(name), course_types(level), classes(class_name)')
         .order('application_date', { ascending: false });
 
       // Filter by campus to show only this campus's applications
@@ -190,11 +195,27 @@ export default function ApplicationsPage() {
     }
   };
 
-  const handleEnrollClick = (application: Application) => {
+  const handleEnrollClick = async (application: Application) => {
     setSelectedApplication(application);
     setNewAdmissionNumber('');
-    setShowEnrollModal(true);
+    setSelectedClassId('');
     setError('');
+    
+    // Load available classes for this course and campus
+    if (supabase && application.course && application.campus) {
+      const normalizedCampus = application.campus.toLowerCase().includes('west') ? 'west' : 'main';
+      const { data: classesData } = await supabase
+        .from('classes')
+        .select('id, class_name, semester, module_index, intake_month, is_active')
+        .eq('course_id', application.course)
+        .eq('campus', normalizedCampus)
+        .eq('is_active', true)
+        .order('class_name');
+      
+      setAvailableClasses(classesData || []);
+    }
+    
+    setShowEnrollModal(true);
   };
 
   const generateClassName = (applicationDate: string): string => {
@@ -290,12 +311,20 @@ export default function ApplicationsPage() {
       return;
     }
 
+    if (!selectedClassId) {
+      setError('Please select a class');
+      return;
+    }
+
     setEnrolling(true);
     setError('');
 
     try {
-      // Generate class name based on application date
-      const className = generateClassName(selectedApplication?.application_date || '');
+      // Get selected class details
+      const selectedClass = availableClasses.find(c => c.id === selectedClassId);
+      if (!selectedClass) {
+        throw new Error('Selected class not found');
+      }
 
       // Calculate initial balance from first semester fee
       let initialBalance = 0;
@@ -350,14 +379,15 @@ export default function ApplicationsPage() {
       }
 
       // Update application status and admission number in Supabase
+      // Use selected class's semester and module
       const { error: updateError } = await supabase
         .from('applications')
         .update({
           status: 'enrolled',
           admission_number: newAdmissionNumber,
-          current_module: 1,
-          current_semester: 1,
-          class_name: className,
+          current_module: selectedClass.module_index,
+          current_semester: selectedClass.semester,
+          class_id: selectedClassId,
           total_balance: initialBalance
         })
         .eq('id', selectedApplication?.id);
@@ -811,7 +841,7 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                         </div>
                         <div className="flex justify-between">
                           <span className="text-purple-300">Class:</span>
-                          <span className="text-white">{application.class_name || '-'}</span>
+                          <span className="text-white">{application.classes?.class_name || '-'}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-purple-300">Applied:</span>
@@ -897,7 +927,7 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                               : '-'}
                           </td>
                           <td className="py-4 px-4 text-white text-sm">
-                            {application.class_name || '-'}
+                            {application.classes?.class_name || '-'}
                           </td>
                           <td className="py-4 px-4">
                             <div className="flex gap-2">
@@ -967,7 +997,7 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
               </div>
             )}
 
-            <div className="mb-6">
+            <div className="mb-4">
               <label htmlFor="admissionNumber" className="block text-white font-medium mb-2 text-sm">
                 Admission Number *
               </label>
@@ -979,6 +1009,30 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                 placeholder="Enter admission number"
                 className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
               />
+            </div>
+
+            <div className="mb-6">
+              <label htmlFor="classSelect" className="block text-white font-medium mb-2 text-sm">
+                Class / Intake *
+              </label>
+              {availableClasses.length === 0 ? (
+                <p className="text-orange-300 text-sm">No classes found for this course. Please create a class first.</p>
+              ) : (
+                <select
+                  id="classSelect"
+                  value={selectedClassId}
+                  onChange={(e) => setSelectedClassId(e.target.value)}
+                  className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                  required
+                >
+                  <option value="">Select a class</option>
+                  {availableClasses.map((cls) => (
+                    <option key={cls.id} value={cls.id}>
+                      {cls.class_name} — {cls.intake_month} (Sem {cls.semester}, Mod {cls.module_index})
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <div className="flex gap-3">

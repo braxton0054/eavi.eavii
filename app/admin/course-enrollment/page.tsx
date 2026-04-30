@@ -571,7 +571,7 @@ export default function CourseEnrollmentPage() {
                   <option value="" className="text-gray-900">-- Select a Course --</option>
                   {filteredCourses.map(course => (
                     <option key={course.id} value={course.id} className="text-gray-900">
-                      {course.name} ({course.departments?.name || 'No Dept'})
+                      {course.name}
                     </option>
                   ))}
                 </select>

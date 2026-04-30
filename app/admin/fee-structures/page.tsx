@@ -9,6 +9,31 @@ import { getCourseTypeConfig, getPeriodLabel } from '@/lib/course-structure';
 
 export const dynamic = 'force-dynamic';
 
+// Helper function to format months as years with fractions
+const formatDurationYears = (months: number): string => {
+  if (!months || months <= 0) return '0 Years';
+
+  const wholeYears = Math.floor(months / 12);
+  const remainingMonths = months % 12;
+
+  if (remainingMonths === 0) {
+    return `${wholeYears} Year${wholeYears !== 1 ? 's' : ''}`;
+  }
+
+  const fractionMap: { [key: number]: string } = {
+    1: '1/12', 2: '1/6', 3: '1/4', 4: '1/3', 6: '1/2',
+    8: '2/3', 9: '3/4', 10: '5/6', 11: '11/12'
+  };
+
+  const fraction = fractionMap[remainingMonths] || `${remainingMonths}/12`;
+
+  if (wholeYears === 0) {
+    return `${fraction} Year`;
+  }
+
+  return `${wholeYears} ${fraction} Years`;
+};
+
 export default function FeeStructuresPage() {
   const router = useRouter();
   const [supabase, setSupabase] = useState<any>(null);
@@ -161,135 +186,345 @@ export default function FeeStructuresPage() {
     if (Array.isArray(courseData.course_types)) {
       typeData = courseData.course_types.find((ct: any) => ct.level.toLowerCase() === courseType.toLowerCase());
     } else {
-      // Handle object from old structure
       const courseTypeKey = courseType.toLowerCase();
       typeData = courseData.course_types[courseTypeKey];
     }
 
     if (!typeData || !typeData.enabled) return [];
 
+    const normalized = getCourseTypeConfig(courseData.course_types, courseType.toLowerCase());
+    if (!normalized) return [];
+
+    // Handle short courses with simple layout
+    if (normalized.studyMode === 'short-course') {
+      return generateShortCourseFeeContent(courseData, courseType, normalized);
+    }
+
+    // Main layout: Modules as rows, Semesters as columns
+    const modules = typeData.modules || [];
+    if (!modules.length) return [];
+
+    const numSemesters = modules[0]?.semesters?.length || 3;
+    const numModules = modules.length;
+
+    // Calculate totals
+    const semesterTotals: number[] = new Array(numSemesters).fill(0);
+    const moduleTotals: number[] = [];
+    let grandTotal = 0;
+
+    modules.forEach((module: any, modIndex: number) => {
+      let moduleTotal = 0;
+      if (module.semesters) {
+        module.semesters.forEach((semester: any, semIndex: number) => {
+          const fee = semester.fee || 0;
+          semesterTotals[semIndex] += fee;
+          moduleTotal += fee;
+        });
+      }
+      moduleTotals.push(moduleTotal);
+      grandTotal += moduleTotal;
+    });
+
+    // Build table widths: Module name + each semester + Module Total
+    const colWidthModule = '20%';
+    const colWidthSemester = `${55 / numSemesters}%`;
+    const colWidthTotal = '25%';
+    const widths = [colWidthModule, ...Array(numSemesters).fill(colWidthSemester), colWidthTotal];
+
+    // Build table body
+    const tableBody: any[] = [];
+
+    // Header row with column labels
+    const headerRow = [
+      { text: 'MODULE', fontSize: 11, bold: true, alignment: 'center', color: '#1E40AF' },
+      ...Array.from({ length: numSemesters }, (_, i) => ({
+        text: `SEMESTER ${i + 1}`,
+        fontSize: 11,
+        bold: true,
+        alignment: 'center',
+        color: '#1E40AF'
+      })),
+      { text: 'MODULE TOTAL', fontSize: 11, bold: true, alignment: 'center', color: '#1E40AF', fillColor: '#F3E8FF' }
+    ];
+    tableBody.push(headerRow);
+
+    // Module rows with alternating shading
+    modules.forEach((module: any, modIndex: number) => {
+      const isEven = modIndex % 2 === 0;
+      const fillColor = isEven ? '#FFFFFF' : '#F9FAFB';
+      const semesterFees = module.semesters || [];
+
+      const row = [
+        {
+          text: `Module ${modIndex + 1}`,
+          fontSize: 14,
+          bold: true,
+          alignment: 'left',
+          fillColor: fillColor
+        },
+        ...Array.from({ length: numSemesters }, (_, semIndex) => ({
+          text: semesterFees[semIndex]?.fee?.toLocaleString() || '0',
+          fontSize: 14,
+          alignment: 'right',
+          fillColor: fillColor
+        })),
+        {
+          text: moduleTotals[modIndex]?.toLocaleString() || '0',
+          fontSize: 14,
+          bold: true,
+          alignment: 'right',
+          fillColor: '#F3E8FF',
+          border: [true, false, false, false]
+        }
+      ];
+      tableBody.push(row);
+    });
+
+    // Semester Subtotals row
+    const subtotalsRow = [
+      {
+        text: 'SEMESTER SUBTOTALS',
+        fontSize: 11,
+        bold: true,
+        alignment: 'left',
+        fillColor: '#E5E7EB',
+        colSpan: 1
+      },
+      ...semesterTotals.map(total => ({
+        text: total.toLocaleString(),
+        fontSize: 11,
+        bold: true,
+        alignment: 'right',
+        fillColor: '#E5E7EB'
+      })),
+      {
+        text: '',
+        fillColor: '#E5E7EB'
+      }
+    ];
+    tableBody.push(subtotalsRow);
+
+    // Grand Total row
+    const grandTotalRow = [
+      {
+        text: 'GRAND TOTAL',
+        fontSize: 12,
+        bold: true,
+        alignment: 'left',
+        fillColor: '#1E40AF',
+        color: '#FFFFFF',
+        colSpan: 1
+      },
+      ...Array(numSemesters).fill({
+        text: '',
+        fillColor: '#1E40AF'
+      }),
+      {
+        text: grandTotal.toLocaleString(),
+        fontSize: 12,
+        bold: true,
+        alignment: 'right',
+        fillColor: '#1E40AF',
+        color: '#FFFFFF'
+      }
+    ];
+    tableBody.push(grandTotalRow);
+
+    const durationText = formatDurationYears(normalized.durationMonths);
+
+    return [
+      headerImage ? { image: headerImage, width: 500, alignment: 'center' } : '',
+      { text: '\n' },
+      { text: 'Accredited by Ministry of Education & TVETA | Reg No. MOHEST/PC/1409/011 | KNEC CENTRE NO.26578004', fontSize: 8, alignment: 'center', margin: [0, 0, 0, 10] },
+      { text: '\n' },
+      { text: 'FEE STRUCTURE', style: 'header', margin: [0, 0, 0, 15] },
+
+      // Course Details Header Section
+      {
+        table: {
+          widths: ['30%', '70%'],
+          body: [
+            [
+              { text: 'Course Name:', fontSize: 11, bold: true, border: [false, false, false, false] },
+              { text: courseData.name, fontSize: 14, bold: true, decoration: 'underline', color: '#1E40AF', border: [false, false, false, false] }
+            ],
+            [
+              { text: 'Department:', fontSize: 11, bold: true, border: [false, false, false, false] },
+              { text: courseData.department, fontSize: 11, border: [false, false, false, false] }
+            ],
+            [
+              { text: 'Course Type:', fontSize: 11, bold: true, border: [false, false, false, false] },
+              { text: courseType, fontSize: 14, bold: true, decoration: 'underline', color: '#1E40AF', border: [false, false, false, false] }
+            ],
+            [
+              { text: 'Duration:', fontSize: 11, bold: true, border: [false, false, false, false] },
+              { text: durationText, fontSize: 11, border: [false, false, false, false] }
+            ]
+          ]
+        },
+        layout: { hLineWidth: () => 0, vLineWidth: () => 0, paddingLeft: () => 5, paddingRight: () => 5, paddingTop: () => 3, paddingBottom: () => 3 },
+        margin: [0, 0, 0, 15]
+      },
+
+      // Main Fee Table
+      {
+        table: {
+          headerRows: 1,
+          widths: widths,
+          body: tableBody
+        },
+        layout: {
+          hLineWidth: (i: number, node: any) => {
+            if (i === 0) return 2;
+            if (i === node.table.body.length - 2) return 1.5;
+            if (i === node.table.body.length - 1) return 2;
+            return 0.5;
+          },
+          vLineWidth: (i: number, node: any) => {
+            if (i === 0) return 1;
+            if (i === node.table.widths.length - 2) return 2;
+            if (i === node.table.widths.length) return 1;
+            return 0.5;
+          },
+          hLineColor: (i: number) => {
+            if (i === 0) return '#1E40AF';
+            return '#E5E7EB';
+          },
+          vLineColor: (i: number, node: any) => {
+            if (i === node.table.widths.length - 2) return '#1E40AF';
+            return '#E5E7EB';
+          },
+          paddingLeft: () => 8,
+          paddingRight: () => 8,
+          paddingTop: () => 6,
+          paddingBottom: () => 6
+        },
+        margin: [0, 5, 0, 15]
+      },
+
+      // Footer Notes
+      {
+        text: [
+          { text: 'Currency: ', fontSize: 10, bold: true },
+          { text: 'Kenyan Shillings (KES) | ', fontSize: 10 },
+          { text: 'Payment Terms: ', fontSize: 10, bold: true },
+          { text: 'All fees payable before start of each semester', fontSize: 10 }
+        ],
+        margin: [0, 0, 0, 8]
+      },
+      {
+        text: 'Late payment attracts a penalty of 5% of the outstanding amount.',
+        fontSize: 9,
+        italics: true,
+        margin: [0, 0, 0, 15]
+      },
+
+      // Payment Details
+      { text: 'Fee Payment Details', bold: true, fontSize: 10, margin: [0, 0, 0, 8] },
+      { text: 'East Africa Vision Institute', fontSize: 10, margin: [0, 0, 0, 3] },
+      { text: 'Equity Bank ACC NO.: 0470292838961', fontSize: 10, margin: [0, 0, 0, 3] },
+      { text: 'KCB A/C NO. 1115207350', fontSize: 10, margin: [0, 0, 0, 3] },
+      { text: 'MPESA: PAYBILL NO. 257557, ACCOUNT NO. STUDENT NAME', fontSize: 10, margin: [0, 0, 0, 3] },
+      { text: '\n' },
+      { text: 'NB: We don\'t accept Cash payment. All fees to be deposited in the provided Bank Account Numbers.', fontSize: 9, italics: true, margin: [0, 0, 0, 5] }
+    ];
+  };
+
+  const generateShortCourseFeeContent = (courseData: any, courseType: string, normalized: any) => {
     let tableBody: any[] = [];
     let totalFee = 0;
     let durationText = '';
     let paymentNote = '';
 
-    // Calculate dynamic font size based on number of rows
-    const courseTypeKey = courseType.toLowerCase();
-    const normalized = getCourseTypeConfig(courseData.course_types, courseTypeKey);
-    if (!normalized) return [];
-
-    let rowCount = normalized.studyMode === 'short-course' ? 1 : normalized.periods.length;
-
-    let baseFontSize = 11;
-    let tableFontSize = 10;
-    let tablePadding = 8;
-    let headerFontSize = 18;
-
-    if (rowCount > 8) {
-      baseFontSize = 9;
-      tableFontSize = 8;
-      tablePadding = 6;
-      headerFontSize = 16;
-    } else if (rowCount > 6) {
-      baseFontSize = 10;
-      tableFontSize = 9;
-      tablePadding = 7;
-      headerFontSize = 17;
-    }
-
-    // Handle different fee structure types
-    if (normalized.studyMode !== 'short-course') {
+    if (normalized.shortCourseFee) {
       tableBody = [
         [
-          { text: getPeriodLabel(normalized.studyMode), style: 'tableHeader', alignment: 'center', fontSize: tableFontSize },
-          { text: 'Fee (KES)', style: 'tableHeader', alignment: 'center', fontSize: tableFontSize }
-        ]
-      ];
-
-      normalized.periods.forEach((period, index) => {
-        tableBody.push([
-          { text: `${getPeriodLabel(normalized.studyMode)} ${index + 1}`, style: 'tableCell', alignment: 'center', fontSize: tableFontSize },
-          { text: period.fee.toLocaleString(), style: 'tableCell', alignment: 'right', fontSize: tableFontSize }
-        ]);
-        totalFee += period.fee;
-      });
-
-      durationText = `${normalized.durationMonths} Months (${normalized.periods.length} ${getPeriodLabel(normalized.studyMode)}s)`;
-      paymentNote = `NB: All fees are payable before the start of each ${getPeriodLabel(normalized.studyMode).toLowerCase()}.`;
-    } else {
-      if (!normalized.shortCourseFee) return [];
-
-      tableBody = [
-        [
-          { text: 'Fee Type', style: 'tableHeader', alignment: 'center', fontSize: tableFontSize },
-          { text: 'Fee (KES)', style: 'tableHeader', alignment: 'center', fontSize: tableFontSize }
+          { text: 'FEE TYPE', fontSize: 11, bold: true, alignment: 'center', color: '#1E40AF' },
+          { text: 'AMOUNT (KES)', fontSize: 11, bold: true, alignment: 'center', color: '#1E40AF' }
         ],
         [
-          { text: 'Course Fee', style: 'tableCell', alignment: 'center', fontSize: tableFontSize },
-          { text: normalized.shortCourseFee.toLocaleString(), style: 'tableCell', alignment: 'right', fontSize: tableFontSize }
+          { text: 'Course Fee', fontSize: 14, alignment: 'center' },
+          { text: normalized.shortCourseFee.toLocaleString(), fontSize: 14, alignment: 'right' }
         ]
       ];
-
       totalFee = normalized.shortCourseFee;
-      durationText = `${normalized.durationMonths} Months (Short Course)`;
-      paymentNote = 'NB: Full payment is required before course commencement.';
+      durationText = `${formatDurationYears(normalized.durationMonths)} (Short Course)`;
+      paymentNote = 'Full payment required before course commencement.';
     }
 
     tableBody.push([
-      { text: 'TOTAL', style: 'tableHeader', alignment: 'center', fontSize: tableFontSize },
-      { text: totalFee.toLocaleString(), style: 'tableHeader', alignment: 'right', fontSize: tableFontSize }
+      { text: 'TOTAL', fontSize: 12, bold: true, alignment: 'center', fillColor: '#1E40AF', color: '#FFFFFF' },
+      { text: totalFee.toLocaleString(), fontSize: 12, bold: true, alignment: 'right', fillColor: '#1E40AF', color: '#FFFFFF' }
     ]);
 
     return [
       headerImage ? { image: headerImage, width: 500, alignment: 'center' } : '',
       { text: '\n' },
-      { text: 'Accredited by Ministry of Education & TVETA | Reg No. MOHEST/PC/1409/011 | KNEC CENTRE NO.26578004', fontSize: 8, alignment: 'center', margin: [0, 0, 0, 8] },
+      { text: 'Accredited by Ministry of Education & TVETA | Reg No. MOHEST/PC/1409/011 | KNEC CENTRE NO.26578004', fontSize: 8, alignment: 'center', margin: [0, 0, 0, 10] },
       { text: '\n' },
-      { text: 'FEE STRUCTURE', style: 'header', margin: [0, 0, 0, 8] },
-      { text: `Course: ${courseData.name}`, fontSize: baseFontSize, margin: [0, 0, 0, 4] },
-      { text: `Department: ${courseData.department}`, fontSize: baseFontSize, margin: [0, 0, 0, 2] },
-      { text: `Course Type: ${courseType}`, fontSize: baseFontSize, margin: [0, 0, 0, 2] },
-      { text: `Duration: ${durationText}`, fontSize: baseFontSize, margin: [0, 0, 0, 2] },
-      { text: `Minimum KCSE Grade: ${normalized.minKcseGrade}`, fontSize: baseFontSize, margin: [0, 0, 0, 8] },
+      { text: 'FEE STRUCTURE', style: 'header', margin: [0, 0, 0, 15] },
+
+      // Course Details Header
+      {
+        table: {
+          widths: ['30%', '70%'],
+          body: [
+            [
+              { text: 'Course Name:', fontSize: 11, bold: true, border: [false, false, false, false] },
+              { text: courseData.name, fontSize: 14, bold: true, decoration: 'underline', color: '#1E40AF', border: [false, false, false, false] }
+            ],
+            [
+              { text: 'Course Type:', fontSize: 11, bold: true, border: [false, false, false, false] },
+              { text: courseType, fontSize: 14, bold: true, decoration: 'underline', color: '#1E40AF', border: [false, false, false, false] }
+            ],
+            [
+              { text: 'Duration:', fontSize: 11, bold: true, border: [false, false, false, false] },
+              { text: durationText, fontSize: 11, border: [false, false, false, false] }
+            ]
+          ]
+        },
+        layout: { hLineWidth: () => 0, vLineWidth: () => 0, paddingLeft: () => 5, paddingRight: () => 5, paddingTop: () => 3, paddingBottom: () => 3 },
+        margin: [0, 0, 0, 15]
+      },
+
+      // Fee Table
       {
         table: {
           headerRows: 1,
-          widths: ['25%', '75%'],
+          widths: ['50%', '50%'],
           body: tableBody
         },
         layout: {
-          hLineWidth: (i: number, node: any) => i === 0 || i === node.table.body.length ? 2 : 1,
-          vLineWidth: (i: number, node: any) => i === 0 || i === node.table.widths.length - 1 ? 2 : 1,
-          hLineColor: () => '#000000',
-          vLineColor: () => '#000000',
-          paddingLeft: (i: number) => tablePadding,
-          paddingRight: (i: number) => tablePadding,
-          paddingTop: (i: number) => tablePadding,
-          paddingBottom: (i: number) => tablePadding,
-          fillColor: (i: number) => i === 0 ? '#E9D5FF' : null
+          hLineWidth: (i: number, node: any) => i === 0 || i === node.table.body.length - 1 ? 2 : 0.5,
+          vLineWidth: (i: number, node: any) => i === 0 || i === node.table.widths.length ? 1 : 0,
+          hLineColor: (i: number) => i === 0 ? '#1E40AF' : '#E5E7EB',
+          vLineColor: () => '#E5E7EB',
+          paddingLeft: () => 10,
+          paddingRight: () => 10,
+          paddingTop: () => 8,
+          paddingBottom: () => 8
         },
-        margin: [0, 3, 0, 8]
+        margin: [0, 5, 0, 15]
       },
-      { text: '\n' },
+
+      // Footer
       {
-        columns: [
-          { text: paymentNote, fontSize: 8, italics: true, margin: [0, 0, 0, 4], width: '*' },
-          stampImage ? { image: stampImage, width: 100, alignment: 'right' } : { text: '', width: 'auto' }
+        text: [
+          { text: 'Currency: ', fontSize: 10, bold: true },
+          { text: 'Kenyan Shillings (KES) | ', fontSize: 10 },
+          { text: 'Payment Terms: ', fontSize: 10, bold: true },
+          { text: paymentNote, fontSize: 10 }
         ],
-        margin: [0, 0, 0, 0]
+        margin: [0, 0, 0, 15]
       },
-      { text: 'Late payment attracts a penalty of 5% of the outstanding amount.', fontSize: 8, italics: true, margin: [0, 0, 0, 2] },
+
+      { text: 'Fee Payment Details', bold: true, fontSize: 10, margin: [0, 0, 0, 8] },
+      { text: 'East Africa Vision Institute', fontSize: 10, margin: [0, 0, 0, 3] },
+      { text: 'Equity Bank ACC NO.: 0470292838961', fontSize: 10, margin: [0, 0, 0, 3] },
+      { text: 'KCB A/C NO. 1115207350', fontSize: 10, margin: [0, 0, 0, 3] },
+      { text: 'MPESA: PAYBILL NO. 257557, ACCOUNT NO. STUDENT NAME', fontSize: 10, margin: [0, 0, 0, 3] },
       { text: '\n' },
-      { text: 'Fee Payment Details', bold: true, fontSize: 9, margin: [0, 0, 0, 8] },
-      { text: 'East Africa Vision Institute', fontSize: 9, margin: [0, 0, 0, 2] },
-      { text: 'Equity Bank ACC NO.: 0470292838961', fontSize: 9, margin: [0, 0, 0, 2] },
-      { text: 'KCB A/C NO. 1115207350', fontSize: 9, margin: [0, 0, 0, 2] },
-      { text: 'MPESA: PAYBILL NO. 257557, ACCOUNT NO. STUDENT NAME', fontSize: 9, margin: [0, 0, 0, 2] },
-      { text: '\n' },
-      { text: 'NB: We don\'t accept Cash payment, All fees to be deposited in provided Bank Account Numbers.', fontSize: 8, italics: true, margin: [0, 0, 0, 6] },
-      { text: '\n' },
-      { text: 'For any inquiries, contact the finance office.', fontSize: 8, alignment: 'center', margin: [0, 0, 0, 4] },
-      { text: '', pageBreak: 'after' }
+      { text: 'NB: We don\'t accept Cash payment. All fees to be deposited in the provided Bank Account Numbers.', fontSize: 9, italics: true, margin: [0, 0, 0, 5] }
     ];
   };
 

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { createClient } from '@/lib/client';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 // Password strength calculator
 const calculatePasswordStrength = (password: string): { strength: number; label: string; color: string } => {
@@ -35,7 +35,28 @@ export default function LecturerLogin() {
   });
 
   useEffect(() => {
-    setSupabase(createClient());
+    const client = createClient();
+    setSupabase(client);
+
+    // Handle email confirmation code from URL
+    const searchParams = new URLSearchParams(window.location.search);
+    const code = searchParams.get('code');
+    const confirmed = searchParams.get('confirmed');
+
+    if (confirmed) {
+      setSuccess('Email confirmed successfully! You can now log in.');
+    }
+
+    if (code) {
+      client.auth.exchangeCodeForSession(code).then(({ error }: { error: any }) => {
+        if (error) {
+          console.error('Error exchanging code for session:', error);
+          setError('Email confirmation failed. The link may be expired or invalid.');
+        } else {
+          setSuccess('Email confirmed successfully! You can now log in.');
+        }
+      });
+    }
   }, []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -97,7 +118,7 @@ export default function LecturerLogin() {
           email: formData.email,
           password: formData.password,
           options: {
-            emailRedirectTo: `${window.location.origin}/login/lecturer`,
+            emailRedirectTo: 'https://www.eavi.shop/login/lecturer',
             data: {
               lecturer_number: formData.lecturerNumber,
               role: 'lecturer',
@@ -109,6 +130,12 @@ export default function LecturerLogin() {
 
         if (error) {
           setError(error.message);
+          return;
+        }
+
+        // Check if user was created but no confirmation email was sent (email already exists)
+        if (data.user && data.user.identities && data.user.identities.length === 0) {
+          setError('This email is already registered. Please use the "Forgot Password" option or log in with your existing account.');
           return;
         }
 

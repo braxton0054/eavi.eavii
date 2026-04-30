@@ -2863,7 +2863,8 @@ export default function CoursesPage() {
                           {/* Card Header */}
                           <div className="p-4 border-b border-white/20">
                             <div className="flex items-start justify-between gap-2 mb-2">
-                              <span className="font-mono text-xs text-purple-300 bg-white/10 px-2 py-1 rounded">{course.id}</span>
+                              {/* Course ID hidden */}
+                              {/* <span className="font-mono text-xs text-purple-300 bg-white/10 px-2 py-1 rounded">{course.id}</span> */}
                               <div className="flex gap-1 flex-wrap">
                                 {course.course_types?.filter((ct: any) => ct?.enabled).map((ct: any) => (
                                   <span
