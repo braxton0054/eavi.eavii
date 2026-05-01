@@ -1,118 +1,237 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
 );
 
-// Intent detection - check if user is asking about a problem/debug issue
-function isDiagnosticQuestion(message: string): boolean {
-  const lowerMessage = message.toLowerCase();
-  const problemKeywords = [
-    'why', 'error', 'issue', 'not working', 'problem', 'incorrect',
-    'wrong', 'missing', 'fail', 'failed', 'broken', 'bug',
-    'not adding', 'not showing', 'not loading', 'not saving',
-    'disappear', 'gone', 'zero', 'empty', 'blank'
-  ];
-  return problemKeywords.some(keyword => lowerMessage.includes(keyword));
-}
+// Supabase query functions for function calling
+const supabaseFunctions = {
+  queryStudents: {
+    description: 'Query student information including financial data, balances, and enrollment status',
+    parameters: {
+      type: 'object',
+      properties: {
+        limit: {
+          type: 'number',
+          description: 'Maximum number of records to return (default: 20)',
+        },
+        campus: {
+          type: 'string',
+          description: 'Filter by campus (main, west, or all)',
+        },
+        status: {
+          type: 'string',
+          description: 'Filter by status (enrolled, pending, rejected)',
+        },
+      },
+    },
+  },
+  queryFees: {
+    description: 'Query fee payments, balances, and installment information',
+    parameters: {
+      type: 'object',
+      properties: {
+        limit: {
+          type: 'number',
+          description: 'Maximum number of records to return (default: 20)',
+        },
+        studentId: {
+          type: 'string',
+          description: 'Filter by specific student ID',
+        },
+      },
+    },
+  },
+  queryCourses: {
+    description: 'Query course information, types, and availability',
+    parameters: {
+      type: 'object',
+      properties: {
+        limit: {
+          type: 'number',
+          description: 'Maximum number of records to return (default: 20)',
+        },
+        courseId: {
+          type: 'string',
+          description: 'Filter by specific course ID',
+        },
+      },
+    },
+  },
+  queryLecturers: {
+    description: 'Query lecturer information and assignments',
+    parameters: {
+      type: 'object',
+      properties: {
+        limit: {
+          type: 'number',
+          description: 'Maximum number of records to return (default: 20)',
+        },
+        campus: {
+          type: 'string',
+          description: 'Filter by campus (main, west, or all)',
+        },
+      },
+    },
+  },
+  queryApplications: {
+    description: 'Query student applications and enrollment data',
+    parameters: {
+      type: 'object',
+      properties: {
+        limit: {
+          type: 'number',
+          description: 'Maximum number of records to return (default: 20)',
+        },
+        status: {
+          type: 'string',
+          description: 'Filter by status (enrolled, pending, rejected)',
+        },
+        campus: {
+          type: 'string',
+          description: 'Filter by campus (main, west, or all)',
+        },
+      },
+    },
+  },
+  querySystemLogs: {
+    description: 'Query system logs for errors, warnings, and information',
+    parameters: {
+      type: 'object',
+      properties: {
+        limit: {
+          type: 'number',
+          description: 'Maximum number of records to return (default: 50)',
+        },
+        logType: {
+          type: 'string',
+          description: 'Filter by log type (error, warning, info)',
+        },
+      },
+    },
+  },
+};
 
-// Dynamic data fetching based on question type
-// ONLY use existing system tables and views - NEVER query non-existent tables
-async function fetchRelevantData(message: string): Promise<{ data: any; dataType: string }> {
-  const lowerMessage = message.toLowerCase();
-  let data: any = null;
-  let dataType = '';
+// Execute Supabase query based on function call
+async function executeSupabaseQuery(functionName: string, args: any) {
+  try {
+    switch (functionName) {
+      case 'queryStudents':
+        let studentQuery = supabase
+          .from('v_student_financials')
+          .select('*')
+          .limit(args.limit || 20);
+        
+        if (args.campus && args.campus !== 'all') {
+          studentQuery = studentQuery.eq('campus', args.campus);
+        }
+        if (args.status) {
+          studentQuery = studentQuery.eq('status', args.status);
+        }
+        
+        const { data: students } = await studentQuery;
+        const { data: balances } = await supabase
+          .from('v_student_balance')
+          .select('*')
+          .limit(args.limit || 20);
+        
+        return { students, balances };
 
-  // Fee/payment related - use views and existing tables only
-  if (lowerMessage.includes('fee') || lowerMessage.includes('payment') || lowerMessage.includes('balance') || lowerMessage.includes('adding')) {
-    // Prefer views over raw tables when available
-    const { data: studentFinancials } = await supabase
-      .from('v_student_financials')
-      .select('*')
-      .limit(20);
+      case 'queryFees':
+        const { data: payments } = await supabase
+          .from('fee_payments')
+          .select('*')
+          .order('payment_date', { ascending: false })
+          .limit(args.limit || 20);
+        
+        const { data: installments } = await supabase
+          .from('payment_installments')
+          .select('*')
+          .order('due_date', { ascending: false })
+          .limit(args.limit || 20);
+        
+        const { data: financials } = await supabase
+          .from('v_student_financials')
+          .select('*')
+          .limit(args.limit || 20);
+        
+        return { payments, installments, financials };
 
-    const { data: studentBalances } = await supabase
-      .from('v_student_balance')
-      .select('*')
-      .limit(20);
-    
-    const { data: payments } = await supabase
-      .from('fee_payments')
-      .select('*')
-      .order('payment_date', { ascending: false })
-      .limit(20);
+      case 'queryCourses':
+        let courseQuery = supabase
+          .from('courses')
+          .select('*')
+          .limit(args.limit || 20);
+        
+        if (args.courseId) {
+          courseQuery = courseQuery.eq('id', args.courseId);
+        }
+        
+        const { data: courses } = await courseQuery;
+        const { data: courseTypes } = await supabase
+          .from('course_types')
+          .select('*')
+          .limit(args.limit || 20);
+        
+        return { courses, courseTypes };
 
-    const { data: installments } = await supabase
-      .from('payment_installments')
-      .select('*')
-      .order('due_date', { ascending: false })
-      .limit(20);
+      case 'queryLecturers':
+        let lecturerQuery = supabase
+          .from('lecturers')
+          .select('*')
+          .limit(args.limit || 20);
+        
+        if (args.campus && args.campus !== 'all') {
+          lecturerQuery = lecturerQuery.eq('campus', args.campus);
+        }
+        
+        const { data: lecturers } = await lecturerQuery;
+        return { lecturers };
 
-    data = { studentFinancials, studentBalances, payments, installments };
-    dataType = 'fee_payment';
+      case 'queryApplications':
+        let appQuery = supabase
+          .from('applications')
+          .select('*, courses(name), course_types(level)')
+          .order('application_date', { ascending: false })
+          .limit(args.limit || 20);
+        
+        if (args.status) {
+          appQuery = appQuery.eq('status', args.status);
+        }
+        if (args.campus && args.campus !== 'all') {
+          const campusVariants = [
+            args.campus,
+            args.campus === 'main' ? 'Main Campus' : args.campus === 'west' ? 'West Campus' : args.campus,
+          ];
+          appQuery = appQuery.in('campus', campusVariants);
+        }
+        
+        const { data: applications } = await appQuery;
+        return { applications };
+
+      case 'querySystemLogs':
+        let logQuery = supabase
+          .from('system_logs')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(args.limit || 50);
+        
+        if (args.logType) {
+          logQuery = logQuery.eq('log_type', args.logType);
+        }
+        
+        const { data: logs } = await logQuery;
+        return { logs };
+
+      default:
+        return { error: 'Unknown function' };
+    }
+  } catch (error) {
+    console.error('Supabase query error:', error);
+    return { error: 'Query failed' };
   }
-  // Student related - use views only, never assume table names
-  else if (lowerMessage.includes('student') || lowerMessage.includes('enroll') || lowerMessage.includes('admission')) {
-    const { data: studentFinancials } = await supabase
-      .from('v_student_financials')
-      .select('*')
-      .limit(20);
-
-    const { data: studentBalances } = await supabase
-      .from('v_student_balance')
-      .select('*')
-      .limit(20);
-
-    data = { studentFinancials, studentBalances };
-    dataType = 'student';
-  }
-  // Course related - use system-provided schema only
-  else if (lowerMessage.includes('course') || lowerMessage.includes('unit') || lowerMessage.includes('module')) {
-    const { data: courses } = await supabase
-      .from('courses')
-      .select('*')
-      .limit(20);
-
-    const { data: courseTypes } = await supabase
-      .from('course_types')
-      .select('*')
-      .limit(20);
-
-    data = { courses, courseTypes };
-    dataType = 'course';
-  }
-  // Lecturer related
-  else if (lowerMessage.includes('lecturer') || lowerMessage.includes('teacher')) {
-    const { data: lecturers } = await supabase
-      .from('lecturers')
-      .select('*')
-      .limit(20);
-
-    data = { lecturers };
-    dataType = 'lecturer';
-  }
-  // General - fetch overview data using views
-  else {
-    const { data: studentBalances } = await supabase
-      .from('v_student_balance')
-      .select('*')
-      .limit(10);
-
-    const { data: payments } = await supabase
-      .from('fee_payments')
-      .select('*')
-      .order('payment_date', { ascending: false })
-      .limit(10);
-
-    data = { studentBalances, payments };
-    dataType = 'general';
-  }
-
-  return { data, dataType };
 }
 
 // Fetch AI memory data for a user
@@ -232,7 +351,11 @@ async function extractAndSaveFacts(registryId: string, userMessage: string, aiRe
 
 // Update issue memory if discussing a problem
 async function updateIssueMemory(message: string, aiResponse: string) {
-  if (isDiagnosticQuestion(message)) {
+  const lowerMessage = message.toLowerCase();
+  const problemKeywords = ['why', 'error', 'issue', 'not working', 'problem', 'incorrect', 'wrong', 'missing', 'fail', 'failed', 'broken', 'bug'];
+  const isDiagnostic = problemKeywords.some(keyword => lowerMessage.includes(keyword));
+  
+  if (isDiagnostic) {
     // Check if similar issue exists
     const { data: existingIssues } = await supabase
       .from('ai_issue_memory')
@@ -270,23 +393,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
     }
 
-    // Use provided userId and campus (admin is already authenticated in dashboard)
-    // For testing, use defaults if not provided
     const finalUserId = userId || '00000000-0000-0000-0000-000000000000';
     const finalCampus = campus || 'main';
-    const isDiagnostic = isDiagnosticQuestion(message);
-    const { data, dataType } = await fetchRelevantData(message);
 
     // Fetch AI memory
-    const aiMemory = await fetchAIMemory(finalUserId, isDiagnostic);
+    const aiMemory = await fetchAIMemory(finalUserId, false);
 
     // Create or update user registry if doesn't exist
     if (!aiMemory.userRegistry) {
       await supabase.from('ai_user_registry').insert({
         auth_user_id: finalUserId,
-        full_name: 'Admin',
+        full_name: userName || 'Admin',
         email: 'admin@eavi.ac.ke',
-        user_role: 'admin',
+        user_role: userRole || 'admin',
         campus: finalCampus
       });
     }
@@ -301,13 +420,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (aiMemory.longTermMemory && aiMemory.longTermMemory.length > 0) {
-      memoryContext += '\n\nLong-term Memory:\n';
-      aiMemory.longTermMemory.forEach((mem: any) => {
-        memoryContext += `- ${mem.memory_key}: ${mem.memory_value}\n`;
-      });
-    }
-
     if (aiMemory.chatHistory && aiMemory.chatHistory.length > 0) {
       memoryContext += '\n\nRecent Conversation:\n';
       aiMemory.chatHistory.forEach((msg: any) => {
@@ -315,47 +427,29 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (isDiagnostic && aiMemory.systemLogs) {
-      memoryContext += `\n\nRecent System Logs (${aiMemory.systemLogs.length} entries):\n`;
-      aiMemory.systemLogs.slice(0, 10).forEach((log: any) => {
-        memoryContext += `[${log.log_type}] ${log.module}: ${log.message}\n`;
-      });
-    }
-
-    if (isDiagnostic && aiMemory.issueMemory) {
-      memoryContext += `\n\nPast Similar Issues:\n`;
-      aiMemory.issueMemory.slice(0, 5).forEach((issue: any) => {
-        memoryContext += `- ${issue.description} (occurred ${issue.occurrences} times)\n`;
-      });
-    }
-
-    let systemPrompt = '';
-    let responseLabel = '';
-    const usedMemory = (aiMemory.longTermMemory?.length ?? 0) > 0 || (aiMemory.chatHistory?.length ?? 0) > 0;
-
-    // Build user context for the AI
     const userContext = userRole || userName 
       ? `\n\nCURRENT USER CONTEXT:\n- Role: ${userRole || 'Unknown'}\n- Name: ${userName || 'Unknown'}\n- Campus: ${finalCampus}\n- User ID: ${finalUserId}\n\nIMPORTANT: You already know this user's role. DO NOT ask them to identify themselves or their role. Address them directly based on their role.`
       : '';
 
-    // Build simplified system prompt - just bot name and context
-    const basePrompt = `You are EAVI, an AI assistant for East Africa Vision Institute (EAVI) College school management system.${userContext}
+    const systemPrompt = `You are EAVI, an AI assistant for East Africa Vision Institute (EAVI) College school management system.${userContext}
 
-You have full access to the database and system information. Answer questions about students, fees, courses, admissions, and any system operations using the provided data.
+You have direct access to the Supabase database through function calls. When users ask questions about students, fees, courses, lecturers, or any system data, use the available functions to query the database directly and provide accurate, real-time information.
 
 ${memoryContext ? `MEMORY CONTEXT:\n${memoryContext}` : ''}
 
-${isDiagnostic ? `SYSTEM ANALYSIS MODE - Analyze the following system data:\n${JSON.stringify(data, null, 2)}` : ''}`;
+Always use the provided functions to get accurate data from the database before answering questions. Do not make up or guess information.`;
 
-    if (isDiagnostic) {
-      responseLabel = 'System Analysis';
-      systemPrompt = basePrompt;
-    } else {
-      responseLabel = 'Information';
-      systemPrompt = basePrompt + `\n\nUSER QUESTION: "${message}"\n\nRELEVANT SYSTEM DATA:\n${JSON.stringify(data, null, 2)}`;
-    }
+    // Convert supabaseFunctions to OpenAI function format
+    const tools = Object.entries(supabaseFunctions).map(([name, def]) => ({
+      type: 'function' as const,
+      function: {
+        name,
+        description: def.description,
+        parameters: def.parameters,
+      },
+    }));
 
-    // Call Groq API
+    // Call Groq API with function calling
     const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -368,8 +462,10 @@ ${isDiagnostic ? `SYSTEM ANALYSIS MODE - Analyze the following system data:\n${J
           { role: 'system', content: systemPrompt },
           { role: 'user', content: message }
         ],
-        temperature: isDiagnostic ? 0.3 : 0.7,
-        max_tokens: isDiagnostic ? 2000 : 1000,
+        tools,
+        tool_choice: 'auto',
+        temperature: 0.7,
+        max_tokens: 2000,
       }),
     });
 
@@ -380,7 +476,49 @@ ${isDiagnostic ? `SYSTEM ANALYSIS MODE - Analyze the following system data:\n${J
     }
 
     const groqData = await groqResponse.json();
-    const aiResponse = groqData.choices[0]?.message?.content || 'No response from AI';
+    const aiMessage = groqData.choices[0]?.message;
+    let aiResponse = aiMessage?.content || 'No response from AI';
+    let toolResults: any[] = [];
+
+    // Handle function calls
+    if (aiMessage?.tool_calls) {
+      for (const toolCall of aiMessage.tool_calls) {
+        const functionName = toolCall.function.name;
+        const functionArgs = JSON.parse(toolCall.function.arguments);
+        
+        const result = await executeSupabaseQuery(functionName, functionArgs);
+        toolResults.push({ name: functionName, result });
+      }
+
+      // Make second call with tool results
+      const secondGroqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: message },
+            aiMessage,
+            ...toolResults.map(tr => ({
+              role: 'tool' as const,
+              tool_call_id: aiMessage.tool_calls?.[0].id || '',
+              content: JSON.stringify(tr.result),
+            })),
+          ],
+          temperature: 0.7,
+          max_tokens: 2000,
+        }),
+      });
+
+      if (secondGroqResponse.ok) {
+        const secondGroqData = await secondGroqResponse.json();
+        aiResponse = secondGroqData.choices[0]?.message?.content || aiResponse;
+      }
+    }
 
     // Save to memory (async, don't await)
     const registryId = aiMemory.userRegistry?.id;
@@ -392,10 +530,8 @@ ${isDiagnostic ? `SYSTEM ANALYSIS MODE - Analyze the following system data:\n${J
 
     return NextResponse.json({ 
       response: aiResponse,
-      isDiagnostic,
-      responseLabel,
-      dataType,
-      usedMemory
+      toolResults,
+      usedMemory: (aiMemory.longTermMemory?.length ?? 0) > 0 || (aiMemory.chatHistory?.length ?? 0) > 0,
     });
   } catch (error) {
     console.error('Chat API error:', error);
