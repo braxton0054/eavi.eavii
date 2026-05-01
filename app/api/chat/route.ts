@@ -114,11 +114,103 @@ const supabaseFunctions = {
   },
 };
 
-// Execute Supabase query based on function call
+// Error types with actionable suggestions
+const errorTypes: { [key: string]: { message: string; suggestion: string } } = {
+  'PGRST116': {
+    message: 'No records found matching your criteria.',
+    suggestion: 'Try adjusting your search filters or check if the data exists in the system. If this is a new student/course, you may need to add them first.',
+  },
+  'PGRST301': {
+    message: 'Database table does not exist.',
+    suggestion: 'The required database table or view is missing. Please contact the system administrator to run the database migrations.',
+  },
+  '42703': {
+    message: 'Database column not found.',
+    suggestion: 'The database schema may be outdated. Please update the database structure or contact support.',
+  },
+  '23505': {
+    message: 'Duplicate record detected.',
+    suggestion: 'A record with this information already exists. Check the existing records before creating a new one.',
+  },
+  '23503': {
+    message: 'Foreign key constraint violation.',
+    suggestion: 'The referenced record (student, course, or class) does not exist. Please create the parent record first before adding related data.',
+  },
+  'connection_error': {
+    message: 'Unable to connect to the database.',
+    suggestion: 'Please check your internet connection and try again. If the problem persists, the database server may be temporarily unavailable.',
+  },
+  'timeout_error': {
+    message: 'Database query timed out.',
+    suggestion: 'The query is taking too long. Try narrowing your search criteria or try again later when the system is less busy.',
+  },
+};
+
+// Validate data completeness
+function validateDataCompleteness(data: any[], dataType: string): { isValid: boolean; issues: string[]; suggestions: string[] } {
+  const issues: string[] = [];
+  const suggestions: string[] = [];
+
+  if (!data || data.length === 0) {
+    return { isValid: true, issues: [], suggestions: [] };
+  }
+
+  data.forEach((record, index) => {
+    // Check for null/undefined critical fields
+    if (dataType === 'students' || dataType === 'applications') {
+      if (!record.full_name) {
+        issues.push(`Record ${index + 1}: Missing student name`);
+        suggestions.push('Update the student profile with their full name.');
+      }
+      if (!record.admission_number && record.status === 'enrolled') {
+        issues.push(`Record ${index + 1}: Enrolled student missing admission number`);
+        suggestions.push('Assign an admission number to this enrolled student.');
+      }
+      if (record.status === 'enrolled' && !record.class_id) {
+        issues.push(`Record ${index + 1}: Enrolled student not assigned to a class`);
+        suggestions.push('Assign this student to a class using the class enrollment feature.');
+      }
+    }
+
+    if (dataType === 'fees' || dataType === 'financials') {
+      if (record.total_balance === null || record.total_balance === undefined) {
+        issues.push(`Record ${index + 1}: Missing balance information`);
+        suggestions.push('Update the student fee structure to calculate their balance.');
+      }
+      if (record.total_paid === null || record.total_paid === undefined) {
+        issues.push(`Record ${index + 1}: Missing payment history`);
+        suggestions.push('Record the student fee payments to track their payment status.');
+      }
+    }
+
+    if (dataType === 'courses') {
+      if (!record.name) {
+        issues.push(`Record ${index + 1}: Course missing name`);
+        suggestions.push('Update the course with a proper name.');
+      }
+      if (!record.course_types || record.course_types.length === 0) {
+        issues.push(`Record ${index + 1}: Course has no types configured`);
+        suggestions.push('Add course types (Diploma, Certificate, etc.) to this course.');
+      }
+    }
+  });
+
+  return {
+    isValid: issues.length === 0,
+    issues,
+    suggestions: [...new Set(suggestions)], // Remove duplicates
+  };
+}
+
+// Execute Supabase query based on function call with comprehensive error handling
 async function executeSupabaseQuery(functionName: string, args: any) {
   try {
+    let result: any = {};
+    let dataType = '';
+
     switch (functionName) {
       case 'queryStudents':
+        dataType = 'students';
         let studentQuery = supabase
           .from('v_student_financials')
           .select('*')
@@ -131,53 +223,103 @@ async function executeSupabaseQuery(functionName: string, args: any) {
           studentQuery = studentQuery.eq('status', args.status);
         }
         
-        const { data: students } = await studentQuery;
-        const { data: balances } = await supabase
+        const { data: students, error: studentsError } = await studentQuery;
+        
+        if (studentsError) {
+          const errorCode = (studentsError as any).code || 'unknown';
+          const errorInfo = errorTypes[errorCode] || {
+            message: `Database error: ${studentsError.message}`,
+            suggestion: 'Please try again or contact support if the problem persists.',
+          };
+          return {
+            error: true,
+            errorType: 'database_error',
+            message: errorInfo.message,
+            suggestion: errorInfo.suggestion,
+            technicalDetails: studentsError.message,
+          };
+        }
+
+        const { data: balances, error: balancesError } = await supabase
           .from('v_student_balance')
           .select('*')
           .limit(args.limit || 20);
-        
-        return { students, balances };
+
+        if (balancesError) {
+          console.warn('Balance view query warning:', balancesError);
+        }
+
+        result = { students, balances };
+        break;
 
       case 'queryFees':
-        const { data: payments } = await supabase
+        dataType = 'financials';
+        const { data: payments, error: paymentsError } = await supabase
           .from('fee_payments')
           .select('*')
           .order('payment_date', { ascending: false })
           .limit(args.limit || 20);
         
-        const { data: installments } = await supabase
+        if (paymentsError) {
+          return {
+            error: true,
+            errorType: 'database_error',
+            message: 'Unable to retrieve payment records.',
+            suggestion: 'Check if the fee_payments table exists and has the correct permissions.',
+            technicalDetails: paymentsError.message,
+          };
+        }
+        
+        const { data: installments, error: installmentsError } = await supabase
           .from('payment_installments')
           .select('*')
           .order('due_date', { ascending: false })
           .limit(args.limit || 20);
         
-        const { data: financials } = await supabase
+        if (installmentsError) {
+          console.warn('Installments query warning:', installmentsError);
+        }
+        
+        const { data: financials, error: financialsError } = await supabase
           .from('v_student_financials')
           .select('*')
           .limit(args.limit || 20);
         
-        return { payments, installments, financials };
+        if (financialsError) {
+          console.warn('Financials view query warning:', financialsError);
+        }
+        
+        result = { payments, installments, financials };
+        break;
 
       case 'queryCourses':
+        dataType = 'courses';
         let courseQuery = supabase
           .from('courses')
-          .select('*')
+          .select('*, course_types(*)')
           .limit(args.limit || 20);
         
         if (args.courseId) {
           courseQuery = courseQuery.eq('id', args.courseId);
         }
         
-        const { data: courses } = await courseQuery;
-        const { data: courseTypes } = await supabase
-          .from('course_types')
-          .select('*')
-          .limit(args.limit || 20);
+        const { data: courses, error: coursesError } = await courseQuery;
         
-        return { courses, courseTypes };
+        if (coursesError) {
+          return {
+            error: true,
+            errorType: 'database_error',
+            message: 'Unable to retrieve course information.',
+            suggestion: 'Verify that the courses table exists and has the correct structure.',
+            technicalDetails: coursesError.message,
+          };
+        }
+        
+        result = { courses };
+        break;
 
       case 'queryLecturers':
+        dataType = 'lecturers';
         let lecturerQuery = supabase
           .from('lecturers')
           .select('*')
@@ -187,10 +329,23 @@ async function executeSupabaseQuery(functionName: string, args: any) {
           lecturerQuery = lecturerQuery.eq('campus', args.campus);
         }
         
-        const { data: lecturers } = await lecturerQuery;
-        return { lecturers };
+        const { data: lecturers, error: lecturersError } = await lecturerQuery;
+        
+        if (lecturersError) {
+          return {
+            error: true,
+            errorType: 'database_error',
+            message: 'Unable to retrieve lecturer information.',
+            suggestion: 'Check if the lecturers table exists and has proper permissions.',
+            technicalDetails: lecturersError.message,
+          };
+        }
+        
+        result = { lecturers };
+        break;
 
       case 'queryApplications':
+        dataType = 'applications';
         let appQuery = supabase
           .from('applications')
           .select('*, courses(name), course_types(level)')
@@ -208,8 +363,20 @@ async function executeSupabaseQuery(functionName: string, args: any) {
           appQuery = appQuery.in('campus', campusVariants);
         }
         
-        const { data: applications } = await appQuery;
-        return { applications };
+        const { data: applications, error: appError } = await appQuery;
+        
+        if (appError) {
+          return {
+            error: true,
+            errorType: 'database_error',
+            message: 'Unable to retrieve application records.',
+            suggestion: 'Verify the applications table structure and permissions.',
+            technicalDetails: appError.message,
+          };
+        }
+        
+        result = { applications };
+        break;
 
       case 'querySystemLogs':
         let logQuery = supabase
@@ -222,15 +389,81 @@ async function executeSupabaseQuery(functionName: string, args: any) {
           logQuery = logQuery.eq('log_type', args.logType);
         }
         
-        const { data: logs } = await logQuery;
-        return { logs };
+        const { data: logs, error: logsError } = await logQuery;
+        
+        if (logsError) {
+          return {
+            error: true,
+            errorType: 'database_error',
+            message: 'Unable to retrieve system logs.',
+            suggestion: 'Check if the system_logs table exists and has proper permissions.',
+            technicalDetails: logsError.message,
+          };
+        }
+        
+        result = { logs };
+        break;
 
       default:
-        return { error: 'Unknown function' };
+        return {
+          error: true,
+          errorType: 'unknown_function',
+          message: `Unknown query type: ${functionName}`,
+          suggestion: 'Please try a different query or contact support.',
+        };
     }
-  } catch (error) {
+
+    // Validate data completeness
+    const firstKey = Object.keys(result)[0];
+    if (firstKey && Array.isArray(result[firstKey])) {
+      const validation = validateDataCompleteness(result[firstKey], dataType);
+      if (!validation.isValid) {
+        result._validationIssues = validation.issues;
+        result._validationSuggestions = validation.suggestions;
+      }
+    }
+
+    // Check if data is empty
+    const hasData = Object.values(result).some(
+      (val) => Array.isArray(val) && val.length > 0
+    );
+
+    if (!hasData) {
+      return {
+        ...result,
+        _info: {
+          message: 'No records found.',
+          suggestion: 'The database query completed successfully but returned no results. This could mean:\n1. No data exists matching your criteria\n2. The data has not been entered into the system yet\n3. You may need to add the missing information first.',
+        },
+      };
+    }
+
+    return result;
+  } catch (error: any) {
     console.error('Supabase query error:', error);
-    return { error: 'Query failed' };
+    
+    // Determine error type
+    let errorType = 'unknown_error';
+    let message = 'An unexpected error occurred while querying the database.';
+    let suggestion = 'Please try again or contact support if the problem persists.';
+
+    if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
+      errorType = 'connection_error';
+      message = 'Unable to connect to the database server.';
+      suggestion = 'Please check your internet connection and try again. The database server may be temporarily unavailable.';
+    } else if (error.message?.includes('timeout')) {
+      errorType = 'timeout_error';
+      message = 'The database query took too long to complete.';
+      suggestion = 'Try narrowing your search criteria or try again later when the system is less busy.';
+    }
+
+    return {
+      error: true,
+      errorType,
+      message,
+      suggestion,
+      technicalDetails: error.message,
+    };
   }
 }
 
@@ -437,7 +670,42 @@ You have direct access to the Supabase database through function calls. When use
 
 ${memoryContext ? `MEMORY CONTEXT:\n${memoryContext}` : ''}
 
-Always use the provided functions to get accurate data from the database before answering questions. Do not make up or guess information.`;
+ERROR HANDLING AND VALIDATION INSTRUCTIONS:
+
+When you receive data from the database functions, carefully check for the following:
+
+1. ERROR RESPONSES: If the function returns an error object (error: true), you MUST:
+   - Explain the error to the user in plain, friendly language
+   - Include the specific error message provided
+   - Provide the actionable suggestion included in the response
+   - Never say "I don't know" - explain what went wrong and how to fix it
+
+2. VALIDATION ISSUES: If the response includes _validationIssues and _validationSuggestions:
+   - List each specific issue found in the data
+   - Explain what data is missing or incomplete
+   - Provide the specific suggestions for fixing each issue
+   - Guide the user on exactly what needs to be corrected in the system
+
+3. EMPTY RESULTS: If the response includes _info with "No records found":
+   - Explain that the query completed successfully but found no data
+   - Suggest why the data might be missing (not entered yet, filtered out, etc.)
+   - Provide guidance on how to add the missing information
+   - Use phrases like: "I searched the database but didn't find any records. This could mean..."
+
+4. INCOMPLETE DATA: If records are missing critical fields:
+   - Identify exactly which fields are missing for which records
+   - Explain why these fields are important
+   - Provide step-by-step instructions on how to update the records
+   - Example: "I found the student, but their fee payment status is missing. To fix this, please go to the student's profile and add their payment information."
+
+ALWAYS:
+- Be specific about what data is missing or incorrect
+- Provide actionable steps the user can take to fix the issue
+- Never guess or make up information if data is missing
+- Guide users to the correct part of the system to make corrections
+- Use friendly, helpful language while being precise about the problem
+
+Never say "contact support" unless it's a technical database error. For data issues, guide users on how to fix the data themselves in the system.`;
 
     // Convert supabaseFunctions to OpenAI function format
     const tools = Object.entries(supabaseFunctions).map(([name, def]) => ({
