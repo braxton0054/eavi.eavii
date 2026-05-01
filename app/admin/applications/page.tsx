@@ -339,16 +339,34 @@ export default function ApplicationsPage() {
       const courseId = selectedApplication?.course;
       let courseName = 'Unknown';
       let courseLevel = 'General';
+      let validCourseId = courseId;
       
       if (courseId) {
-        // Get course name
-        const { data: courseData } = await supabase
+        // Check if course exists in courses table
+        const { data: courseData, error: courseError } = await supabase
           .from('courses')
-          .select('name')
+          .select('id, name')
           .eq('id', courseId)
           .single();
         
-        if (courseData) {
+        if (courseError || !courseData) {
+          // If course_id doesn't exist, try to find course by name
+          const { data: courseByName } = await supabase
+            .from('courses')
+            .select('id, name')
+            .ilike('name', `%${courseId}%`)
+            .limit(1)
+            .single();
+          
+          if (courseByName) {
+            validCourseId = courseByName.id;
+            courseName = courseByName.name;
+          } else {
+            setError(`Course not found in database: ${courseId}`);
+            setEnrolling(false);
+            return;
+          }
+        } else {
           courseName = courseData.name;
         }
         
@@ -356,7 +374,7 @@ export default function ApplicationsPage() {
         const { data: courseTypeData } = await supabase
           .from('course_types')
           .select('level')
-          .eq('course_id', courseId)
+          .eq('course_id', validCourseId)
           .single();
         
         if (courseTypeData) {
@@ -410,7 +428,7 @@ export default function ApplicationsPage() {
           .from('classes')
           .insert([{
             class_name: className,
-            course_id: selectedApplication?.course,
+            course_id: validCourseId,
             campus: normalizedCampus,
             semester: 1,
             module_index: 1,
