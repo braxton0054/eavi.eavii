@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getSupabaseSchema, formatSchemaForAI, getSimplifiedSchema } from '@/lib/supabase-schema';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -110,6 +111,59 @@ const supabaseFunctions = {
           description: 'Filter by log type (error, warning, info)',
         },
       },
+    },
+  },
+  queryTable: {
+    description: 'Query any database table directly to analyze real data',
+    parameters: {
+      type: 'object',
+      properties: {
+        table: {
+          type: 'string',
+          description: 'Table name to query (e.g., students, applications, fee_payments)',
+        },
+        select: {
+          type: 'string',
+          description: 'Columns to select, default *',
+        },
+        limit: {
+          type: 'number',
+          description: 'Max rows to return, default 10',
+        },
+        filter: {
+          type: 'object',
+          description: 'Optional filter conditions as key-value pairs',
+        },
+      },
+      required: ['table'],
+    },
+  },
+  checkRLS: {
+    description: 'Check Row Level Security status on all tables',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  checkIndexes: {
+    description: 'List all indexes on tables to find missing ones',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  getRowCounts: {
+    description: 'Get row counts for all tables to assess database scale',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  analyzeDatabase: {
+    description: 'Run comprehensive database health check and get issues report',
+    parameters: {
+      type: 'object',
+      properties: {},
     },
   },
 };
@@ -497,6 +551,140 @@ async function executeSupabaseQuery(functionName: string, args: any) {
         result = { logs };
         break;
 
+      case 'queryTable':
+        {
+          const { data, error } = await supabase
+            .from(args.table)
+            .select(args.select || '*')
+            .limit(args.limit || 10);
+          
+          if (error) {
+            return {
+              error: true,
+              errorType: 'database_error',
+              message: `Unable to query table "${args.table}".`,
+              suggestion: 'Check if the table exists and you have proper permissions.',
+              technicalDetails: error.message,
+            };
+          }
+          
+          result = { 
+            table: args.table,
+            data,
+            rowCount: data?.length || 0,
+          };
+        }
+        break;
+
+      case 'checkRLS':
+        {
+          const { data: rlsData, error: rlsError } = await supabase.rpc('get_rls_status');
+          
+          if (rlsError) {
+            return {
+              error: true,
+              errorType: 'database_error',
+              message: 'Unable to check RLS status.',
+              suggestion: 'Ensure the get_rls_status RPC function is set up in your database.',
+              technicalDetails: rlsError.message,
+            };
+          }
+          
+          const noRls = (rlsData || []).filter((t: any) => !t.rls_enabled);
+          
+          result = {
+            rlsStatus: rlsData,
+            tablesWithoutRLS: noRls.map((t: any) => t.tablename),
+            rlsEnabledCount: (rlsData || []).length - noRls.length,
+            rlsDisabledCount: noRls.length,
+          };
+        }
+        break;
+
+      case 'checkIndexes':
+        {
+          const { data: indexData, error: indexError } = await supabase.rpc('get_indexes');
+          
+          if (indexError) {
+            return {
+              error: true,
+              errorType: 'database_error',
+              message: 'Unable to check indexes.',
+              suggestion: 'Ensure the get_indexes RPC function is set up in your database.',
+              technicalDetails: indexError.message,
+            };
+          }
+          
+          const tableIndexCounts: Record<string, number> = {};
+          (indexData || []).forEach((idx: any) => {
+            tableIndexCounts[idx.tablename] = (tableIndexCounts[idx.tablename] || 0) + 1;
+          });
+          
+          result = {
+            indexes: indexData,
+            totalIndexes: (indexData || []).length,
+            tablesWithIndexes: Object.keys(tableIndexCounts).length,
+            indexSummary: tableIndexCounts,
+          };
+        }
+        break;
+
+      case 'getRowCounts':
+        {
+          const { data: rowCounts, error: rowCountError } = await supabase.rpc('get_table_row_counts');
+          
+          if (rowCountError) {
+            return {
+              error: true,
+              errorType: 'database_error',
+              message: 'Unable to get row counts.',
+              suggestion: 'Ensure the get_table_row_counts RPC function is set up in your database.',
+              technicalDetails: rowCountError.message,
+            };
+          }
+          
+          const sorted = (rowCounts || []).sort((a: any, b: any) => b.row_count - a.row_count);
+          
+          result = {
+            rowCounts: sorted,
+            totalRows: sorted.reduce((sum: number, t: any) => sum + (t.row_count || 0), 0),
+            largestTable: sorted[0]?.tablename || 'N/A',
+            largestTableCount: sorted[0]?.row_count || 0,
+          };
+        }
+        break;
+
+      case 'analyzeDatabase':
+        {
+          // Call the db-health endpoint internally
+          try {
+            const healthResponse = await fetch(
+              `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/db-health`,
+              {
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+              }
+            );
+            
+            if (!healthResponse.ok) {
+              throw new Error(`Health check failed: ${healthResponse.status}`);
+            }
+            
+            const healthData = await healthResponse.json();
+            result = healthData;
+          } catch (err: any) {
+            return {
+              error: true,
+              errorType: 'analysis_error',
+              message: 'Unable to run database health analysis.',
+              suggestion: 'The health check endpoint may not be available. Try running individual checks instead.',
+              technicalDetails: err.message,
+            };
+          }
+        }
+        break;
+
       default:
         return {
           error: true,
@@ -713,11 +901,21 @@ async function updateIssueMemory(message: string, aiResponse: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, userId, campus, userRole, userName } = await request.json();
+    console.log('=== CHAT API REQUEST ===');
+    console.log('Timestamp:', new Date().toISOString());
+    console.log('URL:', request.url);
+    
+    const body = await request.json();
+    console.log('Request body:', JSON.stringify(body, null, 2));
+    
+    const { message, userId, campus, userRole, userName } = body;
 
     if (!message) {
+      console.error('ERROR: Message is required');
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
     }
+    
+    console.log('Message received:', message.substring(0, 100));
 
     const finalUserId = userId || '00000000-0000-0000-0000-000000000000';
     const finalCampus = campus || 'main';
@@ -753,6 +951,12 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Fetch Supabase schema for database context
+    const schemaTables = await getSupabaseSchema();
+    const schemaContext = schemaTables.length > 0 
+      ? getSimplifiedSchema(schemaTables, 15) 
+      : 'Database schema not available';
+
     const userContext = userRole || userName 
       ? `\n\nCURRENT USER CONTEXT:\n- Role: ${userRole || 'Unknown'}\n- Name: ${userName || 'Unknown'}\n- Campus: ${finalCampus}\n- User ID: ${finalUserId}\n\nIMPORTANT: You already know this user's role. DO NOT ask them to identify themselves or their role. Address them directly based on their role.`
       : '';
@@ -762,6 +966,16 @@ export async function POST(request: NextRequest) {
 You have direct access to the Supabase database through function calls. When users ask questions about students, fees, courses, lecturers, or any system data, use the available functions to query the database directly and provide accurate, real-time information.
 
 ${memoryContext ? `MEMORY CONTEXT:\n${memoryContext}` : ''}
+
+DATABASE SCHEMA:
+${schemaContext}
+
+You are an expert database analyst and developer assistant. Use the schema above to:
+- Reference actual table and column names in your responses
+- Identify design issues (missing indexes, bad naming, no foreign keys)
+- Suggest schema improvements with specific code
+- Write optimized Supabase queries
+- Spot performance bottlenecks and security risks
 
 ERROR HANDLING AND VALIDATION INSTRUCTIONS:
 
@@ -830,118 +1044,127 @@ DATA PRESENTATION GUIDELINES:
       },
     }));
 
-    // Call Groq API with function calling
-    const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: message }
-        ],
-        tools,
-        tool_choice: 'auto',
-        temperature: 0.7,
-        max_tokens: 2000,
-      }),
-    });
+    // Initialize conversation for agentic loop
+    const conversationMessages: any[] = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: message },
+    ];
+    
+    let aiResponse = '';
+    let allToolResults: any[] = [];
+    const maxIterations = 5; // Prevent infinite loops
+    let iteration = 0;
 
-    if (!groqResponse.ok) {
-      const error = await groqResponse.text();
-      console.error('Groq API error:', error);
-      return NextResponse.json({ error: 'Failed to get response from AI' }, { status: 500 });
-    }
+    // Agentic loop - AI can call multiple tools before final response
+    while (iteration < maxIterations) {
+      iteration++;
+      
+      // Call Groq API
+      const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: conversationMessages,
+          tools,
+          tool_choice: 'auto',
+          temperature: 0.7,
+          max_tokens: 2000,
+        }),
+      });
 
-    const groqData = await groqResponse.json();
-    const aiMessage = groqData.choices[0]?.message;
-    let aiResponse = aiMessage?.content || 'No response from AI';
-    let toolResults: any[] = [];
+      if (!groqResponse.ok) {
+        const errorText = await groqResponse.text();
+        const status = groqResponse.status;
+        const statusText = groqResponse.statusText;
+        
+        console.error('=== GROQ API ERROR ===');
+        console.error('Status:', status, statusText);
+        console.error('Response:', errorText);
+        console.error('Headers:', Object.fromEntries(groqResponse.headers.entries()));
+        console.error('======================');
+        
+        // Handle rate limit specifically
+        if (status === 429 || errorText.includes('rate_limit')) {
+          return NextResponse.json({ 
+            error: 'AI service rate limit exceeded. Please try again in a few seconds.',
+            details: errorText,
+            retryAfter: groqResponse.headers.get('retry-after') || '60',
+          }, { status: 429 });
+        }
+        
+        return NextResponse.json({ 
+          error: 'Failed to get response from AI',
+          details: errorText,
+          status: status,
+        }, { status: 500 });
+      }
 
-    // Handle function calls
-    let parsedCalls: { name: string; args: any }[] | null = null;
+      const groqData = await groqResponse.json();
+      const aiMessage = groqData.choices[0]?.message;
 
-    // First try proper tool_calls format
-    if (aiMessage?.tool_calls && aiMessage.tool_calls.length > 0) {
-      parsedCalls = aiMessage.tool_calls.map((tc: any) => ({
-        name: tc.function.name,
-        args: JSON.parse(tc.function.arguments),
-      }));
-    }
-    // Fallback: parse malformed function calls from content
-    else if (aiMessage?.content) {
-      parsedCalls = parseFunctionCalls(aiMessage.content);
-    }
+      // Check if AI wants to call tools
+      const hasToolCalls = aiMessage?.tool_calls && aiMessage.tool_calls.length > 0;
+      
+      if (!hasToolCalls) {
+        // AI is done - return final response
+        aiResponse = aiMessage?.content || 'No response from AI';
+        break;
+      }
 
-    if (parsedCalls && parsedCalls.length > 0) {
-      for (const call of parsedCalls) {
-        // Skip calls without valid names
-        if (!call.name || !supabaseFunctions[call.name as keyof typeof supabaseFunctions]) {
-          console.warn('Skipping invalid function call:', call);
+      // AI wants to call tools - add its message to conversation
+      conversationMessages.push(aiMessage);
+
+      // Execute all tool calls
+      for (const toolCall of aiMessage.tool_calls) {
+        const functionName = toolCall.function.name;
+        let functionArgs: any = {};
+        
+        try {
+          functionArgs = JSON.parse(toolCall.function.arguments || '{}');
+        } catch (e) {
+          console.warn('Failed to parse function arguments:', toolCall.function.arguments);
+        }
+
+        // Validate function name
+        if (!functionName || !supabaseFunctions[functionName as keyof typeof supabaseFunctions]) {
+          console.warn('Skipping invalid function call:', functionName);
+          conversationMessages.push({
+            role: 'tool',
+            tool_call_id: toolCall.id,
+            content: JSON.stringify({ error: 'Unknown function', message: `Function "${functionName}" is not available.` }),
+          });
           continue;
         }
+
+        // Execute the function
         try {
-          const result = await executeSupabaseQuery(call.name, call.args);
-          toolResults.push({ name: call.name, result });
+          const result = await executeSupabaseQuery(functionName, functionArgs);
+          allToolResults.push({ name: functionName, result });
+          
+          conversationMessages.push({
+            role: 'tool',
+            tool_call_id: toolCall.id,
+            content: JSON.stringify(result),
+          });
         } catch (execError) {
-          console.error('Error executing query:', call.name, execError);
-          toolResults.push({ 
-            name: call.name, 
-            result: { 
+          console.error('Error executing query:', functionName, execError);
+          conversationMessages.push({
+            role: 'tool',
+            tool_call_id: toolCall.id,
+            content: JSON.stringify({ 
               error: true, 
               message: 'Failed to execute database query',
               suggestion: 'Please try again with a different query.'
-            } 
-          });
-        }
-      }
-
-      // Only make second call if we have valid results
-      if (toolResults.length > 0) {
-        try {
-          // Make second call with tool results
-          const secondGroqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: 'llama-3.3-70b-versatile',
-              messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: message },
-                {
-                  role: 'assistant',
-                  content: aiMessage?.content || '',
-                },
-                ...toolResults.map(tr => ({
-                  role: 'tool' as const,
-                  tool_call_id: 'call_fallback',
-                  content: JSON.stringify(tr.result),
-                })),
-              ],
-              temperature: 0.7,
-              max_tokens: 2000,
             }),
           });
-
-          if (secondGroqResponse.ok) {
-            const secondGroqData = await secondGroqResponse.json();
-            aiResponse = secondGroqData.choices[0]?.message?.content || aiResponse;
-          } else {
-            console.error('Second Groq call failed:', await secondGroqResponse.text());
-            // Still return the raw data if second call fails
-            aiResponse = `I retrieved the data but had trouble formatting the response. Here are the results:\n\n${JSON.stringify(toolResults, null, 2)}`;
-          }
-        } catch (secondCallError) {
-          console.error('Error in second Groq call:', secondCallError);
-          aiResponse = `I found the data but encountered an error. Raw results: ${JSON.stringify(toolResults)}`;
         }
       }
+      
+      // Continue loop - AI will receive tool results and can call more tools or respond
     }
 
     // Save to memory (async, don't await)
@@ -954,11 +1177,20 @@ DATA PRESENTATION GUIDELINES:
 
     return NextResponse.json({ 
       response: aiResponse,
-      toolResults,
+      toolResults: allToolResults,
       usedMemory: (aiMemory.longTermMemory?.length ?? 0) > 0 || (aiMemory.chatHistory?.length ?? 0) > 0,
     });
-  } catch (error) {
-    console.error('Chat API error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (error: any) {
+    console.error('=== CHAT API ERROR ===');
+    console.error('Error message:', error?.message || 'Unknown error');
+    console.error('Error stack:', error?.stack || 'No stack trace');
+    console.error('Error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+    console.error('======================');
+    
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error?.message || 'Unknown error occurred',
+      timestamp: new Date().toISOString(),
+    }, { status: 500 });
   }
 }

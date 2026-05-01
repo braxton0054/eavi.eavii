@@ -65,7 +65,19 @@ export default function Chatbot({ userId = '00000000-0000-0000-0000-000000000000
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get response');
+        const errorText = await response.text();
+        console.error('Server error response:', errorText);
+        console.error('Status:', response.status, response.statusText);
+        
+        let errorMessage = 'Failed to get response';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorData.details || errorMessage;
+        } catch (e) {
+          errorMessage = errorText || errorMessage;
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -77,9 +89,10 @@ export default function Chatbot({ userId = '00000000-0000-0000-0000-000000000000
         dataType: data.dataType,
         usedMemory: data.usedMemory
       }]);
-    } catch (err) {
-      setError('Failed to get response. Please try again.');
-      console.error(err);
+    } catch (err: any) {
+      const errorMsg = err?.message || 'Failed to get response. Please try again.';
+      setError(errorMsg);
+      console.error('Chat error:', err);
     } finally {
       setLoading(false);
       setLoadingMessage('');
@@ -117,7 +130,18 @@ export default function Chatbot({ userId = '00000000-0000-0000-0000-000000000000
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get response');
+        const errorText = await response.text();
+        console.error('Server error response:', errorText);
+        
+        let errorMessage = 'Failed to get response';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorData.details || errorMessage;
+        } catch (e) {
+          errorMessage = errorText || errorMessage;
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -129,9 +153,10 @@ export default function Chatbot({ userId = '00000000-0000-0000-0000-000000000000
         dataType: data.dataType,
         usedMemory: data.usedMemory
       }]);
-    } catch (err) {
-      setError('Failed to analyze system. Please try again.');
-      console.error(err);
+    } catch (err: any) {
+      const errorMsg = err?.message || 'Failed to analyze system. Please try again.';
+      setError(errorMsg);
+      console.error('System analysis error:', err);
     } finally {
       setLoading(false);
       setLoadingMessage('');
