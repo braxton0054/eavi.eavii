@@ -405,7 +405,7 @@ export default function ApplicationsPage() {
       if (existingClass) {
         classId = existingClass.id;
       } else {
-        // Create new class
+        // Create new class (academic_calendar_id is now nullable)
         const { data: newClass, error: classError } = await supabase
           .from('classes')
           .insert([{
