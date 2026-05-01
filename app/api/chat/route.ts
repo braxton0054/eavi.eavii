@@ -118,12 +118,17 @@ const supabaseFunctions = {
 function parseFunctionCalls(content: string): { name: string; args: any }[] | null {
   const calls: { name: string; args: any }[] = [];
 
+  if (!content || typeof content !== 'string') {
+    return null;
+  }
+
   // Try to parse <function=name [{...}]> format (malformed)
   const functionRegex = /<function=(\w+)\s*\[?([^\]]*)\]?>?<\/function>?/g;
   let match;
   while ((match = functionRegex.exec(content)) !== null) {
     const name = match[1];
     const argsStr = match[2] || '{}';
+    if (!name) continue;
     try {
       const args = argsStr ? JSON.parse(argsStr) : {};
       calls.push({ name, args });
@@ -137,11 +142,43 @@ function parseFunctionCalls(content: string): { name: string; args: any }[] | nu
   while ((match = altRegex.exec(content)) !== null) {
     const name = match[1];
     const argsStr = match[2];
+    if (!name) continue;
     try {
       const args = argsStr ? JSON.parse(argsStr.trim()) : {};
       calls.push({ name, args });
     } catch (e) {
       console.warn('Failed to parse alt function args:', argsStr);
+    }
+  }
+
+  // Handle malformed cases like {"limit": "100"}></function>
+  const malformedRegex = /\{[^}]*\}><\/function>/g;
+  while ((match = malformedRegex.exec(content)) !== null) {
+    const fullMatch = match[0];
+    // Extract just the JSON part
+    const jsonMatch = fullMatch.match(/(\{[^}]*\})/);
+    if (jsonMatch) {
+      try {
+        const args = JSON.parse(jsonMatch[1]);
+        // Infer function name from context or use default
+        calls.push({ name: 'queryStudents', args });
+      } catch (e) {
+        console.warn('Failed to parse malformed function args:', jsonMatch[1]);
+      }
+    }
+  }
+
+  // Handle cases like <function=queryCourses={"courseId": "KNEC"}></function>
+  const embeddedJsonRegex = /<function=(\w+)=({[^}]*})\s*\/?><\/function>?/g;
+  while ((match = embeddedJsonRegex.exec(content)) !== null) {
+    const name = match[1];
+    const argsStr = match[2];
+    if (!name) continue;
+    try {
+      const args = JSON.parse(argsStr);
+      calls.push({ name, args });
+    } catch (e) {
+      console.warn('Failed to parse embedded JSON function args:', argsStr);
     }
   }
 
@@ -841,40 +878,69 @@ DATA PRESENTATION GUIDELINES:
 
     if (parsedCalls && parsedCalls.length > 0) {
       for (const call of parsedCalls) {
-        const result = await executeSupabaseQuery(call.name, call.args);
-        toolResults.push({ name: call.name, result });
+        // Skip calls without valid names
+        if (!call.name || !supabaseFunctions[call.name as keyof typeof supabaseFunctions]) {
+          console.warn('Skipping invalid function call:', call);
+          continue;
+        }
+        try {
+          const result = await executeSupabaseQuery(call.name, call.args);
+          toolResults.push({ name: call.name, result });
+        } catch (execError) {
+          console.error('Error executing query:', call.name, execError);
+          toolResults.push({ 
+            name: call.name, 
+            result: { 
+              error: true, 
+              message: 'Failed to execute database query',
+              suggestion: 'Please try again with a different query.'
+            } 
+          });
+        }
       }
 
-      // Make second call with tool results
-      const secondGroqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: message },
-            {
-              role: 'assistant',
-              content: aiMessage?.content || '',
+      // Only make second call if we have valid results
+      if (toolResults.length > 0) {
+        try {
+          // Make second call with tool results
+          const secondGroqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+              'Content-Type': 'application/json',
             },
-            ...toolResults.map(tr => ({
-              role: 'tool' as const,
-              tool_call_id: 'call_fallback',
-              content: JSON.stringify(tr.result),
-            })),
-          ],
-          temperature: 0.7,
-          max_tokens: 2000,
-        }),
-      });
+            body: JSON.stringify({
+              model: 'llama-3.3-70b-versatile',
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: message },
+                {
+                  role: 'assistant',
+                  content: aiMessage?.content || '',
+                },
+                ...toolResults.map(tr => ({
+                  role: 'tool' as const,
+                  tool_call_id: 'call_fallback',
+                  content: JSON.stringify(tr.result),
+                })),
+              ],
+              temperature: 0.7,
+              max_tokens: 2000,
+            }),
+          });
 
-      if (secondGroqResponse.ok) {
-        const secondGroqData = await secondGroqResponse.json();
-        aiResponse = secondGroqData.choices[0]?.message?.content || aiResponse;
+          if (secondGroqResponse.ok) {
+            const secondGroqData = await secondGroqResponse.json();
+            aiResponse = secondGroqData.choices[0]?.message?.content || aiResponse;
+          } else {
+            console.error('Second Groq call failed:', await secondGroqResponse.text());
+            // Still return the raw data if second call fails
+            aiResponse = `I retrieved the data but had trouble formatting the response. Here are the results:\n\n${JSON.stringify(toolResults, null, 2)}`;
+          }
+        } catch (secondCallError) {
+          console.error('Error in second Groq call:', secondCallError);
+          aiResponse = `I found the data but encountered an error. Raw results: ${JSON.stringify(toolResults)}`;
+        }
       }
     }
 
