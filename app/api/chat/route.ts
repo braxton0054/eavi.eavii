@@ -114,6 +114,40 @@ const supabaseFunctions = {
   },
 };
 
+// Parse function calls from AI response (handles both proper tool_calls and malformed text)
+function parseFunctionCalls(content: string): { name: string; args: any }[] | null {
+  const calls: { name: string; args: any }[] = [];
+
+  // Try to parse <function=name [{...}]> format (malformed)
+  const functionRegex = /<function=(\w+)\s*\[?([^\]]*)\]?>?<\/function>?/g;
+  let match;
+  while ((match = functionRegex.exec(content)) !== null) {
+    const name = match[1];
+    const argsStr = match[2] || '{}';
+    try {
+      const args = argsStr ? JSON.parse(argsStr) : {};
+      calls.push({ name, args });
+    } catch (e) {
+      console.warn('Failed to parse function args:', argsStr);
+    }
+  }
+
+  // Also try <function=name>JSON</function> format
+  const altRegex = /<function=(\w+)>([^<]*)<\/function>/g;
+  while ((match = altRegex.exec(content)) !== null) {
+    const name = match[1];
+    const argsStr = match[2];
+    try {
+      const args = argsStr ? JSON.parse(argsStr.trim()) : {};
+      calls.push({ name, args });
+    } catch (e) {
+      console.warn('Failed to parse alt function args:', argsStr);
+    }
+  }
+
+  return calls.length > 0 ? calls : null;
+}
+
 // Error types with actionable suggestions
 const errorTypes: { [key: string]: { message: string; suggestion: string } } = {
   'PGRST116': {
@@ -211,13 +245,21 @@ async function executeSupabaseQuery(functionName: string, args: any) {
     switch (functionName) {
       case 'queryStudents':
         dataType = 'students';
+        
+        // Normalize campus value
+        const normalizedCampus = args.campus?.toLowerCase().trim();
+        
         let studentQuery = supabase
           .from('v_student_financials')
-          .select('*')
-          .limit(args.limit || 20);
+          .select('*, courses(name)')
+          .limit(args.limit || 50);
         
-        if (args.campus && args.campus !== 'all') {
-          studentQuery = studentQuery.eq('campus', args.campus);
+        // Handle both 'main'/'west' and 'Main Campus'/'West Campus' formats
+        if (normalizedCampus && normalizedCampus !== 'all') {
+          const campusVariants = normalizedCampus.includes('west') 
+            ? ['west', 'West Campus'] 
+            : ['main', 'Main Campus'];
+          studentQuery = studentQuery.in('campus', campusVariants);
         }
         if (args.status) {
           studentQuery = studentQuery.eq('status', args.status);
@@ -240,16 +282,30 @@ async function executeSupabaseQuery(functionName: string, args: any) {
           };
         }
 
-        const { data: balances, error: balancesError } = await supabase
-          .from('v_student_balance')
-          .select('*')
-          .limit(args.limit || 20);
+        // Calculate totals
+        const totalBalance = students?.reduce((sum, s) => sum + (s.total_balance || 0), 0) || 0;
+        const totalPaid = students?.reduce((sum, s) => sum + (s.total_paid || 0), 0) || 0;
+        const totalFees = students?.reduce((sum, s) => sum + (s.total_fees || 0), 0) || 0;
+        const studentCount = students?.length || 0;
 
-        if (balancesError) {
-          console.warn('Balance view query warning:', balancesError);
-        }
+        // Transform students to show course names instead of IDs
+        const transformedStudents = students?.map(s => ({
+          ...s,
+          course_name: s.courses?.name || s.course_id || 'Unknown Course',
+          course_id: undefined, // Remove raw ID
+          courses: undefined, // Remove nested object
+        }));
 
-        result = { students, balances };
+        result = { 
+          students: transformedStudents, 
+          summary: {
+            totalStudents: studentCount,
+            totalBalance,
+            totalPaid,
+            totalFees,
+            campus: normalizedCampus || 'all',
+          }
+        };
         break;
 
       case 'queryFees':
@@ -705,7 +761,27 @@ ALWAYS:
 - Guide users to the correct part of the system to make corrections
 - Use friendly, helpful language while being precise about the problem
 
-Never say "contact support" unless it's a technical database error. For data issues, guide users on how to fix the data themselves in the system.`;
+Never say "contact support" unless it's a technical database error. For data issues, guide users on how to fix the data themselves in the system.
+
+FUNCTION CALLING INSTRUCTIONS:
+You have access to database query functions listed in the "tools" section. When you need to fetch data from the database:
+1. Use the function calling mechanism - do NOT generate text like "<function=...>"
+2. The system will automatically detect and execute your function calls
+3. Wait for the function results to be provided to you before responding
+4. Do not invent data - always wait for actual database results
+
+IMPORTANT: Do NOT output text like '<function=queryStudents>' in your response. The function calling is handled automatically by the system when you indicate which tool to use.
+
+DATA PRESENTATION GUIDELINES:
+- When showing student data, use the 'course_name' field (not course_id) to display the course name
+- When asked about totals or aggregates, use the 'summary' object which contains:
+  - totalStudents: number of students
+  - totalBalance: sum of all balances
+  - totalPaid: sum of all payments
+  - totalFees: sum of all fees
+  - campus: which campus was queried
+- Always report the campus name correctly based on what was requested (Main vs West)
+- Present financial totals clearly with proper currency formatting`;
 
     // Convert supabaseFunctions to OpenAI function format
     const tools = Object.entries(supabaseFunctions).map(([name, def]) => ({
@@ -749,13 +825,24 @@ Never say "contact support" unless it's a technical database error. For data iss
     let toolResults: any[] = [];
 
     // Handle function calls
-    if (aiMessage?.tool_calls) {
-      for (const toolCall of aiMessage.tool_calls) {
-        const functionName = toolCall.function.name;
-        const functionArgs = JSON.parse(toolCall.function.arguments);
-        
-        const result = await executeSupabaseQuery(functionName, functionArgs);
-        toolResults.push({ name: functionName, result });
+    let parsedCalls: { name: string; args: any }[] | null = null;
+
+    // First try proper tool_calls format
+    if (aiMessage?.tool_calls && aiMessage.tool_calls.length > 0) {
+      parsedCalls = aiMessage.tool_calls.map((tc: any) => ({
+        name: tc.function.name,
+        args: JSON.parse(tc.function.arguments),
+      }));
+    }
+    // Fallback: parse malformed function calls from content
+    else if (aiMessage?.content) {
+      parsedCalls = parseFunctionCalls(aiMessage.content);
+    }
+
+    if (parsedCalls && parsedCalls.length > 0) {
+      for (const call of parsedCalls) {
+        const result = await executeSupabaseQuery(call.name, call.args);
+        toolResults.push({ name: call.name, result });
       }
 
       // Make second call with tool results
@@ -770,10 +857,13 @@ Never say "contact support" unless it's a technical database error. For data iss
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: message },
-            aiMessage,
+            {
+              role: 'assistant',
+              content: aiMessage?.content || '',
+            },
             ...toolResults.map(tr => ({
               role: 'tool' as const,
-              tool_call_id: aiMessage.tool_calls?.[0].id || '',
+              tool_call_id: 'call_fallback',
               content: JSON.stringify(tr.result),
             })),
           ],
