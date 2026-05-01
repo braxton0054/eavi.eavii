@@ -330,15 +330,66 @@ export default function ApplicationsPage() {
       // Auto-generate class name based on enrollment date, course name, and course type
       const enrollmentDate = selectedApplication?.application_date || new Date().toISOString().split('T')[0];
       const date = new Date(enrollmentDate);
-      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-                          'July', 'August', 'September', 'October', 'November', 'December'];
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const month = monthNames[date.getMonth()];
       const year = date.getFullYear();
       
-      // Generate class name: "CourseName - CourseType - Month Year"
-      const courseName = selectedApplication?.course || 'Unknown';
-      const courseType = selectedApplication?.course_type || 'General';
-      const className = `${courseName} - ${courseType} - ${month} ${year}`;
+      // Fetch course details from database
+      const courseId = selectedApplication?.course;
+      let courseName = 'Unknown';
+      let courseLevel = 'General';
+      
+      if (courseId) {
+        // Get course name
+        const { data: courseData } = await supabase
+          .from('courses')
+          .select('name')
+          .eq('id', courseId)
+          .single();
+        
+        if (courseData) {
+          courseName = courseData.name;
+        }
+        
+        // Get course type/level
+        const { data: courseTypeData } = await supabase
+          .from('course_types')
+          .select('level')
+          .eq('course_id', courseId)
+          .single();
+        
+        if (courseTypeData) {
+          courseLevel = courseTypeData.level;
+        }
+      }
+      
+      // Simple abbreviation logic
+      const abbreviateLevel = (level: string): string => {
+        const l = level.toLowerCase();
+        if (l.includes('diploma')) return 'D';
+        if (l.includes('certificate')) return 'C';
+        if (l.includes('artisan')) return 'A';
+        if (l.includes('craft')) return 'CR';
+        if (l.includes('level6')) return 'L6';
+        if (l.includes('level5')) return 'L5';
+        if (l.includes('level4')) return 'L4';
+        return 'G';
+      };
+      
+      // Simple course name abbreviation - take first 3-4 letters, uppercase
+      const abbreviateCourse = (name: string): string => {
+        // Remove common words and spaces
+        const cleaned = name.replace(/information|communication|technology|engineering|management|studies|science|arts/gi, '').trim();
+        // Take first 3-4 characters, uppercase
+        return cleaned.substring(0, 4).toUpperCase();
+      };
+      
+      const levelAbbr = abbreviateLevel(courseLevel);
+      const courseAbbr = abbreviateCourse(courseName);
+      
+      // Generate abbreviated class name: "D-ICT-Apr2026"
+      const className = `${levelAbbr}-${courseAbbr}-${month}${year}`;
       
       // Check if class already exists
       const normalizedCampus = selectedApplication?.campus?.toLowerCase().includes('west') ? 'west' : 'main';
