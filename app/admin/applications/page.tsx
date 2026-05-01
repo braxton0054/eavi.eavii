@@ -156,7 +156,7 @@ export default function ApplicationsPage() {
     try {
       let query = supabase
         .from('applications')
-        .select('*, courses(name), course_types(level), classes(class_name)')
+        .select('*, courses(name), course_types(level)')
         .order('application_date', { ascending: false });
 
       // Filter by campus to show only this campus's applications
@@ -174,18 +174,30 @@ export default function ApplicationsPage() {
 
       if (error) {
         console.error('Error loading applications:', error);
-        setError('Failed to load applications: ' + error.message);
+        setError('Failed to load applications');
         setApplications([]);
-      } else {
-        console.log('Loaded applications:', data);
-        // Flatten the data for the UI
-        const enrichedData = (data || []).map((app: any) => ({
-          ...app,
-          course: app.courses?.name,
-          course_type: app.course_types?.level
-        }));
-        setApplications(enrichedData);
+        return;
       }
+
+      // Fetch class names for applications that have class_id
+      const applicationsWithClass = await Promise.all(
+        (data || []).map(async (app: any) => {
+          if (app.class_id) {
+            const { data: classData } = await supabase
+              .from('classes')
+              .select('class_name')
+              .eq('id', app.class_id)
+              .single();
+            return {
+              ...app,
+              classes: classData ? { class_name: classData.class_name } : null
+            };
+          }
+          return app;
+        })
+      );
+
+      setApplications(applicationsWithClass);
     } catch (err) {
       console.error('Error loading applications:', err);
       setError('Failed to load applications');
