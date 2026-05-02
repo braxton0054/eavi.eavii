@@ -34,6 +34,12 @@ const formatDurationYears = (months: number): string => {
   return `${wholeYears} ${fraction} Years`;
 };
 
+interface ExamMark {
+  marks?: number;
+  grade?: string;
+  points?: number;
+}
+
 export default function StudentDashboard() {
   const router = useRouter();
   const [supabase, setSupabase] = useState<any>(null);
@@ -55,6 +61,21 @@ export default function StudentDashboard() {
   const [payments, setPayments] = useState<any[]>([]);
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [showReceipt, setShowReceipt] = useState(false);
+  
+  // Part 5: Student Portal enhancements
+  const [activeTab, setActiveTab] = useState<'overview' | 'results' | 'fees' | 'documents' | 'progress'>('overview');
+  const [feeClearance, setFeeClearance] = useState<any>(null);
+  const [clearancePerSemester, setClearancePerSemester] = useState<any[]>([]);
+  const [guardians, setGuardians] = useState<any[]>([]);
+  const [documents, setDocuments] = useState<any>({
+    has_spring_file: false,
+    has_rem_paper: false,
+    has_kcse_photocopy: false,
+    has_kcpe_photocopy: false
+  });
+  const [courseStructure, setCourseStructure] = useState<any[]>([]);
+  const [gpa, setGpa] = useState<number | null>(null);
+  const [upgradeEligible, setUpgradeEligible] = useState(false);
 
   useEffect(() => {
     setSupabase(createClient());
@@ -121,6 +142,13 @@ export default function StudentDashboard() {
         await loadExamMarks(admissionNumber);
         await loadCourses();
         await loadPayments(admissionNumber);
+        // Part 5: Load additional student data
+        await loadGuardians(admissionNumber);
+        await loadDocuments(admissionNumber);
+        await loadFeeClearance(admissionNumber);
+        await loadCourseStructure(admissionNumber);
+        await calculateGPA(admissionNumber);
+        checkUpgradeEligibility();
       }
     } catch (err) {
       console.error('Auth check error:', err);
@@ -238,7 +266,6 @@ export default function StudentDashboard() {
           course_types (
             level,
             enabled,
-            min_kcse_grade,
             study_mode,
             duration_months,
             modules (
@@ -319,7 +346,6 @@ export default function StudentDashboard() {
           course_types (
             level,
             enabled,
-            min_kcse_grade,
             study_mode,
             duration_months,
             modules (
@@ -402,6 +428,174 @@ export default function StudentDashboard() {
     } catch (err) {
       console.error('Error loading units with lecturers:', err);
     }
+  };
+
+  // Part 5: Load guardian details
+  const loadGuardians = async (admissionNumber: string) => {
+    try {
+      const { data: application } = await supabase
+        .from('applications')
+        .select('id')
+        .eq('admission_number', admissionNumber)
+        .single();
+      
+      if (!application) return;
+      
+      const { data, error } = await supabase
+        .from('guardians')
+        .select('*')
+        .eq('application_id', application.id);
+      
+      if (error) throw error;
+      setGuardians(data || []);
+    } catch (err) {
+      console.error('Error loading guardians:', err);
+    }
+  };
+
+  // Part 5: Load document checklist
+  const loadDocuments = async (admissionNumber: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('applications')
+        .select('has_spring_file, has_rem_paper, has_kcse_photocopy, has_kcpe_photocopy')
+        .eq('admission_number', admissionNumber)
+        .single();
+      
+      if (error) throw error;
+      if (data) {
+        setDocuments({
+          has_spring_file: data.has_spring_file || false,
+          has_rem_paper: data.has_rem_paper || false,
+          has_kcse_photocopy: data.has_kcse_photocopy || false,
+          has_kcpe_photocopy: data.has_kcpe_photocopy || false
+        });
+      }
+    } catch (err) {
+      console.error('Error loading documents:', err);
+    }
+  };
+
+  // Part 5: Calculate fee clearance status
+  const loadFeeClearance = async (admissionNumber: string) => {
+    try {
+      const { data: student } = await supabase
+        .from('applications')
+        .select('id, current_module, current_semester, total_fee_due, fee_paid')
+        .eq('admission_number', admissionNumber)
+        .single();
+      
+      if (!student) return;
+      
+      // Get all payments for this student
+      const { data: payments } = await supabase
+        .from('fee_payments')
+        .select('amount, semester_id')
+        .eq('application_id', student.id)
+        .eq('status', 'completed');
+      
+      // Calculate clearance per semester (simplified)
+      const totalDue = student.total_fee_due || 0;
+      const totalPaid = student.fee_paid || 0;
+      const paidPct = totalDue > 0 ? Math.round((totalPaid / totalDue) * 100) : 0;
+      
+      setFeeClearance({
+        paid_pct: paidPct,
+        clearance_status: paidPct >= 95 ? 'Cleared' : paidPct >= 50 ? 'Partial' : 'Low',
+        total_due: totalDue,
+        total_paid: totalPaid,
+        balance: totalDue - totalPaid,
+        needed_for_95: Math.max(0, totalDue * 0.95 - totalPaid)
+      });
+    } catch (err) {
+      console.error('Error loading fee clearance:', err);
+    }
+  };
+
+  // Part 5: Load course structure for progress view
+  const loadCourseStructure = async (admissionNumber: string) => {
+    try {
+      const { data: student } = await supabase
+        .from('applications')
+        .select('course_id, course_type, current_module, current_semester')
+        .eq('admission_number', admissionNumber)
+        .single();
+      
+      if (!student?.course_id) return;
+      
+      // Load course structure
+      const { data: courseTypes } = await supabase
+        .from('course_types')
+        .select(`
+          level,
+          modules (
+            module_index,
+            label,
+            duration_months,
+            semesters (
+              semester_index,
+              duration_months,
+              fee,
+              practical_fee
+            )
+          )
+        `)
+        .eq('course_id', student.course_id)
+        .eq('level', student.course_type || 'diploma');
+      
+      if (courseTypes && courseTypes[0]) {
+        setCourseStructure(courseTypes[0].modules || []);
+      }
+    } catch (err) {
+      console.error('Error loading course structure:', err);
+    }
+  };
+
+   // Part 5: Calculate GPA from exam marks
+   const calculateGPA = async (admissionNumber: string) => {
+     try {
+       const { data: marks } = await supabase
+         .from('exam_marks')
+         .select('marks, grade, points')
+         .eq('admission_number', admissionNumber)
+         .eq('is_submitted', true);
+       
+       if (!marks || marks.length === 0) {
+         setGpa(null);
+         return;
+       }
+       
+       // Use points if available, otherwise calculate from marks
+       const totalPoints = marks.reduce((sum: number, m: ExamMark) => {
+         const pts = m.points || calculatePointsFromMarks(m.marks || 0);
+         return sum + pts;
+       }, 0);
+      
+      const avgGPA = totalPoints / marks.length;
+      setGpa(avgGPA);
+    } catch (err) {
+      console.error('Error calculating GPA:', err);
+    }
+  };
+
+  // Helper to calculate points from marks
+  const calculatePointsFromMarks = (marks: number): number => {
+    if (marks >= 80) return 1;
+    if (marks >= 75) return 2;
+    if (marks >= 70) return 3;
+    if (marks >= 60) return 4;
+    if (marks >= 55) return 5;
+    if (marks >= 50) return 6;
+    if (marks >= 40) return 7;
+    return 8;
+  };
+
+  // Part 5: Check if eligible for upgrade
+  const checkUpgradeEligibility = () => {
+    if (!studentInfo) return;
+    // Check if status is completed
+    const isCompleted = studentInfo.status === 'completed';
+    setUpgradeEligible(isCompleted);
   };
 
   const handleLogout = async () => {
@@ -1178,6 +1372,30 @@ export default function StudentDashboard() {
           </div>
         )}
 
+        {/* Part 5: Tab Navigation */}
+        <div className="mb-6 flex flex-wrap gap-2">
+          {[
+            { key: 'overview', label: 'Overview', icon: '🏠' },
+            { key: 'results', label: 'Results', icon: '📊' },
+            { key: 'fees', label: 'Fees', icon: '💰' },
+            { key: 'documents', label: 'Documents', icon: '📄' },
+            { key: 'progress', label: 'Progress', icon: '📈' }
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key as any)}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 ${
+                activeTab === tab.key
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white/10 text-white hover:bg-white/20'
+              }`}
+            >
+              <span>{tab.icon}</span>
+              <span className="hidden md:inline">{tab.label}</span>
+            </button>
+          ))}
+        </div>
+
         {/* Student Info Card */}
         {showProfile && (
           <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 md:p-8 border border-white/20 mb-6">
@@ -1240,6 +1458,50 @@ export default function StudentDashboard() {
           </div>
         </div>
         )}
+
+        {/* OVERVIEW TAB */}
+        {activeTab === 'overview' && (
+        <>
+        {/* Part 5: Status Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          {/* Course Status */}
+          <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
+            <h3 className="text-purple-200 text-sm mb-2">Course Status</h3>
+            <p className="text-white font-semibold">
+              {studentInfo?.course || 'N/A'} | {studentInfo?.course_type || 'Diploma'}
+            </p>
+            <p className="text-purple-300 text-xs mt-1">
+              Module {studentInfo?.current_module || 1}, Semester {studentInfo?.current_semester || 1}
+            </p>
+          </div>
+          
+          {/* Fee Clearance */}
+          <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
+            <h3 className="text-purple-200 text-sm mb-2">Fee Clearance</h3>
+            <p className={`font-semibold ${
+              (feeClearance?.paid_pct || 0) >= 95 ? 'text-green-400' : 
+              (feeClearance?.paid_pct || 0) >= 50 ? 'text-yellow-400' : 'text-red-400'
+            }`}>
+              {feeClearance?.paid_pct || 0}% {feeClearance?.clearance_status || 'Unknown'}
+            </p>
+            {(feeClearance?.needed_for_95 || 0) > 0 && (
+              <p className="text-red-300 text-xs mt-1">
+                KES {feeClearance.needed_for_95.toLocaleString()} needed for 95%
+              </p>
+            )}
+          </div>
+          
+          {/* GPA */}
+          <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
+            <h3 className="text-purple-200 text-sm mb-2">Current GPA</h3>
+            <p className="text-white font-semibold text-xl">
+              {gpa !== null ? gpa.toFixed(2) : 'N/A'}
+            </p>
+            <p className="text-purple-300 text-xs mt-1">
+              {examMarks.length} results recorded
+            </p>
+          </div>
+        </div>
 
         {/* Course Info Card */}
         {studentInfo?.course && (
@@ -1526,6 +1788,315 @@ export default function StudentDashboard() {
             </div>
           )}
         </div>
+        </>
+        )}
+
+        {/* RESULTS TAB */}
+        {activeTab === 'results' && (
+          <div className="space-y-6">
+            {/* Fee Warning for Results */}
+            {(feeClearance?.paid_pct || 0) < 95 && (
+              <div className="bg-yellow-500/20 backdrop-blur-md rounded-xl p-4 border border-yellow-500/50">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">⚠️</span>
+                  <div>
+                    <h3 className="text-yellow-300 font-semibold">Results Partially Blocked</h3>
+                    <p className="text-white text-sm">
+                      You have paid {feeClearance?.paid_pct || 0}% of your fees. 
+                      Pay KES {feeClearance?.needed_for_95?.toLocaleString() || 0} more to unlock all results.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Released Results */}
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 md:p-8 border border-white/20">
+              <h2 className="text-xl md:text-2xl font-bold text-white mb-6">Your Exam Results</h2>
+              
+              {examMarks.length === 0 ? (
+                <div className="text-center py-8 text-purple-200">
+                  No exam results available yet. Results will appear here once lecturers submit marks.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-white/20">
+                        <th className="text-left py-3 px-4 text-purple-300 text-sm">Unit</th>
+                        <th className="text-left py-3 px-4 text-purple-300 text-sm">Exam Type</th>
+                        <th className="text-left py-3 px-4 text-purple-300 text-sm">Marks</th>
+                        <th className="text-left py-3 px-4 text-purple-300 text-sm">Grade</th>
+                        <th className="text-left py-3 px-4 text-purple-300 text-sm">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {examMarks.filter((m: any) => !m.is_absent).map((mark: any) => {
+                        const gradeInfo = calculateGrade(mark.marks);
+                        const isReleased = (feeClearance?.paid_pct || 0) >= 95 || mark.semester < (studentInfo?.current_semester || 1);
+                        return (
+                          <tr key={mark.id} className="border-b border-white/10">
+                            <td className="py-3 px-4 text-white text-sm">
+                              {isReleased ? (mark.unit_code || 'Unit') : '🔒 Hidden'}
+                            </td>
+                            <td className="py-3 px-4 text-purple-200 text-sm capitalize">{mark.exam_type}</td>
+                            <td className="py-3 px-4 text-white text-sm">
+                              {isReleased ? `${mark.marks}%` : '🔒'}
+                            </td>
+                            <td className="py-3 px-4">
+                              {isReleased ? (
+                                <span className={`px-2 py-1 rounded text-xs ${
+                                  gradeInfo.points <= 4 ? 'bg-green-500/20 text-green-400' :
+                                  gradeInfo.points <= 6 ? 'bg-blue-500/20 text-blue-400' :
+                                  'bg-red-500/20 text-red-400'
+                                }`}>
+                                  {gradeInfo.grade}
+                                </span>
+                              ) : (
+                                '🔒'
+                              )}
+                            </td>
+                            <td className="py-3 px-4">
+                              {mark.is_submitted ? (
+                                <span className="text-green-400 text-sm">Submitted</span>
+                              ) : (
+                                <span className="text-yellow-400 text-sm">Pending</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* FEES TAB */}
+        {activeTab === 'fees' && (
+          <div className="space-y-6">
+            {/* Fee Summary */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
+                <h3 className="text-purple-200 text-sm mb-2">Total Due</h3>
+                <p className="text-white font-semibold text-xl">
+                  KES {feeClearance?.total_due?.toLocaleString() || 0}
+                </p>
+              </div>
+              <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
+                <h3 className="text-purple-200 text-sm mb-2">Total Paid</h3>
+                <p className="text-green-400 font-semibold text-xl">
+                  KES {feeClearance?.total_paid?.toLocaleString() || 0}
+                </p>
+              </div>
+              <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
+                <h3 className="text-purple-200 text-sm mb-2">Balance</h3>
+                <p className={`font-semibold text-xl ${(feeClearance?.balance || 0) > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                  KES {feeClearance?.balance?.toLocaleString() || 0}
+                </p>
+              </div>
+            </div>
+
+            {/* Payment History */}
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 md:p-8 border border-white/20">
+              <h2 className="text-xl md:text-2xl font-bold text-white mb-6">Payment History</h2>
+              {payments.length === 0 ? (
+                <p className="text-purple-200">No payments recorded yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {payments.map((payment: any) => (
+                    <div key={payment.id} className="flex items-center justify-between bg-white/5 rounded-lg p-4">
+                      <div>
+                        <p className="text-white font-medium capitalize">{payment.payment_type}</p>
+                        <p className="text-purple-200 text-sm">
+                          {new Date(payment.payment_date).toLocaleDateString()} • {payment.payment_method}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-green-400 font-bold">KES {payment.amount.toLocaleString()}</p>
+                        <p className="text-purple-300 text-xs">{payment.receipt_number}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Clearance Status */}
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 md:p-8 border border-white/20">
+              <h2 className="text-xl md:text-2xl font-bold text-white mb-6">Fee Clearance Status</h2>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
+                  <div>
+                    <p className="text-white font-medium">Overall Clearance</p>
+                    <p className="text-purple-300 text-sm">All semesters combined</p>
+                  </div>
+                  <div className="text-right">
+                    <p className={`font-bold text-xl ${
+                      (feeClearance?.paid_pct || 0) >= 95 ? 'text-green-400' : 
+                      (feeClearance?.paid_pct || 0) >= 50 ? 'text-yellow-400' : 'text-red-400'
+                    }`}>
+                      {feeClearance?.paid_pct || 0}%
+                    </p>
+                    <p className="text-purple-300 text-sm">{feeClearance?.clearance_status}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* DOCUMENTS TAB */}
+        {activeTab === 'documents' && (
+          <div className="space-y-6">
+            {/* Document Checklist */}
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 md:p-8 border border-white/20">
+              <h2 className="text-xl md:text-2xl font-bold text-white mb-6">Document Checklist</h2>
+              <div className="space-y-3">
+                {[
+                  { key: 'has_spring_file', label: 'Spring File', icon: '📁' },
+                  { key: 'has_rem_paper', label: 'REM Paper', icon: '📝' },
+                  { key: 'has_kcse_photocopy', label: 'KCSE Photocopy', icon: '📄' },
+                  { key: 'has_kcpe_photocopy', label: 'KCPE Photocopy', icon: '📃' }
+                ].map((doc) => (
+                  <div key={doc.key} className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{doc.icon}</span>
+                      <span className="text-white">{doc.label}</span>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                      (documents as any)[doc.key] 
+                        ? 'bg-green-500/20 text-green-400' 
+                        : 'bg-red-500/20 text-red-400'
+                    }`}>
+                      {(documents as any)[doc.key] ? '✓ Submitted' : '❌ Missing'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                <p className="text-yellow-300 text-sm">
+                  <strong>Note:</strong> Missing documents? Please visit the admin office to submit them.
+                </p>
+              </div>
+            </div>
+
+            {/* Guardians */}
+            {guardians.length > 0 && (
+              <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 md:p-8 border border-white/20">
+                <h2 className="text-xl md:text-2xl font-bold text-white mb-6">Guardians / Emergency Contacts</h2>
+                <div className="space-y-3">
+                  {guardians.map((guardian: any) => (
+                    <div key={guardian.id} className="p-4 bg-white/5 rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-white font-semibold">{guardian.full_name}</span>
+                        {guardian.is_emergency_contact && (
+                          <span className="px-2 py-1 bg-red-500/20 text-red-400 text-xs rounded">Emergency Contact</span>
+                        )}
+                      </div>
+                      <p className="text-purple-300 text-sm">Phone: {guardian.phone}</p>
+                      {guardian.relationship && (
+                        <p className="text-purple-300 text-sm">Relationship: {guardian.relationship}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-4 text-purple-300 text-sm">
+                  To update guardian details, please contact the admin office.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* PROGRESS TAB */}
+        {activeTab === 'progress' && (
+          <div className="space-y-6">
+            {/* Course Progress */}
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 md:p-8 border border-white/20">
+              <h2 className="text-xl md:text-2xl font-bold text-white mb-6">Course Progress</h2>
+              
+              {courseStructure.length === 0 ? (
+                <p className="text-purple-200">Course structure not available.</p>
+              ) : (
+                <div className="space-y-4">
+                  {courseStructure.map((module: any) => {
+                    const isCurrentModule = module.module_index === studentInfo?.current_module;
+                    const isCompleted = module.module_index < (studentInfo?.current_module || 1);
+                    const isNotStarted = module.module_index > (studentInfo?.current_module || 1);
+                    
+                    return (
+                      <div key={module.module_index} className={`p-4 rounded-lg border ${
+                        isCompleted ? 'bg-green-500/10 border-green-500/30' :
+                        isCurrentModule ? 'bg-blue-500/10 border-blue-500/30' :
+                        'bg-white/5 border-white/10'
+                      }`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="text-white font-semibold">
+                            Module {module.module_index}: {module.label || `Module ${module.module_index}`}
+                          </h3>
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            isCompleted ? 'bg-green-500/20 text-green-400' :
+                            isCurrentModule ? 'bg-blue-500/20 text-blue-400' :
+                            'bg-gray-500/20 text-gray-400'
+                          }`}>
+                            {isCompleted ? '✓ Complete' : isCurrentModule ? '● In Progress' : '○ Not Started'}
+                          </span>
+                        </div>
+                        
+                        {/* Semesters within module */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
+                          {module.semesters?.map((sem: any) => {
+                            const semNumber = sem.semester_index;
+                            const isCurrentSem = isCurrentModule && semNumber === studentInfo?.current_semester;
+                            const isSemComplete = isCompleted || (isCurrentModule && semNumber < (studentInfo?.current_semester || 1));
+                            
+                            return (
+                              <div key={semNumber} className={`p-2 rounded text-center text-xs ${
+                                isSemComplete ? 'bg-green-500/20 text-green-400' :
+                                isCurrentSem ? 'bg-blue-500/20 text-blue-400' :
+                                'bg-white/5 text-gray-400'
+                              }`}>
+                                Sem {semNumber}
+                                {isCurrentSem && <span className="block">● Current</span>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Upgrade Eligibility */}
+            {upgradeEligible && (
+              <div className="bg-green-500/10 backdrop-blur-md rounded-xl p-4 md:p-8 border border-green-500/30">
+                <div className="flex items-start gap-4">
+                  <span className="text-4xl">🎓</span>
+                  <div className="flex-1">
+                    <h2 className="text-xl font-bold text-white mb-2">Congratulations!</h2>
+                    <p className="text-green-300 mb-4">
+                      You have completed your {studentInfo?.course_type || 'Certificate'}. 
+                      You are eligible to upgrade to the next level.
+                    </p>
+                    <div className="flex gap-3">
+                      <button className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold">
+                        Apply for Upgrade
+                      </button>
+                      <button className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-semibold">
+                        Explore Other Courses
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Result Preview Modal */}

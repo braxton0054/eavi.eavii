@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { createClient } from '@/lib/client';
 import AdmissionLetter from '@/components/AdmissionLetter';
+import GuardianManager from '@/components/GuardianManager';
 import { getCourseTypeConfig } from '@/lib/course-structure';
 
 const KCSE_GRADES = ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'D-', 'E'];
@@ -19,13 +20,19 @@ export default function ApplyPage() {
     fullName: '',
     phone: '',
     email: '',
+    dateOfBirth: '',
     gender: '',
+    nationalId: '',
+    nationality: 'Kenyan',
+    county: '',
+    town: '',
     kcseGrade: '',
     examBody: '',
     intake: `September ${currentYear}`,
     course: '',
     courseType: '',
     campus: '',
+    enrollmentType: 'new',
     applicationDate: '',
     admissionNumber: ''
   });
@@ -34,7 +41,8 @@ export default function ApplyPage() {
   const [suggestedCourses, setSuggestedCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [currentStep, setCurrentStep] = useState<'application' | 'guardian' | 'confirmation'>('application');
+  const [savedApplicationId, setSavedApplicationId] = useState<string | null>(null);
   const [submittedData, setSubmittedData] = useState<any>(null);
 
   // Initialize Supabase client only on client side
@@ -86,7 +94,6 @@ export default function ApplyPage() {
               id,
               level,
               enabled,
-              min_kcse_grade,
               study_mode,
               duration_months,
               modules (
@@ -112,8 +119,8 @@ export default function ApplyPage() {
           if (data && data.length > 0) {
             console.log('First course:', data[0]);
             console.log('First course types:', data[0]?.course_types);
-            if (data[0]?.course_types?.[0]) {
-              console.log('First course type min_kcse_grade:', data[0].course_types[0].min_kcse_grade);
+            if (data[0]) {
+              console.log('First course min_kcse_grade:', data[0].min_kcse_grade);
             }
             setCourses(data);
           } else {
@@ -404,7 +411,12 @@ export default function ApplyPage() {
           full_name: formData.fullName,
           phone: formData.phone,
           email: formData.email || null,
+          date_of_birth: formData.dateOfBirth,
           gender: formData.gender,
+          national_id: formData.nationalId,
+          nationality: formData.nationality,
+          county: formData.county,
+          town: formData.town,
           kcse_grade: formData.kcseGrade,
           exam_body: formData.examBody,
           intake: formData.intake,
@@ -436,7 +448,8 @@ export default function ApplyPage() {
           course_type: formData.courseType
         };
         setSubmittedData(enrichedData);
-        setSubmitted(true);
+        setSavedApplicationId(data.id);
+        setCurrentStep('guardian');
       }
     } catch (err) {
       console.error('Error submitting application:', err);
@@ -456,8 +469,8 @@ export default function ApplyPage() {
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950">
       <div className="relative z-10 w-full max-w-2xl mx-auto px-4 md:px-6 py-8 md:py-12">
-        {/* Header */}
-        {!submitted && (
+         {/* Header */}
+         {!submittedData && (
           <div className="text-center mb-8">
             <Link href="/" className="inline-block mb-6">
               <div className="relative w-32 h-32 md:w-40 md:h-40">
@@ -476,8 +489,8 @@ export default function ApplyPage() {
           </div>
         )}
 
-        {/* Confirmation Screen */}
-        {submitted && submittedData && (
+        {/* Step 3: Confirmation Screen */}
+        {currentStep === 'confirmation' && submittedData && (
           <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 md:p-8 border border-white/20">
             <div className="text-center mb-8">
               <div className="inline-block mb-4">
@@ -527,8 +540,8 @@ export default function ApplyPage() {
           </div>
         )}
 
-        {/* Application Form */}
-        {!submitted && (
+        {/* Step 1: Application Form */}
+        {currentStep === 'application' && (
           <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 md:p-8 border border-white/20">
             <form onSubmit={handleSubmit} className="space-y-6">
             {/* Hidden Fields */}
@@ -586,6 +599,94 @@ export default function ApplyPage() {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
+                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base"
+              />
+            </div>
+
+            {/* Date of Birth */}
+            <div>
+              <label htmlFor="dateOfBirth" className="block text-white font-medium mb-2 text-sm md:text-base">
+                Date of Birth *
+              </label>
+              <input
+                type="date"
+                id="dateOfBirth"
+                name="dateOfBirth"
+                value={formData.dateOfBirth}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base"
+              />
+            </div>
+
+            {/* National ID */}
+            <div>
+              <label htmlFor="nationalId" className="block text-white font-medium mb-2 text-sm md:text-base">
+                National ID Number *
+              </label>
+              <input
+                type="text"
+                id="nationalId"
+                name="nationalId"
+                value={formData.nationalId}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base"
+              />
+            </div>
+
+            {/* Nationality */}
+            <div>
+              <label htmlFor="nationality" className="block text-white font-medium mb-2 text-sm md:text-base">
+                Nationality *
+              </label>
+              <select
+                id="nationality"
+                name="nationality"
+                value={formData.nationality}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base"
+              >
+                <option value="Kenyan" className="text-gray-900">Kenyan</option>
+                <option value="Ugandan" className="text-gray-900">Ugandan</option>
+                <option value="Tanzanian" className="text-gray-900">Tanzanian</option>
+                <option value="Rwandan" className="text-gray-900">Rwandan</option>
+                <option value="Burundian" className="text-gray-900">Burundian</option>
+                <option value="South Sudanese" className="text-gray-900">South Sudanese</option>
+                <option value="Ethiopian" className="text-gray-900">Ethiopian</option>
+                <option value="Other" className="text-gray-900">Other</option>
+              </select>
+            </div>
+
+            {/* County */}
+            <div>
+              <label htmlFor="county" className="block text-white font-medium mb-2 text-sm md:text-base">
+                County *
+              </label>
+              <input
+                type="text"
+                id="county"
+                name="county"
+                value={formData.county}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base"
+              />
+            </div>
+
+            {/* Town */}
+            <div>
+              <label htmlFor="town" className="block text-white font-medium mb-2 text-sm md:text-base">
+                Town/City *
+              </label>
+              <input
+                type="text"
+                id="town"
+                name="town"
+                value={formData.town}
+                onChange={handleChange}
+                required
                 className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base"
               />
             </div>
@@ -799,6 +900,33 @@ export default function ApplyPage() {
             </Link>
           </div>
         </div>
+        )}
+
+        {/* Step 2: Guardian Details */}
+        {currentStep === 'guardian' && savedApplicationId && (
+          <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 md:p-8 border border-white/20">
+            <div className="text-center mb-6">
+              <div className="inline-block mb-4">
+                <div className="relative w-24 h-24">
+                  <Image
+                    src="/logo.webp"
+                    alt="East Africa Vision Institute Logo"
+                    fill
+                    className="object-contain"
+                    sizes="96px"
+                    loading="eager"
+                  />
+                </div>
+              </div>
+              <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Guardian Information</h1>
+              <p className="text-purple-200 text-sm md:text-base">Please provide parent or guardian details</p>
+            </div>
+
+            <GuardianManager 
+              applicationId={savedApplicationId} 
+              onGuardianSaved={() => setCurrentStep('confirmation')}
+            />
+          </div>
         )}
       </div>
     </div>

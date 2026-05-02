@@ -252,7 +252,6 @@ export default function CourseEnrollmentPage() {
             id,
             level,
             enabled,
-            min_kcse_grade,
             study_mode,
             duration_months,
             modules(
@@ -912,7 +911,7 @@ export default function CourseEnrollmentPage() {
                       {course.course_types?.filter((ct: any) => ct.enabled).map((ct: any) => (
                         <div key={ct.id} className="ml-2 md:ml-4 mt-3 md:mt-4 p-3 md:p-4 bg-black/20 rounded-lg">
                           <h4 className="text-sm md:text-lg font-semibold text-purple-300 capitalize">{ct.level}</h4>
-                          <p className="text-purple-200 text-xs md:text-sm">Min Grade: {ct.min_kcse_grade}</p>
+                          <p className="text-purple-200 text-xs md:text-sm">Min Grade: {course.min_kcse_grade}</p>
                           <p className="text-purple-200 text-xs md:text-sm">Study Mode: {ct.study_mode}</p>
 
                           {ct.study_mode === 'module' && ct.modules?.length > 0 && (

@@ -1,11 +1,38 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import Image from 'next/image';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/client';
-import { useRouter } from 'next/navigation';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+} from 'chart.js';
+import { Line, Doughnut } from 'react-chartjs-2';
 import Chatbot from '@/components/Chatbot';
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
 
 // Type definitions for dashboard data
 interface SystemLog {
@@ -39,17 +66,14 @@ interface AIIssue {
 
 export const dynamic = 'force-dynamic';
 
-// Neumorphism color palette
-const COLORS = {
-  base: '#e0e5ec',
-  shadowDark: '#b8bec7',
-  shadowLight: '#ffffff',
-  text: '#2d3748',
-  muted: '#718096',
-  accent: '#4a90d9',
-  danger: '#e74c3c',
-  success: '#27ae60',
-  warning: '#f39c12'
+// Chart colors
+const CHART_COLORS = {
+  primary: '#2563eb',
+  secondary: '#7c3aed',
+  success: '#10b981',
+  warning: '#f59e0b',
+  danger: '#ef4444',
+  gray: '#6b7280'
 };
 
 export default function AdminDashboard() {
@@ -59,16 +83,22 @@ export default function AdminDashboard() {
   const [campus, setCampus] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
   
-  // Core stats
+  // Core stats - Part 4 Admin Dashboard
   const [stats, setStats] = useState({
     totalApplications: 0,
     pendingApplications: 0,
     approvedApplications: 0,
     totalStudents: 0,
     totalLecturers: 0,
+    totalCourses: 0,
+    activeClasses: 0,
     totalRevenueThisMonth: 0,
+    totalOutstanding: 0,
     paymentBreakdown: [] as { method: string; amount: number; percentage: number }[]
   });
+  
+  // Department summary for Part 4
+  const [departmentSummary, setDepartmentSummary] = useState<any[]>([]);
   
   // Financial dashboard data
   const [studentFinancials, setStudentFinancials] = useState<StudentFinancial[]>([]);
@@ -81,6 +111,16 @@ export default function AdminDashboard() {
   const [financialFilter, setFinancialFilter] = useState({ campus: 'all', course: 'all', status: 'all' });
   const [financialPage, setFinancialPage] = useState(0);
   const FINANCIAL_PAGE_SIZE = 10;
+
+  // Chart data states
+  const [revenueChartData, setRevenueChartData] = useState<any>(null);
+  const [studentsByCourseData, setStudentsByCourseData] = useState<any>(null);
+  const [recentApplications, setRecentApplications] = useState<any[]>([]);
+
+  // UI states
+  const [quickActionsOpen, setQuickActionsOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const pathname = usePathname();
   
   // System logs and alerts
   const [systemLogs, setSystemLogs] = useState<SystemLog[]>([]);
@@ -280,6 +320,17 @@ export default function AdminDashboard() {
       }
       const { count: studentsCount } = await studentsQuery;
 
+      // Part 4: Load courses count
+      let coursesQuery = supabase.from('courses').select('*', { count: 'exact', head: true }).eq('is_active', true);
+      const { count: coursesCount } = await coursesQuery;
+
+      // Part 4: Load active classes count
+      let classesQuery = supabase.from('classes').select('*', { count: 'exact', head: true }).eq('is_active', true);
+      if (campusVariants) {
+        classesQuery = classesQuery.in('campus', campusVariants);
+      }
+      const { count: classesCount } = await classesQuery;
+
       // Load revenue this month
       const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
       let revenueQuery = supabase
@@ -307,6 +358,21 @@ export default function AdminDashboard() {
         percentage: totalRevenue > 0 ? (amount / totalRevenue) * 100 : 0
       })).sort((a, b) => b.amount - a.amount);
 
+      // Part 4: Calculate total outstanding balance
+      let outstandingQuery = supabase
+        .from('applications')
+        .select('id, campus, total_fee_due, fee_paid')
+        .eq('status', 'enrolled');
+      if (campusVariants) {
+        outstandingQuery = outstandingQuery.in('campus', campusVariants);
+      }
+      const { data: outstandingData } = await outstandingQuery;
+      const totalOutstanding = outstandingData?.reduce((sum: number, s: any) => {
+        const due = s.total_fee_due || 0;
+        const paid = s.fee_paid || 0;
+        return sum + (due - paid);
+      }, 0) || 0;
+
       // Load recent payments
       let recentPaymentsQuery = supabase
         .from('fee_payments')
@@ -320,23 +386,197 @@ export default function AdminDashboard() {
       const { data: recentPaymentsData } = await recentPaymentsQuery;
       setRecentPayments(recentPaymentsData || []);
 
+      // Part 4: Load department summary
+      await loadDepartmentSummary(campusCode);
+
       setStats({
         totalApplications: totalApps,
         pendingApplications: pendingApps,
         approvedApplications: approvedApps,
         totalStudents: studentsCount || 0,
         totalLecturers: lecturersCount || 0,
+        totalCourses: coursesCount || 0,
+        activeClasses: classesCount || 0,
         totalRevenueThisMonth: totalRevenue,
+        totalOutstanding,
         paymentBreakdown
       });
       
       // Load system logs and financial data
       await Promise.all([
         loadSystemLogs(),
-        loadStudentFinancials(campusCode, 0)
+        loadStudentFinancials(campusCode, 0),
+        loadChartData(campusCode),
+        loadRecentApplications(campusCode)
       ]);
     } catch (err) {
       console.error('Error loading stats:', err);
+    }
+  };
+
+  // Load chart data for visualizations
+  const loadChartData = async (campusCode: string) => {
+    try {
+      const campusVariants = campusCode && campusCode !== 'all' ? [campusCode] : null;
+      
+      // Revenue trend (last 6 months)
+      const months = [];
+      const revenueData = [];
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        const monthKey = d.toISOString().slice(0, 7); // YYYY-MM
+        const monthName = d.toLocaleDateString('en-US', { month: 'short' });
+        months.push(monthName);
+        
+        const monthStart = `${monthKey}-01`;
+        const nextMonth = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+        const monthEnd = nextMonth.toISOString().slice(0, 10);
+        
+        let query = supabase
+          .from('fee_payments')
+          .select('amount, applications!inner(campus)')
+          .eq('status', 'completed')
+          .gte('payment_date', monthStart)
+          .lt('payment_date', monthEnd);
+        
+        if (campusVariants) {
+          query = query.in('applications.campus', campusVariants);
+        }
+        
+        const { data } = await query;
+        const total = data?.reduce((sum: number, p: any) => sum + p.amount, 0) || 0;
+        revenueData.push(total);
+      }
+      
+      setRevenueChartData({
+        labels: months,
+        datasets: [{
+          label: 'Revenue (KES)',
+          data: revenueData,
+          borderColor: CHART_COLORS.primary,
+          backgroundColor: `${CHART_COLORS.primary}20`,
+          fill: true,
+          tension: 0.4
+        }]
+      });
+      
+      // Students by course (top 5)
+      let studentsQuery = supabase
+        .from('applications')
+        .select('course_id, status, campus')
+        .eq('status', 'enrolled');
+      
+      if (campusVariants) {
+        studentsQuery = studentsQuery.in('campus', campusVariants);
+      }
+      
+      const { data: studentsData } = await studentsQuery;
+      
+      // Group by course and count
+      const courseCounts: { [key: string]: number } = {};
+      studentsData?.forEach((s: any) => {
+        courseCounts[s.course_id] = (courseCounts[s.course_id] || 0) + 1;
+      });
+      
+      // Sort and take top 5
+      const sortedCourses = Object.entries(courseCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+      
+      // Get course names
+      const courseIds = sortedCourses.map(([id]) => id);
+      const { data: coursesData } = await supabase
+        .from('courses')
+        .select('id, name')
+        .in('id', courseIds);
+      
+      const courseNameMap: { [key: string]: string } = {};
+      coursesData?.forEach((c: any) => {
+        courseNameMap[c.id] = c.name;
+      });
+      
+      setStudentsByCourseData({
+        labels: sortedCourses.map(([id]) => courseNameMap[id] || id),
+        datasets: [{
+          data: sortedCourses.map(([, count]) => count),
+          backgroundColor: [
+            CHART_COLORS.primary,
+            CHART_COLORS.secondary,
+            CHART_COLORS.success,
+            CHART_COLORS.warning,
+            CHART_COLORS.gray
+          ],
+          borderWidth: 0
+        }]
+      });
+    } catch (err) {
+      console.error('Error loading chart data:', err);
+    }
+  };
+
+  // Load recent applications for the data table
+  const loadRecentApplications = async (campusCode: string) => {
+    try {
+      const campusVariants = campusCode && campusCode !== 'all' ? [campusCode] : null;
+      
+      let query = supabase
+        .from('applications')
+        .select('id, full_name, course_id, application_date, status, campus')
+        .order('application_date', { ascending: false })
+        .limit(5);
+      
+      if (campusVariants) {
+        query = query.in('campus', campusVariants);
+      }
+      
+      const { data } = await query;
+      setRecentApplications(data || []);
+    } catch (err) {
+      console.error('Error loading recent applications:', err);
+    }
+  };
+
+  // Part 4: Load department summary
+  const loadDepartmentSummary = async (campusCode: string) => {
+    try {
+      const campusVariants = campusCode && campusCode !== 'all' ? [campusCode] : null;
+      
+      // Get all departments with their courses
+      const { data: departments } = await supabase.from('departments').select('id, name, code');
+      
+      // Get courses per department
+      const { data: courses } = await supabase.from('courses').select('id, name, department_id, is_active');
+      
+      // Get enrolled students per course
+      let studentsQuery = supabase.from('applications').select('course_id, status, financial_hold').eq('status', 'enrolled');
+      if (campusVariants) {
+        studentsQuery = studentsQuery.in('campus', campusVariants);
+      }
+      const { data: students } = await studentsQuery;
+      
+      // Calculate per department
+      const summary = departments?.map((dept: any) => {
+        const deptCourses = courses?.filter((c: any) => c.department_id === dept.id) || [];
+        const totalCourses = deptCourses.length;
+        
+        const courseIds = deptCourses.map((c: any) => c.id);
+        const enrolledStudents = students?.filter((s: any) => courseIds.includes(s.course_id)) || [];
+        const totalEnrolled = enrolledStudents.length;
+        const onHold = enrolledStudents.filter((s: any) => s.financial_hold).length;
+        
+        return {
+          department: dept.name,
+          code: dept.code,
+          total_courses: totalCourses,
+          total_enrolled: totalEnrolled,
+          students_on_hold: onHold
+        };
+      }).sort((a: any, b: any) => b.total_enrolled - a.total_enrolled) || [];
+      
+      setDepartmentSummary(summary);
+    } catch (err) {
+      console.error('Error loading department summary:', err);
     }
   };
 
@@ -476,635 +716,396 @@ export default function AdminDashboard() {
     setDismissedWarnings(prev => new Set([...prev, id]));
   };
 
-  // Icon SVGs map
-  const icons: Record<string, string> = {
-    applications: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
-    announcements: 'M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z',
-    enrollment: 'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z',
-    courses: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253',
-    classes: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
-    lecturers: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
-    students: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',
-    results: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
-    calendar: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
-    notifications: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9',
-    reporting: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
-    'fee-pdf': 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z',
-    admission: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
-    'fee-structure': 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-    'bridge-groups': 'M13 10V3L4 14h7v7l9-11h-7z',
-    payments: 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z',
-    financial: 'M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z',
-    reports: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'
+  // Breadcrumb generator
+  const getBreadcrumbs = () => {
+    const paths = pathname.split('/').filter(Boolean);
+    if (paths.length <= 1) return [{ label: 'Dashboard', href: '/admin/dashboard' }];
+    
+    return paths.slice(1).map((segment, index) => {
+      const href = '/admin/' + paths.slice(1, index + 2).join('/');
+      const label = segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ');
+      return { label, href };
+    });
   };
 
-  // Icon colors for different action cards
-  const iconColors: Record<string, string> = {
-    applications: '#a78bfa',      // Purple
-    announcements: '#f472b6',   // Pink
-    enrollment: '#10b981',      // Emerald
-    courses: '#60a5fa',           // Blue
-    classes: '#34d399',           // Green
-    lecturers: '#fb923c',         // Orange
-    students: '#4ade80',          // Light Green
-    results: '#f87171',           // Red
-    calendar: '#2dd4bf',          // Teal
-    'bridge-groups': '#fbbf24',    // Amber
-    notifications: '#60a5fa',       // Light Blue
-    reporting: '#fbbf24',         // Yellow
-    'fee-pdf': '#c084fc',         // Violet
-    admission: '#38bdf8',         // Light Blue
-    'fee-structure': '#f472b6',   // Pink
-    payments: '#22d3ee',          // Cyan
-    financial: '#818cf8',         // Indigo
-    reports: '#5eead4'            // Teal Green
+  // Get status color
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'enrolled':
+      case 'approved':
+        return 'bg-green-100 text-green-800';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'rejected':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
   };
 
-  // Action Card Component
-  const ActionCard = ({ href, icon, title, description }: { href: string; icon: string; title: string; description: string }) => (
-    <Link
-      href={href}
-      className="glass-neu hover:bg-white/20 transition-colors duration-300 block p-4"
-    >
-      <div className="flex items-center gap-3">
-        <div 
-          className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{ backgroundColor: iconColors[icon] || '#a78bfa' }}
-        >
-          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icons[icon] || icons.applications} />
-          </svg>
-        </div>
-        <div className="min-w-0 flex-1">
-          <h3 className="text-base font-semibold text-white truncate leading-tight">
-            {title}
-          </h3>
-          <p className="text-xs text-purple-200 truncate leading-tight">
-            {description}
-          </p>
-        </div>
-      </div>
-    </Link>
-  );
+  // Format currency
+  const formatKES = (amount: number) => {
+    return `KES ${amount.toLocaleString()}`;
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950 flex items-center justify-center">
-        <div 
-          className="px-8 py-4 rounded-2xl"
-          style={{ 
-            background: 'rgba(255,255,255,0.1)',
-            backdropFilter: 'blur(10px)',
-            color: 'white'
-          }}
-        >
-          Loading...
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex items-center gap-3 text-gray-600">
+          <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span className="text-sm font-medium">Loading dashboard...</span>
         </div>
       </div>
     );
   }
 
+  const breadcrumbs = getBreadcrumbs();
+
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950">
-      <style jsx global>{`
-        :root {
-          --base: ${COLORS.base};
-          --shadow-dark: ${COLORS.shadowDark};
-          --shadow-light: ${COLORS.shadowLight};
-          --text: ${COLORS.text};
-          --muted: ${COLORS.muted};
-          --accent: ${COLORS.accent};
-          --raised: 6px 6px 12px ${COLORS.shadowDark}, -6px -6px 12px ${COLORS.shadowLight};
-          --raised-sm: 3px 3px 7px ${COLORS.shadowDark}, -3px -3px 7px ${COLORS.shadowLight};
-          --inset: inset 4px 4px 8px ${COLORS.shadowDark}, inset -4px -4px 8px ${COLORS.shadowLight};
-        }
-      `}</style>
-      <div className="relative z-10 w-full">
-        {/* Header */}
-        <div className="bg-white/10 backdrop-blur-md border-b border-white/20">
-          <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div
-                className="relative w-12 h-12 rounded-xl flex items-center justify-center"
-                style={{
-                  background: 'rgba(255,255,255,0.1)',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-                }}
-              >
-                <Link href="/" className="relative w-8 h-8">
-                  <Image
-                    src="/logo.webp"
-                    alt="EAVI Logo"
-                    fill
-                    className="object-contain"
-                  />
-                </Link>
-              </div>
-              <div>
-                <h1 className="text-xl md:text-2xl font-bold text-white">
-                  Admin Dashboard
-                </h1>
-                <p className="text-purple-200 text-sm">
-                  {getCampusName(campus)}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              {/* Notification Bell */}
-              <div className="relative">
-                <button
-                  onClick={() => {
-                    setShowNotifications(!showNotifications);
-                    if (!showNotifications) {
-                      setViewedNotifications(new Set(notifications.map(n => n.id)));
-                    }
-                  }}
-                  className="relative p-2 text-white hover:bg-white/10 rounded-lg transition-colors"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                  </svg>
-                  {notifications.filter(n => !viewedNotifications.has(n.id)).length > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                      {notifications.filter(n => !viewedNotifications.has(n.id)).length}
-                    </span>
-                  )}
-                </button>
-
-                {/* Notification Dropdown */}
-                {showNotifications && (
-                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
-                    <div className="p-4 border-b border-gray-200">
-                      <h3 className="text-lg font-semibold text-gray-900">Recent Exam Submissions</h3>
-                    </div>
-                    <div className="max-h-96 overflow-y-auto">
-                      {notifications.length === 0 ? (
-                        <p className="p-4 text-gray-500 text-sm">No recent submissions</p>
-                      ) : (
-                        notifications.map((notification) => (
-                          <div key={notification.id} className="p-4 border-b border-gray-100 hover:bg-gray-50">
-                            <div className="flex items-start gap-3">
-                              <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                              </div>
-                              <div className="flex-1">
-                                <p className="text-sm font-medium text-gray-900">{notification.lecturer_name}</p>
-                                <p className="text-xs text-gray-600">
-                                  Submitted marks for <span className="font-semibold">{notification.unit}</span>
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  {notification.course} - Semester {notification.semester}
-                                </p>
-                                <p className="text-xs text-gray-400 mt-1">
-                                  {new Date(notification.created_at).toLocaleString()}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={handleLogout}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors duration-300 text-sm font-semibold"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-8">
-          {/* Welcome Section */}
-          <div className="mb-8">
-            <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
-              Welcome, {adminEmail}
-            </h2>
-            <p className="text-purple-200">
-              Manage {getCampusName(campus)} operations
-            </p>
-          </div>
-
-          {/* CRITICAL ALERTS BANNER */}
-          {criticalAlerts.length > 0 && (
-            <div className="mb-6 bg-red-600 border border-red-400 rounded-xl p-4">
-              <div className="flex items-center gap-3 mb-2">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <h3 className="text-white font-bold text-lg">Critical System Issues ({criticalAlerts.length})</h3>
-              </div>
-              <div className="space-y-2">
-                {criticalAlerts.slice(0, 3).map((alert) => (
-                  <div key={alert.id} className="bg-red-700/50 rounded-lg p-3 flex justify-between items-center">
-                    <div>
-                      <p className="text-white font-medium">{alert.message}</p>
-                      <p className="text-red-200 text-sm">{alert.module} • {new Date(alert.created_at).toLocaleString()}</p>
-                    </div>
-                    <span className="px-2 py-1 bg-red-500 text-white text-xs rounded">CRITICAL</span>
-                  </div>
-                ))}
-              </div>
-              <button 
-                onClick={() => setShowSystemLogs(true)}
-                className="mt-3 text-white underline text-sm hover:text-red-200"
-              >
-                View all system logs →
-              </button>
-            </div>
-          )}
-          
-          {/* WARNING ALERTS */}
-          {warningAlerts.filter(w => !dismissedWarnings.has(w.id)).length > 0 && (
-            <div className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {warningAlerts.filter(w => !dismissedWarnings.has(w.id)).slice(0, 6).map((warning) => (
-                <div key={warning.id} className="bg-yellow-500/20 border border-yellow-400 rounded-xl p-4 relative">
-                  <button 
-                    onClick={() => dismissWarning(warning.id)}
-                    className="absolute top-2 right-2 text-yellow-300 hover:text-white"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                  <div className="flex items-center gap-2 mb-2">
-                    <svg className="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    <span className="text-yellow-400 font-semibold text-sm">WARNING</span>
-                  </div>
-                  <p className="text-white text-sm">{warning.message}</p>
-                  <p className="text-yellow-200/70 text-xs mt-1">{warning.module} • {new Date(warning.created_at).toLocaleDateString()}</p>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* FINANCIAL DASHBOARD SECTION */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-white">Financial Overview</h3>
-              <div className="flex gap-2">
-                <select 
-                  value={financialFilter.campus}
-                  onChange={(e) => {
-                    setFinancialFilter(prev => ({ ...prev, campus: e.target.value }));
-                    loadStudentFinancials(e.target.value, 0);
-                  }}
-                  className="bg-white/10 border border-white/20 text-white rounded-lg px-3 py-1 text-sm"
-                >
-                  <option value="all" className="text-gray-900">All Campuses</option>
-                  <option value="main" className="text-gray-900">Main Campus</option>
-                  <option value="west" className="text-gray-900">West Campus</option>
-                </select>
-                <button
-                  onClick={() => setShowSystemLogs(!showSystemLogs)}
-                  className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium"
-                >
-                  {showSystemLogs ? 'Hide' : 'Show'} System Logs
-                </button>
-              </div>
-            </div>
-            
-            {/* Financial Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <div className="glass-neu p-4">
-                <p className="text-purple-300 text-xs uppercase mb-1">Total Students</p>
-                <p className="text-2xl font-bold text-white">{financialStats.totalStudents}</p>
-              </div>
-              <div className="glass-neu p-4">
-                <p className="text-purple-300 text-xs uppercase mb-1">Fully Paid</p>
-                <p className="text-2xl font-bold text-green-400">{financialStats.fullyPaid}</p>
-              </div>
-              <div className="glass-neu p-4">
-                <p className="text-purple-300 text-xs uppercase mb-1">With Balance</p>
-                <p className="text-2xl font-bold text-yellow-400">{financialStats.unpaidStudents}</p>
-              </div>
-              <div className="glass-neu p-4">
-                <p className="text-purple-300 text-xs uppercase mb-1">Total Outstanding</p>
-                <p className="text-xl font-bold text-red-400">KES {financialStats.totalOutstanding.toLocaleString()}</p>
-              </div>
-            </div>
-            
-            {/* Student Financial Table (Limited Rows) */}
-            <div className="glass-neu p-4 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-white/20">
-                    <th className="text-left py-2 px-3 text-purple-300 font-semibold">Student</th>
-                    <th className="text-left py-2 px-3 text-purple-300 font-semibold">Campus</th>
-                    <th className="text-right py-2 px-3 text-purple-300 font-semibold">Balance</th>
-                    <th className="text-right py-2 px-3 text-purple-300 font-semibold">Paid</th>
-                    <th className="text-center py-2 px-3 text-purple-300 font-semibold">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {studentFinancials.slice(0, FINANCIAL_PAGE_SIZE).map((student) => (
-                    <tr key={student.student_id} className="border-b border-white/10 hover:bg-white/5">
-                      <td className="py-2 px-3 text-white">
-                        <p className="font-medium">{student.full_name}</p>
-                        <p className="text-purple-300 text-xs">{student.admission_number}</p>
-                      </td>
-                      <td className="py-2 px-3 text-white">{student.campus}</td>
-                      <td className="py-2 px-3 text-right text-red-400">KES {student.total_balance?.toLocaleString()}</td>
-                      <td className="py-2 px-3 text-right text-green-400">KES {student.total_paid?.toLocaleString()}</td>
-                      <td className="py-2 px-3 text-center">
-                        <span className={`px-2 py-1 rounded-full text-xs ${student.total_balance === 0 ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
-                          {student.total_balance === 0 ? 'Paid' : 'Balance'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              
-              {/* Pagination */}
-              <div className="flex justify-between items-center mt-4">
-                <button
-                  onClick={() => {
-                    const newPage = Math.max(0, financialPage - 1);
-                    setFinancialPage(newPage);
-                    loadStudentFinancials(campus, newPage);
-                  }}
-                  disabled={financialPage === 0}
-                  className="px-3 py-1 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white rounded-lg text-sm"
-                >
-                  ← Previous
-                </button>
-                <span className="text-purple-300 text-sm">Page {financialPage + 1}</span>
-                <button
-                  onClick={() => {
-                    const newPage = financialPage + 1;
-                    setFinancialPage(newPage);
-                    loadStudentFinancials(campus, newPage);
-                  }}
-                  disabled={studentFinancials.length < FINANCIAL_PAGE_SIZE}
-                  className="px-3 py-1 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white rounded-lg text-sm"
-                >
-                  Next →
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* SYSTEM LOGS PANEL (Collapsible) */}
-          {showSystemLogs && (
-            <div className="glass-neu p-4 mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-white">System Logs</h3>
-                <button
-                  onClick={() => setShowSystemLogs(false)}
-                  className="text-purple-300 hover:text-white"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {systemLogs.map((log) => (
-                  <div key={log.id} className="flex items-start gap-3 p-2 rounded-lg hover:bg-white/5">
-                    <div className={`w-2 h-2 rounded-full mt-2 ${getLogColor(log.log_type)}`} />
-                    <div className="flex-1">
-                      <p className="text-white text-sm">{log.message}</p>
-                      <p className="text-purple-300 text-xs">{log.module} • {new Date(log.created_at).toLocaleString()}</p>
-                    </div>
-                    <span className={`px-2 py-0.5 rounded text-xs ${
-                      log.log_type === 'error' ? 'bg-red-500/20 text-red-400' :
-                      log.log_type === 'warning' ? 'bg-yellow-500/20 text-yellow-400' :
-                      'bg-blue-500/20 text-blue-400'
-                    }`}>
-                      {log.log_type}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* AI KNOWN ISSUES */}
-          {aiIssues.length > 0 && (
-            <div className="glass-neu p-4 mb-8">
-              <h3 className="text-lg font-bold text-white mb-4">Known System Issues</h3>
-              <div className="space-y-3">
-                {aiIssues.slice(0, 5).map((issue) => (
-                  <div key={issue.id} className="bg-white/5 rounded-lg p-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="text-white font-medium">{issue.description}</p>
-                        <p className="text-purple-300 text-sm">Type: {issue.issue_type}</p>
-                        {issue.solution && (
-                          <p className="text-green-400 text-sm mt-1">Fix: {issue.solution}</p>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <span className="px-2 py-1 bg-red-500/20 text-red-400 text-xs rounded">
-                          {issue.occurrences} occurrences
-                        </span>
-                        <p className="text-purple-300 text-xs mt-1">
-                          Last: {new Date(issue.last_seen).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8">
-            {/* Total Applications */}
-            <div className="glass-neu p-5">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-purple-300 text-xs uppercase tracking-wider mb-1">Total Applications</p>
-                  <p className="text-2xl md:text-3xl font-bold text-white truncate">{stats.totalApplications}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Pending */}
-            <div className="glass-neu p-5">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-yellow-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-purple-300 text-xs uppercase tracking-wider mb-1">Pending</p>
-                  <p className="text-2xl md:text-3xl font-bold text-yellow-400 truncate">{stats.pendingApplications}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Approved */}
-            <div className="glass-neu p-5">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-purple-300 text-xs uppercase tracking-wider mb-1">Approved</p>
-                  <p className="text-2xl md:text-3xl font-bold text-green-400 truncate">{stats.approvedApplications}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Total Students */}
-            <div className="glass-neu p-5">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-purple-300 text-xs uppercase tracking-wider mb-1">Total Students</p>
-                  <p className="text-2xl md:text-3xl font-bold text-blue-400 truncate">{stats.totalStudents}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Total Lecturers */}
-            <div className="glass-neu p-5">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-pink-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-purple-300 text-xs uppercase tracking-wider mb-1">Total Lecturers</p>
-                  <p className="text-2xl md:text-3xl font-bold text-pink-400 truncate">{stats.totalLecturers}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Revenue */}
-            <div className="glass-neu p-5">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-emerald-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-purple-300 text-xs uppercase tracking-wider mb-1">Revenue (Month)</p>
-                  <p className="text-xl md:text-2xl font-bold text-emerald-400 truncate">
-                    KES {stats.totalRevenueThisMonth.toLocaleString()}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
-            <ActionCard href="/admin/applications" icon="applications" title="Applications" description="View and manage applications" />
-            <ActionCard href="/admin/announcements" icon="announcements" title="Announcements" description="Campus announcements & alerts" />
-            <ActionCard href="/admin/courses" icon="courses" title="Courses" description="Manage course catalog" />
-            <ActionCard href="/admin/classes" icon="classes" title="Classes" description="Manage classes & intakes" />
-            <ActionCard href="/admin/lecturers" icon="lecturers" title="Lecturers" description="Manage lecturers" />
-            <ActionCard href="/admin/students" icon="students" title="Students" description="Manage student records" />
-            <ActionCard href="/admin/student-enrollment" icon="enrollment" title="New Enrollment" description="Enroll new student with full form" />
-            <ActionCard href="/admin/bridge-groups" icon="bridge-groups" title="Bridge Groups" description="Accelerated learning catch-up groups" />
-            <ActionCard href="/admin/notifications" icon="notifications" title="Notifications" description="View notification history" />
-            <ActionCard href="/admin/results" icon="results" title="Results" description="View exam results" />
-            <ActionCard href="/admin/calendar" icon="calendar" title="Academic Calendar" description="Manage term dates" />
-            <ActionCard href="/admin/reporting-dates" icon="reporting" title="Reporting Dates" description="Set reporting dates" />
-            <ActionCard href="/admin/fee-structures" icon="fee-pdf" title="Generate Fee PDFs" description="Generate fee structures" />
-            <ActionCard href="/admin/applications" icon="admission" title="Admission Letters" description="Generate admission letters" />
-            <ActionCard href="/admin/fee-structure" icon="fee-structure" title="Fee Structure" description="Set course fees" />
-            <ActionCard href="/admin/payments" icon="payments" title="Fee Payments" description="Record & manage payments" />
-            <ActionCard href="/admin/financial-reports" icon="financial" title="Financial Reports" description="Revenue analysis" />
-            <ActionCard href="/admin/reports" icon="reports" title="Reports" description="View & print reports" />
-          </div>
-
-          {/* Recent Activity & Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Recent Payments */}
-            <div className="glass-neu">
-              <h3 className="text-xl font-semibold text-white mb-4">Recent Payments</h3>
-              <div className="space-y-4">
-                {recentPayments.length === 0 ? (
-                  <p className="text-purple-200 text-sm">No recent payments to display.</p>
-                ) : (
-                  recentPayments.map((payment) => (
-                    <div key={payment.id} className="flex justify-between items-center p-3 glass-neu-inset">
-                      <div>
-                        <p className="text-white font-medium text-sm">{payment.applications?.full_name}</p>
-                        <p className="text-purple-300 text-xs capitalize">{payment.payment_type} - {payment.payment_method}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-emerald-400 font-bold text-sm">KES {payment.amount.toLocaleString()}</p>
-                        <p className="text-purple-300 text-[10px]">{new Date(payment.payment_date).toLocaleDateString()}</p>
-                      </div>
-                    </div>
-                  ))
-                )}
-                <Link 
-                  href="/admin/payments"
-                  className="block text-center text-purple-300 hover:text-white text-sm mt-4 transition-colors"
-                >
-                  View all payments →
-                </Link>
-              </div>
-            </div>
-
-            {/* Payment Methods Chart */}
-            <div className="glass-neu">
-              <h3 className="text-xl font-semibold text-white mb-4">Payment Methods (This Month)</h3>
-              {stats.paymentBreakdown.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-48 text-purple-200">
-                  <p>No revenue data for this month</p>
-                </div>
-              ) : (
-                <div className="space-y-5 mt-4">
-                  {stats.paymentBreakdown.map((item) => (
-                    <div key={item.method}>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="text-white capitalize">{item.method.replace('_', ' ')}</span>
-                        <span className="text-purple-300">{item.percentage.toFixed(1)}%</span>
-                      </div>
-                      <div className="w-full bg-white/10 rounded-full h-2.5">
-                        <div 
-                          className="bg-emerald-500 h-2.5 rounded-full" 
-                          style={{ width: `${item.percentage}%` }}
-                        ></div>
-                      </div>
-                      <div className="flex justify-end mt-1">
-                        <span className="text-xs text-purple-300">KES {item.amount.toLocaleString()}</span>
-                      </div>
-                    </div>
-                  ))}
+    <div className="min-h-screen bg-gray-50">
+      {/* Zone 2 — Top Action Bar */}
+      <header className="sticky top-0 z-30 bg-white border-b border-gray-200 h-14">
+        <div className="h-full px-4 flex items-center justify-between">
+          {/* Left: Breadcrumbs */}
+          <div className="flex items-center gap-2">
+            <nav className="flex items-center gap-1 text-sm">
+              {breadcrumbs.map((crumb, index) => (
+                <span key={crumb.href} className="flex items-center gap-1">
+                  {index > 0 && <span className="text-gray-400">/</span>}
                   <Link 
-                    href="/admin/financial-reports"
-                    className="block text-center text-purple-300 hover:text-white text-sm mt-6 transition-colors"
+                    href={crumb.href}
+                    className={index === breadcrumbs.length - 1 ? 'text-gray-900 font-medium' : 'text-gray-500 hover:text-gray-700'}
                   >
-                    Detailed financial reports →
+                    {crumb.label}
+                  </Link>
+                </span>
+              ))}
+            </nav>
+          </div>
+
+          {/* Right: Actions */}
+          <div className="flex items-center gap-3">
+            {/* Campus Selector */}
+            <select
+              value={campus}
+              onChange={(e) => {
+                setCampus(e.target.value);
+                loadStats(e.target.value);
+              }}
+              className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Campuses</option>
+              <option value="main">Main Campus</option>
+              <option value="west">West Campus</option>
+            </select>
+
+            {/* Search */}
+            <div className="relative">
+              <button 
+                onClick={() => setSearchOpen(!searchOpen)}
+                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </button>
+              {searchOpen && (
+                <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 p-3 z-50">
+                  <input
+                    type="text"
+                    placeholder="Search students, courses..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Notifications */}
+            <button 
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              {(criticalAlerts.length + warningAlerts.length) > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+              )}
+            </button>
+
+            {/* Quick Actions Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setQuickActionsOpen(!quickActionsOpen)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Quick Actions
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {quickActionsOpen && (
+                <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                  <Link href="/admin/applications" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                    <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    New Application
+                  </Link>
+                  <Link href="/admin/payments" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                    <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a1 1 0 11-2 0 1 1 0 012 0z" />
+                    </svg>
+                    Record Payment
+                  </Link>
+                  <Link href="/admin/students" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                    <svg className="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    </svg>
+                    Add Student
+                  </Link>
+                  <Link href="/admin/reports" className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                    <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Generate Report
                   </Link>
                 </div>
               )}
             </div>
           </div>
         </div>
-      </div>
-      <Chatbot 
+      </header>
+
+      {/* Main Content Area */}
+      <main className="p-6">
+        {/* Critical Alerts */}
+        {criticalAlerts.length > 0 && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <h3 className="text-red-900 font-semibold text-sm">Critical Issues ({criticalAlerts.length})</h3>
+            </div>
+            <div className="space-y-2">
+              {criticalAlerts.slice(0, 3).map((alert) => (
+                <div key={alert.id} className="flex items-start gap-2 text-sm">
+                  <span className="w-1.5 h-1.5 bg-red-500 rounded-full mt-1.5 flex-shrink-0"></span>
+                  <div>
+                    <p className="text-red-800">{alert.message}</p>
+                    <p className="text-red-600 text-xs">{alert.module} • {new Date(alert.created_at).toLocaleString()}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Zone 3 — KPI Metric Strip */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {/* Total Students */}
+          <div className="bg-gray-100 rounded-lg p-4 hover:bg-gray-200 transition-colors">
+            <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Total Students</p>
+            <p className="text-2xl font-medium text-gray-900">{stats.totalStudents.toLocaleString()}</p>
+            <div className="flex items-center gap-1 mt-1">
+              <svg className="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+              <span className="text-xs text-green-600 font-medium">Enrolled</span>
+            </div>
+          </div>
+
+          {/* Monthly Revenue */}
+          <div className="bg-gray-100 rounded-lg p-4 hover:bg-gray-200 transition-colors">
+            <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Monthly Revenue</p>
+            <p className="text-2xl font-medium text-gray-900">{formatKES(stats.totalRevenueThisMonth)}</p>
+            <div className="flex items-center gap-1 mt-1">
+              <svg className="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+              <span className="text-xs text-green-600 font-medium">This month</span>
+            </div>
+          </div>
+
+          {/* Pending Applications */}
+          <div className="bg-gray-100 rounded-lg p-4 hover:bg-gray-200 transition-colors">
+            <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Pending Applications</p>
+            <p className="text-2xl font-medium text-gray-900">{stats.pendingApplications}</p>
+            <div className="flex items-center gap-1 mt-1">
+              <svg className="w-3 h-3 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-xs text-yellow-600 font-medium">Awaiting review</span>
+            </div>
+          </div>
+
+          {/* Outstanding Balance */}
+          <div className="bg-gray-100 rounded-lg p-4 hover:bg-gray-200 transition-colors">
+            <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Outstanding Balance</p>
+            <p className="text-2xl font-medium text-gray-900">{formatKES(stats.totalOutstanding)}</p>
+            <div className="flex items-center gap-1 mt-1">
+              <svg className="w-3 h-3 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+              </svg>
+              <span className="text-xs text-red-600 font-medium">Unpaid fees</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Zone 4 — Chart Row (2/3 + 1/3) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          {/* Revenue Trend Chart (2/3 width on large screens) */}
+          <div className="lg:col-span-2 bg-white rounded-lg border border-gray-200 p-4">
+            <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-4">Revenue Trend</h3>
+            <div className="h-64">
+              {revenueChartData ? (
+                <Line 
+                  data={revenueChartData}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { display: false }
+                    },
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                        ticks: {
+                          callback: (value) => `KES ${Number(value).toLocaleString()}`,
+                          font: { size: 10 }
+                        }
+                      },
+                      x: {
+                        ticks: { font: { size: 10 } }
+                      }
+                    }
+                  }}
+                />
+              ) : (
+                <div className="h-full flex items-center justify-center text-gray-400 text-sm">
+                  No revenue data available
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Students by Course Donut (1/3 width) */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-4">Students by Course</h3>
+            <div className="h-48">
+              {studentsByCourseData ? (
+                <Doughnut 
+                  data={studentsByCourseData}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: {
+                        position: 'bottom',
+                        labels: { font: { size: 10 }, boxWidth: 12 }
+                      }
+                    }
+                  }}
+                />
+              ) : (
+                <div className="h-full flex items-center justify-center text-gray-400 text-sm">
+                  No data available
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Zone 5 — Data Table + Activity Feed (50/50) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Recent Applications Table */}
+          <div className="bg-white rounded-lg border border-gray-200">
+            <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Recent Applications</h3>
+              <Link href="/admin/applications" className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+                View all →
+              </Link>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                    <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th className="px-4 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {recentApplications.length > 0 ? (
+                    recentApplications.map((app) => (
+                      <tr key={app.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          <p className="text-xs font-medium text-gray-900">{app.full_name}</p>
+                          <p className="text-[10px] text-gray-500">{app.course_id}</p>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-gray-600">
+                          {new Date(app.application_date).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex px-2 py-0.5 text-[10px] font-medium rounded-full ${getStatusColor(app.status)}`}>
+                            {app.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={3} className="px-4 py-8 text-center text-sm text-gray-500">
+                        No recent applications
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Activity Feed */}
+          <div className="bg-white rounded-lg border border-gray-200">
+            <div className="px-4 py-3 border-b border-gray-200">
+              <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider">Recent Activity</h3>
+            </div>
+            <div className="p-4 max-h-80 overflow-y-auto">
+              <div className="space-y-3">
+                {systemLogs.slice(0, 8).map((log) => (
+                  <div key={log.id} className="flex items-start gap-3">
+                    <span className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
+                      log.log_type === 'error' ? 'bg-red-500' :
+                      log.log_type === 'warning' ? 'bg-yellow-500' :
+                      'bg-blue-500'
+                    }`}></span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-gray-700 truncate">{log.message}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">
+                        {log.module} • {new Date(log.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                {systemLogs.length === 0 && (
+                  <p className="text-sm text-gray-500 text-center py-4">No recent activity</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Chatbot */}
+      <Chatbot
         userId={currentUser?.id}
         campus={campus}
         userEmail={currentUser?.email}

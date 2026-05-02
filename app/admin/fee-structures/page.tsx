@@ -683,12 +683,12 @@ export default function FeeStructuresPage() {
                   className="w-full px-4 py-2 bg-white/20 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="" className="text-gray-900">All Types</option>
-                  <option value="diploma" className="text-gray-900">Diploma</option>
-                  <option value="certificate" className="text-gray-900">Certificate</option>
-                  <option value="artisan" className="text-gray-900">Artisan</option>
-                  <option value="level6" className="text-gray-900">Level 6</option>
-                  <option value="level5" className="text-gray-900">Level 5</option>
-                  <option value="level4" className="text-gray-900">Level 4</option>
+                  <option value="diploma" className="text-gray-900">KNEC Diploma</option>
+                  <option value="certificate" className="text-gray-900">KNEC Certificate</option>
+                  <option value="artisan" className="text-gray-900">KNEC Artisan</option>
+                  <option value="level6" className="text-gray-900">CDACC Level 6 (Higher Diploma)</option>
+                  <option value="level5" className="text-gray-900">CDACC Level 5 (Diploma)</option>
+                  <option value="level4" className="text-gray-900">CDACC Level 4 (Certificate)</option>
                 </select>
               </div>
 

@@ -25,6 +25,15 @@ export default function ResultsPage() {
   const [courses, setCourses] = useState<any[]>([]);
   const [academicCalendars, setAcademicCalendars] = useState<any[]>([]);
   const [error, setError] = useState('');
+  
+  // Part 4: Enhanced results management
+  const [resultsView, setResultsView] = useState<'all' | 'submitted' | 'pending' | 'failed' | 'absent'>('all');
+  const [enhancedMarks, setEnhancedMarks] = useState<any[]>([]);
+  const [loadingEnhanced, setLoadingEnhanced] = useState(false);
+  const [classSummary, setClassSummary] = useState<any[]>([]);
+  
+  // Student names lookup
+  const [studentNames, setStudentNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
     setSupabase(createClient());
@@ -135,8 +144,6 @@ export default function ResultsPage() {
   const uniqueUnits = [...new Set(filteredMarks.map(m => m.unit_code))].sort();
 
   // Get student names from applications
-  const [studentNames, setStudentNames] = useState<Record<string, string>>({});
-
   useEffect(() => {
     const fetchStudentNames = async () => {
       const admissionNumbers = [...new Set(filteredMarks.map(m => m.admission_number))];
@@ -161,6 +168,111 @@ export default function ResultsPage() {
       fetchStudentNames();
     }
   }, [filteredMarks]);
+
+  // Part 4: Load enhanced exam marks with all fields
+  const loadEnhancedMarks = async (campus: string) => {
+    setLoadingEnhanced(true);
+    try {
+      const { data, error } = await supabase
+        .from('exam_marks')
+        .select(`
+          *,
+          applications(full_name, admission_number, class_id, financial_hold),
+          classes(class_name),
+          units(name)
+        `)
+        .eq('campus', campus)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      // Enrich with calculated fields
+      const enriched = (data || []).map((mark: any) => ({
+        ...mark,
+        student_name: mark.applications?.full_name,
+        admission_number: mark.applications?.admission_number,
+        class_name: mark.classes?.class_name,
+        unit_name: mark.units?.name,
+        has_financial_hold: mark.applications?.financial_hold,
+        is_pass: mark.marks >= 40 && !mark.is_absent,
+        is_fail: mark.marks < 40 && !mark.is_absent
+      }));
+      
+      setEnhancedMarks(enriched);
+    } catch (err) {
+      console.error('Error loading enhanced marks:', err);
+    } finally {
+      setLoadingEnhanced(false);
+    }
+  };
+
+  // Part 4: Calculate class performance summary
+  const calculateClassSummary = (marks: any[]) => {
+    const classGroups = marks.reduce((acc: any, mark: any) => {
+      const className = mark.class_name || 'Unknown';
+      if (!acc[className]) {
+        acc[className] = {
+          class_name: className,
+          total_students: new Set(),
+          total_marks: 0,
+          passed: 0,
+          failed: 0,
+          absent: 0,
+          submitted: 0,
+          pending: 0
+        };
+      }
+      
+      acc[className].total_students.add(mark.admission_number);
+      acc[className].total_marks++;
+      
+      if (mark.is_absent) acc[className].absent++;
+      else if (mark.marks >= 40) acc[className].passed++;
+      else acc[className].failed++;
+      
+      if (mark.is_submitted) acc[className].submitted++;
+      else acc[className].pending++;
+      
+      return acc;
+    }, {});
+    
+    return Object.values(classGroups).map((cls: any) => ({
+      ...cls,
+      total_students: cls.total_students.size,
+      pass_rate: cls.total_marks > 0 ? Math.round((cls.passed / (cls.total_marks - cls.absent)) * 100) : 0,
+      submission_rate: cls.total_marks > 0 ? Math.round((cls.submitted / cls.total_marks) * 100) : 0
+    }));
+  };
+
+  // Part 4: Filter marks based on view mode
+  const getFilteredEnhancedMarks = () => {
+    let filtered = enhancedMarks;
+    
+    // Apply existing filters
+    if (filterDepartment) {
+      filtered = filtered.filter((mark: any) => {
+        const courseData = courses.find((c: any) => c.name === mark.course);
+        return courseData?.department === filterDepartment;
+      });
+    }
+    if (filterCourse) filtered = filtered.filter((m: any) => m.course === filterCourse);
+    if (filterSemester) filtered = filtered.filter((m: any) => m.semester === parseInt(filterSemester));
+    if (filterExamType) filtered = filtered.filter((m: any) => m.exam_type === filterExamType);
+    
+    // Apply view mode filter
+    switch (resultsView) {
+      case 'submitted':
+        return filtered.filter((m: any) => m.is_submitted);
+      case 'pending':
+        return filtered.filter((m: any) => !m.is_submitted);
+      case 'failed':
+        return filtered.filter((m: any) => m.marks < 40 && !m.is_absent);
+      case 'absent':
+        return filtered.filter((m: any) => m.is_absent);
+      default:
+        return filtered;
+    }
+  };
 
   // Grading logic
   const calculateGrade = (percentage: number) => {
@@ -510,6 +622,29 @@ export default function ResultsPage() {
                 <option value="mock" className="text-gray-900">Mock Exam</option>
               </select>
             </div>
+          </div>
+
+          {/* Part 4: View Mode Buttons */}
+          <div className="flex flex-wrap gap-2 mb-6">
+            {[
+              { key: 'all', label: 'All Results', color: 'blue' },
+              { key: 'submitted', label: 'Submitted', color: 'green' },
+              { key: 'pending', label: 'Pending', color: 'yellow' },
+              { key: 'failed', label: 'Failed', color: 'red' },
+              { key: 'absent', label: 'Absent', color: 'gray' }
+            ].map((view) => (
+              <button
+                key={view.key}
+                onClick={() => setResultsView(view.key as any)}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  resultsView === view.key
+                    ? `bg-${view.color}-600 text-white`
+                    : `bg-${view.color}-600/30 text-${view.color}-300 hover:bg-${view.color}-600/50`
+                }`}
+              >
+                {view.label}
+              </button>
+            ))}
           </div>
 
           {/* Selected Academic Period Info */}

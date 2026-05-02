@@ -54,6 +54,14 @@ export default function ApplicationsPage() {
   // Class selection for enrollment
   const [availableClasses, setAvailableClasses] = useState<any[]>([]);
   const [selectedClassId, setSelectedClassId] = useState('');
+  
+  // Document checklist for enrollment
+  const [documentChecklist, setDocumentChecklist] = useState({
+    has_spring_file: false,
+    has_rem_paper: false,
+    has_kcse_photocopy: false,
+    has_kcpe_photocopy: false,
+  });
 
   // Manual student entry form data
   const [newStudent, setNewStudent] = useState({
@@ -211,6 +219,12 @@ export default function ApplicationsPage() {
     setSelectedApplication(application);
     setNewAdmissionNumber('');
     setSelectedClassId('');
+    setDocumentChecklist({
+      has_spring_file: false,
+      has_rem_paper: false,
+      has_kcse_photocopy: false,
+      has_kcpe_photocopy: false,
+    });
     setError('');
     
     // Load available classes for this course and campus
@@ -332,6 +346,11 @@ export default function ApplicationsPage() {
   const handleEnroll = async () => {
     if (!newAdmissionNumber.trim()) {
       setError('Please enter an admission number');
+      return;
+    }
+    
+    if (!selectedClassId) {
+      setError('Please select a class for the student');
       return;
     }
 
@@ -458,7 +477,7 @@ export default function ApplicationsPage() {
         classId = newClass.id;
       }
 
-      // Update application status and admission number in Supabase
+      // Update application status, admission number, class, and document checklist in Supabase
       const { error: updateError } = await supabase
         .from('applications')
         .update({
@@ -466,7 +485,11 @@ export default function ApplicationsPage() {
           admission_number: newAdmissionNumber,
           current_module: 1,
           current_semester: 1,
-          class_id: classId
+          class_id: selectedClassId,
+          has_spring_file: documentChecklist.has_spring_file,
+          has_rem_paper: documentChecklist.has_rem_paper,
+          has_kcse_photocopy: documentChecklist.has_kcse_photocopy,
+          has_kcpe_photocopy: documentChecklist.has_kcpe_photocopy,
         })
         .eq('id', selectedApplication?.id);
 
@@ -545,7 +568,6 @@ export default function ApplicationsPage() {
           course_types (
             level,
             enabled,
-            min_kcse_grade,
             study_mode,
             duration_months,
             modules (
@@ -642,26 +664,26 @@ export default function ApplicationsPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'text-yellow-400';
+        return 'text-yellow-600';
       case 'enrolled':
-        return 'text-green-400';
+        return 'text-green-600';
       case 'rejected':
-        return 'text-red-400';
+        return 'text-red-600';
       default:
-        return 'text-white';
+        return 'text-gray-600';
     }
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400';
+        return 'bg-yellow-100 text-yellow-800';
       case 'enrolled':
-        return 'bg-green-500/20 border-green-500/50 text-green-400';
+        return 'bg-green-100 text-green-800';
       case 'rejected':
-        return 'bg-red-500/20 border-red-500/50 text-red-400';
+        return 'bg-red-100 text-red-800';
       default:
-        return 'bg-white/10 border-white/30 text-white';
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -809,123 +831,120 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
 
   if (loading) {
     return (
-      <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950 flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex items-center gap-3 text-gray-600">
+          <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span className="text-sm font-medium">Loading...</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950">
-      <div className="relative z-10 w-full">
-        {/* Header */}
-        <div className="bg-white/10 backdrop-blur-md border-b border-white/20">
-          <div className="max-w-7xl mx-auto px-4 md:px-6 py-4">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <Link href="/admin/dashboard" className="relative w-10 h-10 md:w-12 md:h-12">
-                  <Image
-                    src="/logo.webp"
-                    alt="EAVI Logo"
-                    fill
-                    className="object-contain"
-                  />
-                </Link>
-                <div>
-                  <h1 className="text-xl md:text-3xl font-bold text-white">Student Applications</h1>
-                  <p className="text-purple-200 text-xs md:text-sm">Manage student applications and enrollments</p>
-                </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-20">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div>
+                <h1 className="text-xl md:text-2xl font-bold text-gray-900">Student Applications</h1>
+                <p className="text-gray-500 text-xs md:text-sm">Manage student applications and enrollments</p>
               </div>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <button
-                  onClick={() => setShowAddStudentModal(true)}
-                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-xs md:text-sm font-semibold"
-                >
-                  Add Existing Student
-                </button>
-                <button
-                  onClick={() => setShowBulkImportModal(true)}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-xs md:text-sm font-semibold"
-                >
-                  Bulk Import (CSV)
-                </button>
-                <Link
-                  href="/admin/dashboard"
-                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-300 text-xs md:text-sm font-semibold text-center"
-                >
-                  Back to Dashboard
-                </Link>
-              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button
+                onClick={() => setShowAddStudentModal(true)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+              >
+                + Add Student
+              </button>
+              <button
+                onClick={() => setShowBulkImportModal(true)}
+                className="px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg transition-colors text-sm font-medium"
+              >
+                Bulk Import
+              </button>
             </div>
           </div>
         </div>
+      </header>
 
-        {/* Main Content */}
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-8">
-          <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 md:p-8 border border-white/20">
-            <h2 className="text-2xl font-bold text-white mb-6">Student Applications</h2>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 md:px-6 py-8">
+          <div className="bg-white rounded-lg border border-gray-200">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">All Applications</h2>
+            </div>
 
             {applications.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-purple-200">No applications to display.</p>
+                <p className="text-gray-500">No applications to display.</p>
               </div>
             ) : (
               <>
                 {/* Mobile Card Layout */}
-                <div className="md:hidden space-y-4">
+                <div className="md:hidden space-y-4 p-4">
                   {applications.map((application) => (
-                    <div key={application.id} className="bg-white/5 rounded-lg p-4 border border-white/10">
+                    <div key={application.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                       <div className="flex justify-between items-start mb-3">
                         <div>
-                          <h3 className="text-white font-semibold text-sm">{application.full_name}</h3>
-                          <p className="text-purple-300 text-xs">{application.phone}</p>
+                          <h3 className="text-gray-900 font-semibold text-sm">{application.full_name}</h3>
+                          <p className="text-gray-500 text-xs">{application.phone}</p>
                         </div>
-                        <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${getStatusBadge(application.status)}`}>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(application.status)}`}>
                           {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
                         </span>
                       </div>
                       <div className="space-y-2 text-xs">
                         <div className="flex justify-between">
-                          <span className="text-purple-300">Email:</span>
-                          <span className="text-white">{application.email || '-'}</span>
+                          <span className="text-gray-500">Email:</span>
+                          <span className="text-gray-900">{application.email || '-'}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-purple-300">KCSE Grade:</span>
-                          <span className="text-white">{application.kcse_grade}</span>
+                          <span className="text-gray-500">KCSE Grade:</span>
+                          <span className="text-gray-900">{application.kcse_grade}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-purple-300">Course:</span>
-                          <span className="text-white">{application.course}</span>
+                          <span className="text-gray-500">Course:</span>
+                          <span className="text-gray-900">{application.course}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-purple-300">Type:</span>
-                          <span className="text-white capitalize">{application.course_type || '-'}</span>
+                          <span className="text-gray-500">Type:</span>
+                          <span className="text-gray-900 capitalize">{application.course_type || '-'}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-purple-300">Admission No:</span>
-                          <span className="text-white font-mono">{application.admission_number || '-'}</span>
+                          <span className="text-gray-500">Admission No:</span>
+                          <span className="text-gray-900 font-mono">{application.admission_number || '-'}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-purple-300">Module/Sem:</span>
-                          <span className="text-white">
+                          <span className="text-gray-500">Module/Sem:</span>
+                          <span className="text-gray-900">
                             {application.current_module && application.current_semester 
                               ? `M${application.current_module}/S${application.current_semester}`
                               : '-'}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-purple-300">Class:</span>
-                          <span className="text-white">{application.classes?.class_name || '-'}</span>
+                          <span className="text-gray-500">Class:</span>
+                          <span className="text-gray-900">{application.classes?.class_name || '-'}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-purple-300">Applied:</span>
-                          <span className="text-white">{new Date(application.application_date).toLocaleDateString()}</span>
+                          <span className="text-gray-500">Campus:</span>
+                          <span className="text-gray-900">{application.campus}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Date:</span>
+                          <span className="text-gray-900">{new Date(application.application_date).toLocaleDateString()}</span>
                         </div>
                       </div>
                       <div className="flex gap-2 mt-3">
                         <Link
                           href={`/admin/student-details/${application.id}`}
-                          className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-xs font-semibold text-center"
+                          className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-xs font-medium text-center"
                         >
                           View Details
                         </Link>
@@ -933,13 +952,13 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                           <>
                             <button
                               onClick={() => handleEnrollClick(application)}
-                              className="flex-1 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-xs font-semibold"
+                              className="flex-1 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-xs font-medium"
                             >
                               Enroll
                             </button>
                             <button
                               onClick={() => handleReject(application.id)}
-                              className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-xs font-semibold"
+                              className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-xs font-medium"
                             >
                               Reject
                             </button>
@@ -949,13 +968,13 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                           <button
                             onClick={() => handleUpgradeSemester(application)}
                             disabled={!application.current_semester || !application.current_module}
-                            className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-xs font-semibold"
+                            className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-xs font-medium"
                           >
                             Upgrade
                           </button>
                         )}
                         {application.status === 'rejected' && (
-                          <span className="text-red-400 text-xs">Rejected</span>
+                          <span className="text-red-600 text-xs">Rejected</span>
                         )}
                       </div>
                     </div>
@@ -963,57 +982,57 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                 </div>
 
                 {/* Desktop Table Layout */}
-                <div className="hidden md:block overflow-x-auto">
+                <div className="hidden md:block overflow-x-auto p-6">
                   <table className="w-full">
                     <thead>
-                      <tr className="border-b border-white/20">
-                        <th className="text-left py-3 px-4 text-white font-semibold text-sm">Name</th>
-                        <th className="text-left py-3 px-4 text-white font-semibold text-sm">Phone</th>
-                        <th className="text-left py-3 px-4 text-white font-semibold text-sm">Email</th>
-                        <th className="text-left py-3 px-4 text-white font-semibold text-sm">KCSE Grade</th>
-                        <th className="text-left py-3 px-4 text-white font-semibold text-sm">Course</th>
-                        <th className="text-left py-3 px-4 text-white font-semibold text-sm">Type</th>
-                        <th className="text-left py-3 px-4 text-white font-semibold text-sm">Application Date</th>
-                        <th className="text-left py-3 px-4 text-white font-semibold text-sm">Status</th>
-                        <th className="text-left py-3 px-4 text-white font-semibold text-sm">Admission No.</th>
-                        <th className="text-left py-3 px-4 text-white font-semibold text-sm">Module/Sem</th>
-                        <th className="text-left py-3 px-4 text-white font-semibold text-sm">Class</th>
-                        <th className="text-left py-3 px-4 text-white font-semibold text-sm">Actions</th>
+                      <tr className="border-b border-gray-200">
+                        <th className="text-left py-3 px-4 text-gray-700 font-semibold text-sm">Name</th>
+                        <th className="text-left py-3 px-4 text-gray-700 font-semibold text-sm">Phone</th>
+                        <th className="text-left py-3 px-4 text-gray-700 font-semibold text-sm">Email</th>
+                        <th className="text-left py-3 px-4 text-gray-700 font-semibold text-sm">KCSE Grade</th>
+                        <th className="text-left py-3 px-4 text-gray-700 font-semibold text-sm">Course</th>
+                        <th className="text-left py-3 px-4 text-gray-700 font-semibold text-sm">Type</th>
+                        <th className="text-left py-3 px-4 text-gray-700 font-semibold text-sm">Application Date</th>
+                        <th className="text-left py-3 px-4 text-gray-700 font-semibold text-sm">Status</th>
+                        <th className="text-left py-3 px-4 text-gray-700 font-semibold text-sm">Admission No.</th>
+                        <th className="text-left py-3 px-4 text-gray-700 font-semibold text-sm">Module/Sem</th>
+                        <th className="text-left py-3 px-4 text-gray-700 font-semibold text-sm">Class</th>
+                        <th className="text-left py-3 px-4 text-gray-700 font-semibold text-sm">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {applications.map((application) => (
-                        <tr key={application.id} className="border-b border-white/10 hover:bg-white/5">
-                          <td className="py-4 px-4 text-white text-sm">{application.full_name}</td>
-                          <td className="py-4 px-4 text-white text-sm">{application.phone}</td>
-                          <td className="py-4 px-4 text-white text-sm">{application.email || '-'}</td>
-                          <td className="py-4 px-4 text-white text-sm">{application.kcse_grade}</td>
-                          <td className="py-4 px-4 text-white text-sm">{application.course}</td>
-                          <td className="py-4 px-4 text-white text-sm capitalize">{application.course_type || '-'}</td>
-                          <td className="py-4 px-4 text-white text-sm">
+                        <tr key={application.id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <td className="py-4 px-4 text-gray-900 text-sm">{application.full_name}</td>
+                          <td className="py-4 px-4 text-gray-600 text-sm">{application.phone}</td>
+                          <td className="py-4 px-4 text-gray-600 text-sm">{application.email || '-'}</td>
+                          <td className="py-4 px-4 text-gray-600 text-sm">{application.kcse_grade}</td>
+                          <td className="py-4 px-4 text-gray-900 text-sm">{application.course}</td>
+                          <td className="py-4 px-4 text-gray-600 text-sm capitalize">{application.course_type || '-'}</td>
+                          <td className="py-4 px-4 text-gray-600 text-sm">
                             {new Date(application.application_date).toLocaleDateString()}
                           </td>
                           <td className="py-4 px-4">
-                            <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusBadge(application.status)}`}>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(application.status)}`}>
                               {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
                             </span>
                           </td>
-                          <td className="py-4 px-4 text-white text-sm font-mono">
+                          <td className="py-4 px-4 text-gray-600 text-sm font-mono">
                             {application.admission_number || '-'}
                           </td>
-                          <td className="py-4 px-4 text-white text-sm">
+                          <td className="py-4 px-4 text-gray-600 text-sm">
                             {application.current_module && application.current_semester 
                               ? `M${application.current_module}/S${application.current_semester}`
                               : '-'}
                           </td>
-                          <td className="py-4 px-4 text-white text-sm">
+                          <td className="py-4 px-4 text-gray-600 text-sm">
                             {application.classes?.class_name || '-'}
                           </td>
                           <td className="py-4 px-4">
                             <div className="flex gap-2 flex-wrap">
                               <Link
                                 href={`/admin/student-details/${application.id}`}
-                                className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors duration-300 text-sm font-semibold"
+                                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-300 text-sm font-medium"
                               >
                                 Details
                               </Link>
@@ -1021,13 +1040,13 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                                 <>
                                   <button
                                     onClick={() => handleEnrollClick(application)}
-                                    className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-300 text-sm font-semibold"
+                                    className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-300 text-sm font-medium"
                                   >
                                     Enroll
                                   </button>
                                   <button
                                     onClick={() => handleReject(application.id)}
-                                    className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors duration-300 text-sm font-semibold"
+                                    className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors duration-300 text-sm font-medium"
                                   >
                                     Reject
                                   </button>
@@ -1038,14 +1057,14 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                                   <button
                                     onClick={() => handleUpgradeSemester(application)}
                                     disabled={!application.current_semester || !application.current_module}
-                                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors duration-300 text-sm font-semibold"
+                                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors duration-300 text-sm font-medium"
                                   >
                                     Upgrade
                                   </button>
                                 </>
                               )}
                               {application.status === 'rejected' && (
-                                <span className="text-red-400 text-xs">Rejected</span>
+                                <span className="text-red-600 text-xs">Rejected</span>
                               )}
                             </div>
                           </td>
@@ -1057,34 +1076,33 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
               </>
             )}
           </div>
-        </div>
-      </div>
+        </main>
 
       {/* Enroll Modal */}
       {showEnrollModal && selectedApplication && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 md:p-8 border border-white/20 max-w-md w-full">
-            <h3 className="text-xl font-bold text-white mb-4">Enroll Student</h3>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 md:p-8 border border-gray-200 max-w-md w-full shadow-lg">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Enroll Student</h3>
             <div className="mb-4">
-              <p className="text-purple-200 text-sm mb-2">
+              <p className="text-gray-600 text-sm mb-2">
                 Enrolling: {selectedApplication?.full_name}
               </p>
-              <p className="text-purple-200 text-sm mb-2">
+              <p className="text-gray-600 text-sm mb-2">
                 <span className="font-semibold">Course:</span> {selectedApplication?.course}
               </p>
-              <p className="text-purple-200 text-sm mb-4">
+              <p className="text-gray-600 text-sm mb-4">
                 <span className="font-semibold">Campus:</span> {getCampusName(selectedApplication?.campus)}
               </p>
             </div>
 
             {error && (
-              <div className="mb-4 p-3 rounded-lg bg-red-500/20 border border-red-500/50">
-                <p className="text-sm text-red-200">{error}</p>
+              <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200">
+                <p className="text-sm text-red-600">{error}</p>
               </div>
             )}
 
             <div className="mb-4">
-              <label htmlFor="admissionNumber" className="block text-white font-medium mb-2 text-sm">
+              <label htmlFor="admissionNumber" className="block text-gray-700 font-medium mb-2 text-sm">
                 Admission Number *
               </label>
               <input
@@ -1092,15 +1110,80 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                 id="admissionNumber"
                 value={newAdmissionNumber}
                 onChange={(e) => setNewAdmissionNumber(e.target.value)}
-                placeholder="e.g., EAVI/2024/001"
-                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                placeholder="e.g., M20260001"
+                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               />
+              <p className="text-gray-500 text-xs mt-1">
+                Format: M{new Date().getFullYear()}XXXX (Main) or W{new Date().getFullYear()}XXXX (West)
+              </p>
             </div>
 
-            <div className="mb-4 p-3 bg-purple-500/20 border border-purple-500/50 rounded-lg">
-              <p className="text-purple-200 text-sm">
-                <span className="font-semibold">Auto-generated Class:</span> {selectedApplication?.course} - {selectedApplication?.course_type} - {new Date(selectedApplication?.application_date || new Date()).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-              </p>
+            {/* Class Selection */}
+            <div className="mb-4">
+              <label htmlFor="classSelect" className="block text-gray-700 font-medium mb-2 text-sm">
+                Select Class *
+              </label>
+              <select
+                id="classSelect"
+                value={selectedClassId}
+                onChange={(e) => setSelectedClassId(e.target.value)}
+                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              >
+                <option value="">-- Select a Class --</option>
+                {availableClasses.map((cls) => (
+                  <option key={cls.id} value={cls.id} className="text-gray-900">
+                    {cls.class_name} (Semester {cls.semester}, Module {cls.module_index})
+                  </option>
+                ))}
+              </select>
+              {availableClasses.length === 0 && (
+                <p className="text-yellow-300 text-xs mt-1">
+                  No active classes found for this course and campus.
+                </p>
+              )}
+            </div>
+
+            {/* Document Checklist */}
+            <div className="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+              <p className="text-gray-700 font-medium mb-3 text-sm">Document Checklist (tick when received)</p>
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={documentChecklist.has_spring_file}
+                    onChange={(e) => setDocumentChecklist(prev => ({ ...prev, has_spring_file: e.target.checked }))}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-gray-600 text-sm">Spring File</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={documentChecklist.has_rem_paper}
+                    onChange={(e) => setDocumentChecklist(prev => ({ ...prev, has_rem_paper: e.target.checked }))}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-gray-600 text-sm">REM Paper</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={documentChecklist.has_kcse_photocopy}
+                    onChange={(e) => setDocumentChecklist(prev => ({ ...prev, has_kcse_photocopy: e.target.checked }))}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-gray-600 text-sm">KCSE Photocopy</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={documentChecklist.has_kcpe_photocopy}
+                    onChange={(e) => setDocumentChecklist(prev => ({ ...prev, has_kcpe_photocopy: e.target.checked }))}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-gray-600 text-sm">KCPE Photocopy</span>
+                </label>
+              </div>
             </div>
 
             <div className="flex gap-3">

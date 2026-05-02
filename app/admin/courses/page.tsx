@@ -96,6 +96,7 @@ const getInitialFormData = () => ({
   courseId: '', // Allow manual entry of course ID (e.g., KNEC-2801, CDACC-001, JP-101)
   department: '',
   courseName: '',
+  minKcseGrade: 'C-',
   courseStudyMode: 'module' as StudyMode,
   courseTypes: {
     diploma: emptyCourseType(),
@@ -261,13 +262,13 @@ export default function CoursesPage() {
 
   const getLevelLabel = (level: string) => {
     const labels: Record<string, string> = {
-      diploma: 'Diploma',
-      certificate: 'Craft Certificate',
-      artisan: 'Artisan Certificate',
-      craft: 'Craft Certificate',
-      level6: 'Higher Diploma',
-      level5: 'Diploma',
-      level4: 'Craft Certificate',
+      diploma: 'KNEC Diploma',
+      certificate: 'KNEC Certificate',
+      artisan: 'KNEC Artisan',
+      craft: 'KNEC Craft',
+      level6: 'CDACC Level 6 (Higher Diploma)',
+      level5: 'CDACC Level 5 (Diploma)',
+      level4: 'CDACC Level 4 (Certificate)',
     };
     return labels[level] || level;
   };
@@ -1263,7 +1264,6 @@ export default function CoursesPage() {
           course_types (
             level,
             enabled,
-            min_kcse_grade,
             study_mode,
             duration_months,
             modules (
@@ -1504,7 +1504,7 @@ export default function CoursesPage() {
       courseTypes[level] = {
         enabled: ct.enabled,
         examBody: courseExamBody,
-        minKcseGrade: ct.min_kcse_grade,
+        minKcseGrade: course.min_kcse_grade,
         studyMode: ct.study_mode as StudyMode,
         durationMonths: ct.duration_months,
         modules: (ct.modules || []).sort((a: any, b: any) => a.module_index - b.module_index).map((m: any) => ({
@@ -1557,6 +1557,7 @@ export default function CoursesPage() {
       courseId: course.id,
       department: departmentName,
       courseName: course.name,
+      minKcseGrade: course.min_kcse_grade || 'C-',
       courseStudyMode: globalStudyMode,
       courseTypes
     });
@@ -2124,7 +2125,8 @@ export default function CoursesPage() {
         const { error: updateError, data: courseData } = await supabase.from('courses').update([
           {
             name: formData.courseName,
-            department_id: departmentId
+            department_id: departmentId,
+            min_kcse_grade: formData.minKcseGrade || 'C-'
           }
         ]).eq('id', editingCourse).select().single();
 
@@ -2143,7 +2145,8 @@ export default function CoursesPage() {
           {
             id: formData.courseId,
             name: formData.courseName,
-            department_id: departmentId
+            department_id: departmentId,
+            min_kcse_grade: formData.minKcseGrade || 'C-'
           }
         ]).select().single();
 
@@ -2308,7 +2311,6 @@ export default function CoursesPage() {
           // Update existing
           const result = await supabase.from('course_types').update({
             enabled: true,
-            min_kcse_grade: config.minKcseGrade,
             study_mode: config.studyMode,
             duration_months: durationMonths
           }).eq('id', existingCourseType.id).select().single();
@@ -2320,7 +2322,6 @@ export default function CoursesPage() {
             course_id: courseId,
             level,
             enabled: true,
-            min_kcse_grade: config.minKcseGrade,
             study_mode: config.studyMode,
             duration_months: durationMonths
           }]).select().single();
@@ -2762,9 +2763,11 @@ export default function CoursesPage() {
                       {[
                         { value: 'all', label: 'All' },
                         { value: 'diploma', label: 'Diploma' },
-                        { value: 'craft', label: 'Craft Certificate' },
-                        { value: 'artisan', label: 'Artisan Certificate' },
-                        { value: 'level6', label: 'Higher Diploma' },
+                        { value: 'certificate', label: 'Certificate' },
+                        { value: 'artisan', label: 'Artisan' },
+                        { value: 'level6', label: 'CDACC Level 6' },
+                        { value: 'level5', label: 'CDACC Level 5' },
+                        { value: 'level4', label: 'CDACC Level 4' },
                       ].map((filter) => (
                         <button
                           key={filter.value}

@@ -1,0 +1,79 @@
+:root {
+  --clr-success-bg: rgba(0,200,150,0.10);
+  --clr-success-border: rgba(0,200,150,0.25);
+  --clr-warning-bg: rgba(245,166,35,0.10);
+  --clr-warning-border: rgba(245,166,35,0.25);
+  --clr-danger-bg: rgba(255,76,106,0.10);
+  --clr-danger-border: rgba(255,76,106,0.25);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 20px;
+}
+
+.row { display:flex; gap:12px; align-items:center }
+.col { display:flex; flex-direction:column }
+
+.label {
+  font-family: var(--font-heading);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--text-2);
+}
+
+.input {
+  background: var(--input-bg);
+  border: 1.5px solid var(--input-border);
+  color: var(--text-1);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+.input:focus { border-color: var(--accent); outline: none }
+
+.primary {
+  background: var(--accent-gradient);
+  color: #ffffff;
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 13px;
+  border-radius: 11px;
+  border: none;
+  padding: 12px 20px;
+}
+.secondary {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  border-radius: 11px;
+  padding: 12px 20px;
+}
+
+.methodGrid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px }
+.methodBtn { padding:10px; border-radius:8px; text-align:center; font-family:var(--font-mono); font-size:13px }
+.methodInactive { background: var(--surface-2); border:1px solid var(--border); color:var(--text-3) }
+.methodActive { background: rgba(99,102,241,0.15); border:1.5px solid var(--accent); color:var(--text-1) }
+
+.semesterCard { padding:12px; border-radius:10px; border:1px solid var(--border); background:var(--surface-2); cursor:pointer }
+.semesterCardActive { border-color: var(--accent); box-shadow: var(--shadow); background:var(--surface) }
+
+.progressTrack { background: var(--surface-2); height:8px; border-radius:8px; overflow:hidden }
+.progressFill { height:100%; background: linear-gradient(90deg,var(--success), var(--accent)); }
+
+.clearPreview { padding:12px; border-radius:10px; border:1px solid; display:flex; align-items:center; gap:12px }
+.clear-success { background: var(--clr-success-bg); border-color: var(--clr-success-border); color: var(--success) }
+.clear-warning { background: var(--clr-warning-bg); border-color: var(--clr-warning-border); color: var(--warning) }
+.clear-danger { background: var(--clr-danger-bg); border-color: var(--clr-danger-border); color: var(--danger) }
+
+.error { color: var(--danger); font-family: var(--font-mono); font-size:11px; margin-top:5px }
+.muted { font-family:var(--font-mono); font-size:10px; letter-spacing:1.8px; text-transform:uppercase; color:var(--text-3) }
+
+.sidebar { width:320px; display:flex; flex-direction:column; gap:12px }
+.recentRow { display:flex; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px dashed var(--surface-2) }

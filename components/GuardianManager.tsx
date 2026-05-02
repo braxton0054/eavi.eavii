@@ -20,6 +20,7 @@ interface Guardian {
 interface GuardianManagerProps {
   applicationId: string;
   readOnly?: boolean;
+  onGuardianSaved?: () => void;
 }
 
 const RELATIONSHIPS = [
@@ -31,7 +32,7 @@ const RELATIONSHIPS = [
   { value: 'other', label: 'Other' },
 ];
 
-export default function GuardianManager({ applicationId, readOnly = false }: GuardianManagerProps) {
+export default function GuardianManager({ applicationId, readOnly = false, onGuardianSaved }: GuardianManagerProps) {
   const [guardians, setGuardians] = useState<Guardian[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -88,6 +89,11 @@ export default function GuardianManager({ applicationId, readOnly = false }: Gua
       setEditingGuardian(null);
       resetForm();
       fetchGuardians();
+      
+      // Call callback if provided (for apply flow)
+      if (onGuardianSaved) {
+        onGuardianSaved();
+      }
     } catch (err) {
       alert('Failed to save guardian. Please try again.');
     } finally {

@@ -15,9 +15,18 @@ export default function LecturersPage() {
   const [campus, setCampus] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [viewMode, setViewMode] = useState<'add' | 'list' | 'migrate'>('add');
+  const [viewMode, setViewMode] = useState<'add' | 'list' | 'migrate' | 'workload' | 'submissions'>('add');
   const [lecturers, setLecturers] = useState<any[]>([]);
   const [editingLecturer, setEditingLecturer] = useState<string | null>(null);
+  
+  // Part 4: Lecturer workload and assignments
+  const [lecturerWorkload, setLecturerWorkload] = useState<any[]>([]);
+  const [selectedLecturerWorkload, setSelectedLecturerWorkload] = useState<string | null>(null);
+  const [workloadDetails, setWorkloadDetails] = useState<any[]>([]);
+  
+  // Part 4: Submission status tracking
+  const [submissionStatus, setSubmissionStatus] = useState<any[]>([]);
+  const [loadingWorkload, setLoadingWorkload] = useState(false);
 
   useEffect(() => {
     setSupabase(createClient());
@@ -80,7 +89,102 @@ export default function LecturersPage() {
     if (viewMode === 'list') {
       loadLecturers();
     }
+    if (viewMode === 'workload') {
+      loadLecturerWorkload();
+    }
+    if (viewMode === 'submissions') {
+      loadSubmissionStatus();
+    }
   }, [viewMode]);
+
+  // Part 4: Load lecturer workload (assignments)
+  const loadLecturerWorkload = async () => {
+    setLoadingWorkload(true);
+    try {
+      // Get all lecturers
+      const { data: lecturersData } = await supabase.from('lecturers').select('id, full_name, lecturer_number');
+      
+      // Get all assignments with related data
+      const { data: assignments } = await supabase
+        .from('lecturer_assignments')
+        .select(`
+          id,
+          lecturer_id,
+          campus,
+          course_id,
+          class_id,
+          classes(class_name, intake_month),
+          courses(name),
+          lecturer_assignment_semesters(semester, module_index, is_active)
+        `);
+      
+      // Calculate workload per lecturer
+      const workload = lecturersData?.map((lecturer: any) => {
+        const lecturerAssignments = assignments?.filter((a: any) => a.lecturer_id === lecturer.id) || [];
+        const activeAssignments = lecturerAssignments.filter((a: any) => 
+          a.lecturer_assignment_semesters?.some((s: any) => s.is_active)
+        );
+        
+        return {
+          ...lecturer,
+          total_assignments: lecturerAssignments.length,
+          active_assignments: activeAssignments.length,
+          classes: lecturerAssignments.map((a: any) => ({
+            class_name: a.classes?.class_name,
+            course_name: a.courses?.name,
+            campus: a.campus,
+            intake: a.classes?.intake_month,
+            semester: a.lecturer_assignment_semesters?.[0]?.semester,
+            module: a.lecturer_assignment_semesters?.[0]?.module_index,
+            is_active: a.lecturer_assignment_semesters?.[0]?.is_active
+          }))
+        };
+      }) || [];
+      
+      setLecturerWorkload(workload);
+    } catch (err) {
+      console.error('Error loading workload:', err);
+    } finally {
+      setLoadingWorkload(false);
+    }
+  };
+
+  // Part 4: Load submission status
+  const loadSubmissionStatus = async () => {
+    setLoadingWorkload(true);
+    try {
+      // Get all lecturers
+      const { data: lecturersData } = await supabase.from('lecturers').select('id, full_name, lecturer_number');
+      
+      // Get all exam marks with lecturer_id and is_submitted
+      const { data: examMarks } = await supabase
+        .from('exam_marks')
+        .select('lecturer_id, is_submitted, unit_code, class_id');
+      
+      // Calculate submission status per lecturer
+      const status = lecturersData?.map((lecturer: any) => {
+        const lecturerMarks = examMarks?.filter((m: any) => m.lecturer_id === lecturer.id) || [];
+        const totalMarks = lecturerMarks.length;
+        const submittedMarks = lecturerMarks.filter((m: any) => m.is_submitted).length;
+        const pendingMarks = totalMarks - submittedMarks;
+        
+        return {
+          ...lecturer,
+          total_marks: totalMarks,
+          submitted_marks: submittedMarks,
+          pending_marks: pendingMarks,
+          completion_rate: totalMarks > 0 ? Math.round((submittedMarks / totalMarks) * 100) : 0,
+          status: pendingMarks === 0 && totalMarks > 0 ? 'Complete' : pendingMarks > 0 ? 'Pending' : 'No Marks'
+        };
+      }).sort((a: any, b: any) => b.pending_marks - a.pending_marks) || [];
+      
+      setSubmissionStatus(status);
+    } catch (err) {
+      console.error('Error loading submission status:', err);
+    } finally {
+      setLoadingWorkload(false);
+    }
+  };
 
   const loadLecturers = async () => {
     try {
@@ -284,115 +388,136 @@ export default function LecturersPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950 flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex items-center gap-3 text-gray-600">
+          <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span className="text-sm font-medium">Loading lecturers...</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950">
-      <div className="relative z-10 w-full max-w-4xl mx-auto px-4 md:px-6 py-8 md:py-12">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <Link href="/admin/dashboard" className="inline-block">
-              <div className="relative w-16 h-16">
-                <Image
-                  src="/logo.webp"
-                  alt="East Africa Vision Institute Logo"
-                  fill
-                  className="object-contain"
-                />
-              </div>
-            </Link>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white">Lecturer Management</h1>
-              <p className="text-purple-200 text-sm">
-                Campus: {campus === 'main' ? 'Main Campus' : campus === 'west' ? 'West Campus' : 'Unknown'}
-              </p>
-            </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-20">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">Lecturer Management</h1>
+            <p className="text-gray-500 text-sm">
+              Campus: {campus === 'main' ? 'Main Campus' : campus === 'west' ? 'West Campus' : 'Unknown'}
+            </p>
           </div>
           <Link
             href="/admin/dashboard"
-            className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/30 text-white rounded-lg transition-all duration-300 text-sm font-semibold"
+            className="px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg transition-colors text-sm font-medium"
           >
             Back to Dashboard
           </Link>
         </div>
+      </header>
 
         {/* Main Content */}
-        <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 md:p-8 border border-white/20">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-white">
-              {viewMode === 'migrate' ? 'Migrate Lecturer Assignments' : viewMode === 'add' ? (editingLecturer ? 'Edit Lecturer' : 'Add New Lecturer') : 'Existing Lecturers'}
-            </h2>
-            <div className="flex gap-2">
-              {viewMode !== 'migrate' && (
+        <main className="max-w-7xl mx-auto px-4 md:px-6 py-8">
+          <div className="bg-white rounded-lg border border-gray-200">
+            <div className="px-6 py-4 border-b border-gray-200 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <h2 className="text-lg font-semibold text-gray-900">
+                {viewMode === 'migrate' ? 'Migrate Lecturer Assignments' :
+                 viewMode === 'workload' ? 'Lecturer Workload' :
+                 viewMode === 'submissions' ? 'Submission Status' :
+                 viewMode === 'add' ? (editingLecturer ? 'Edit Lecturer' : 'Add New Lecturer') : 'Existing Lecturers'}
+              </h2>
+              <div className="flex gap-2 flex-wrap">
+                {viewMode !== 'migrate' && viewMode !== 'workload' && viewMode !== 'submissions' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setViewMode(viewMode === 'add' ? 'list' : 'add');
+                      if (viewMode === 'add') {
+                        setEditingLecturer(null);
+                        setFormData({
+                          lecturerNumber: generateLecturerNumber(),
+                          fullName: '',
+                          phoneNumber: '',
+                          gender: ''
+                        });
+                      }
+                    }}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+                  >
+                    {viewMode === 'add' ? 'View All Lecturers' : 'Add New Lecturer'}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => {
-                    setViewMode(viewMode === 'add' ? 'list' : 'add');
-                    if (viewMode === 'add') {
-                      setEditingLecturer(null);
-                      setFormData({
-                        lecturerNumber: generateLecturerNumber(),
-                        fullName: '',
-                        phoneNumber: '',
-                        gender: ''
-                      });
-                    }
+                    setViewMode(viewMode === 'migrate' ? 'list' : 'migrate');
+                    setMigrateFrom('');
+                    setMigrateTo('');
+                    setError('');
                   }}
-                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-300 text-sm font-semibold"
+                  className="px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg transition-colors text-sm font-medium"
                 >
-                  {viewMode === 'add' ? 'View All Lecturers' : 'Add New Lecturer'}
+                  {viewMode === 'migrate' ? 'Cancel' : 'Migrate'}
                 </button>
-              )}
-              <button
-                type="button"
-                onClick={() => {
-                  setViewMode(viewMode === 'migrate' ? 'list' : 'migrate');
-                  setMigrateFrom('');
-                  setMigrateTo('');
-                  setError('');
-                }}
-                className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors duration-300 text-sm font-semibold"
-              >
-                {viewMode === 'migrate' ? 'Cancel' : 'Migrate Lecturer'}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode(viewMode === 'workload' ? 'list' : 'workload')}
+                  className={`px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
+                    viewMode === 'workload'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700'
+                  }`}
+                >
+                  {viewMode === 'workload' ? 'Back to List' : 'Workload'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode(viewMode === 'submissions' ? 'list' : 'submissions')}
+                  className={`px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
+                    viewMode === 'submissions'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white border border-gray-300 hover:bg-gray-50 text-gray-700'
+                  }`}
+                >
+                  {viewMode === 'submissions' ? 'Back to List' : 'Submissions'}
+                </button>
+              </div>
             </div>
-          </div>
 
-          {error && (
-            <div className={`mb-4 p-3 rounded-lg text-sm ${
-              error.includes('successfully') 
-                ? 'bg-green-500/20 text-green-200 border border-green-500/50' 
-                : 'bg-red-500/20 text-red-200 border border-red-500/50'
-            }`}>
-              {error}
-            </div>
-          )}
+            {error && (
+              <div className={`mx-6 mt-4 p-3 rounded-lg text-sm ${
+                error.includes('successfully')
+                  ? 'bg-green-50 text-green-600 border border-green-200'
+                  : 'bg-red-50 text-red-600 border border-red-200'
+              }`}>
+                {error}
+              </div>
+            )}
 
           {viewMode === 'migrate' ? (
-            <div className="space-y-6">
-              <p className="text-purple-200 text-sm mb-4">
+            <div className="p-6 space-y-6">
+              <p className="text-gray-600 text-sm mb-4">
                 Select a lecturer to migrate assignments FROM and a lecturer to migrate TO. All course and unit assignments will be transferred.
               </p>
 
               {/* Migrate From */}
               <div>
-                <label htmlFor="migrateFrom" className="block text-purple-200 text-sm mb-2">
+                <label htmlFor="migrateFrom" className="block text-gray-700 text-sm font-medium mb-2">
                   Migrate From (Old Lecturer) *
                 </label>
                 <select
                   id="migrateFrom"
                   value={migrateFrom}
                   onChange={(e) => setMigrateFrom(e.target.value)}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 >
                   <option value="">Select lecturer to migrate from</option>
                   {lecturers.map((lecturer) => (
-                    <option key={lecturer.id} value={lecturer.lecturer_number} className="text-gray-900">
+                    <option key={lecturer.id} value={lecturer.lecturer_number}>
                       {lecturer.full_name} ({lecturer.lecturer_number})
                     </option>
                   ))}
@@ -401,18 +526,18 @@ export default function LecturersPage() {
 
               {/* Migrate To */}
               <div>
-                <label htmlFor="migrateTo" className="block text-purple-200 text-sm mb-2">
+                <label htmlFor="migrateTo" className="block text-gray-700 text-sm font-medium mb-2">
                   Migrate To (New Lecturer) *
                 </label>
                 <select
                   id="migrateTo"
                   value={migrateTo}
                   onChange={(e) => setMigrateTo(e.target.value)}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 >
                   <option value="">Select lecturer to migrate to</option>
                   {lecturers.map((lecturer) => (
-                    <option key={lecturer.id} value={lecturer.lecturer_number} className="text-gray-900">
+                    <option key={lecturer.id} value={lecturer.lecturer_number}>
                       {lecturer.full_name} ({lecturer.lecturer_number})
                     </option>
                   ))}
@@ -423,38 +548,38 @@ export default function LecturersPage() {
               <button
                 onClick={handleMigration}
                 disabled={submitting || !migrateFrom || !migrateTo}
-                className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors duration-300 text-base font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? 'Migrating...' : 'Migrate Assignments'}
               </button>
             </div>
           ) : viewMode === 'list' ? (
-            <div className="space-y-4">
+            <div className="divide-y divide-gray-200">
               {lecturers.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-purple-200">No lecturers found. Add your first lecturer.</p>
+                <div className="text-center py-12">
+                  <p className="text-gray-500">No lecturers found. Add your first lecturer.</p>
                 </div>
               ) : (
                 lecturers.map((lecturer) => (
-                  <div key={lecturer.id} className="bg-white/5 rounded-lg p-4 border border-white/10">
+                  <div key={lecturer.id} className="p-4 md:p-6">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-white">{lecturer.full_name}</h3>
-                        <div className="flex items-center gap-2">
-                          <p className="text-purple-200 text-sm">Lecturer Number: {lecturer.lecturer_number}</p>
+                        <h3 className="text-sm font-semibold text-gray-900">{lecturer.full_name}</h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className="text-gray-500 text-sm">Lecturer Number: {lecturer.lecturer_number}</p>
                           <button
                             onClick={() => handleCopyLecturerNumber(lecturer.lecturer_number)}
-                            className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-semibold transition-colors"
+                            className="px-2 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs font-medium transition-colors"
                             title="Copy lecturer number"
                           >
                             Copy
                           </button>
                         </div>
-                        <p className="text-purple-200 text-sm">Phone: {lecturer.phone}</p>
-                        <p className="text-purple-200 text-sm">Gender: {lecturer.gender ? lecturer.gender.charAt(0).toUpperCase() + lecturer.gender.slice(1) : 'Not specified'}</p>
+                        <p className="text-gray-600 text-sm mt-1">Phone: {lecturer.phone}</p>
+                        <p className="text-gray-600 text-sm">Gender: {lecturer.gender ? lecturer.gender.charAt(0).toUpperCase() + lecturer.gender.slice(1) : 'Not specified'}</p>
                         {lecturer.campus && (
-                          <p className="text-purple-200 text-sm">
-                            Campus: {Array.isArray(lecturer.campus) 
+                          <p className="text-gray-600 text-sm">
+                            Campus: {Array.isArray(lecturer.campus)
                               ? lecturer.campus.map((c: string) => c === 'main' ? 'Main' : c === 'west' ? 'West' : c === 'town' ? 'Town' : c).join(', ')
                               : (lecturer.campus === 'main' ? 'Main' : lecturer.campus === 'west' ? 'West' : lecturer.campus === 'town' ? 'Town' : lecturer.campus)
                             }
@@ -464,13 +589,13 @@ export default function LecturersPage() {
                       <div className="flex gap-2 ml-4">
                         <button
                           onClick={() => handleEditLecturer(lecturer)}
-                          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-semibold transition-colors"
+                          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors"
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => handleDeleteLecturer(lecturer.id)}
-                          className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm font-semibold transition-colors"
+                          className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-medium transition-colors"
                         >
                           Delete
                         </button>
@@ -478,6 +603,148 @@ export default function LecturersPage() {
                     </div>
                   </div>
                 ))
+              )}
+            </div>
+          ) : viewMode === 'workload' ? (
+            /* Workload View */
+            <div className="divide-y divide-gray-200">
+              {loadingWorkload ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-500">Loading workload data...</p>
+                </div>
+              ) : lecturerWorkload.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-500">No workload data available.</p>
+                </div>
+              ) : (
+                lecturerWorkload.map((lecturer) => (
+                  <div key={lecturer.id} className="p-4 md:p-6">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-900">{lecturer.full_name}</h3>
+                        <p className="text-gray-500 text-sm">{lecturer.lecturer_number}</p>
+                        <div className="flex gap-4 mt-2">
+                          <span className="text-sm">
+                            <span className="text-gray-500">Total Assignments:</span>
+                            <span className="text-gray-900 font-semibold ml-1">{lecturer.total_assignments}</span>
+                          </span>
+                          <span className="text-sm">
+                            <span className="text-gray-500">Active:</span>
+                            <span className="text-green-600 font-semibold ml-1">{lecturer.active_assignments}</span>
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setSelectedLecturerWorkload(
+                          selectedLecturerWorkload === lecturer.id ? null : lecturer.id
+                        )}
+                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors"
+                      >
+                        {selectedLecturerWorkload === lecturer.id ? 'Hide Details' : 'View Classes'}
+                      </button>
+                    </div>
+                    
+                    {selectedLecturerWorkload === lecturer.id && lecturer.classes.length > 0 && (
+                      <div className="mt-4 space-y-2">
+                        <h4 className="text-sm font-semibold text-gray-700">Assigned Classes:</h4>
+                        {lecturer.classes.map((cls: any, idx: number) => (
+                          <div key={idx} className="bg-gray-50 rounded p-3 text-sm border border-gray-200">
+                            <div className="flex justify-between">
+                              <span className="text-gray-900 font-medium">{cls.class_name}</span>
+                              <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                cls.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+                              }`}>
+                                {cls.is_active ? 'Active' : 'Inactive'}
+                              </span>
+                            </div>
+                            <div className="text-gray-600 mt-1">
+                              {cls.course_name} • {cls.campus} Campus • Intake: {cls.intake}
+                            </div>
+                            <div className="text-gray-500 text-xs mt-1">
+                              Module {cls.module}, Semester {cls.semester}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          ) : viewMode === 'submissions' ? (
+            /* Submissions View */
+            <div className="p-6">
+              {loadingWorkload ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-500">Loading submission status...</p>
+                </div>
+              ) : submissionStatus.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-500">No submission data available.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-4 gap-4 mb-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <div>Lecturer</div>
+                    <div className="text-center">Total Marks</div>
+                    <div className="text-center">Submitted</div>
+                    <div className="text-center">Status</div>
+                  </div>
+                  {submissionStatus.map((lecturer) => (
+                    <div key={lecturer.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200 mb-3">
+                      <div className="grid grid-cols-4 gap-4 items-center">
+                        <div>
+                          <h3 className="text-gray-900 font-medium text-sm">{lecturer.full_name}</h3>
+                          <p className="text-gray-500 text-xs">{lecturer.lecturer_number}</p>
+                        </div>
+                        <div className="text-center">
+                          <span className="text-gray-900 font-semibold">{lecturer.total_marks}</span>
+                        </div>
+                        <div className="text-center">
+                          <span className={`font-semibold ${
+                            lecturer.submitted_marks === lecturer.total_marks && lecturer.total_marks > 0
+                              ? 'text-green-600'
+                              : lecturer.submitted_marks > 0
+                              ? 'text-yellow-600'
+                              : 'text-gray-400'
+                          }`}>
+                            {lecturer.submitted_marks}
+                          </span>
+                          {lecturer.pending_marks > 0 && (
+                            <span className="text-red-600 text-xs ml-1">({lecturer.pending_marks} pending)</span>
+                          )}
+                        </div>
+                        <div className="text-center">
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            lecturer.status === 'Complete'
+                              ? 'bg-green-100 text-green-800'
+                              : lecturer.status === 'Pending'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            {lecturer.status}
+                          </span>
+                        </div>
+                      </div>
+                      {lecturer.total_marks > 0 && (
+                        <div className="mt-3">
+                          <div className="flex justify-between text-xs text-gray-500 mb-1">
+                            <span>Completion Rate</span>
+                            <span>{lecturer.completion_rate}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className={`h-2 rounded-full ${
+                                lecturer.completion_rate === 100 ? 'bg-green-500' : 'bg-blue-500'
+                              }`}
+                              style={{ width: `${lecturer.completion_rate}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </>
               )}
             </div>
           ) : (
@@ -561,7 +828,7 @@ export default function LecturersPage() {
             </form>
           )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }

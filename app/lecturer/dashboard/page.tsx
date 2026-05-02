@@ -60,12 +60,22 @@ interface Unit {
 }
 
 interface ExamMark {
+  id?: string;
   application_id: string;
   unit_code: string;
   exam_type: string;
   cat_marks: number | null;
   end_term_marks: number | null;
+  practical_marks: number | null;
   marks: number;
+  grade?: string;
+  points?: number;
+  is_submitted: boolean;
+  is_absent: boolean;
+  lecturer_id?: string;
+  intake?: string;
+  semester?: number;
+  module_index?: number;
 }
 
 export default function LecturerDashboard() {
@@ -75,13 +85,14 @@ export default function LecturerDashboard() {
   const [lecturerInfo, setLecturerInfo] = useState<any>(null);
   const [lecturerId, setLecturerId] = useState<string | null>(null);
   
-  // View mode: 'dashboard' | 'marks' | 'setup'
-  const [viewMode, setViewMode] = useState<'dashboard' | 'marks' | 'setup'>('dashboard');
+  // View mode: 'dashboard' | 'marks' | 'setup' | 'submissions'
+  const [viewMode, setViewMode] = useState<'dashboard' | 'marks' | 'setup' | 'submissions'>('dashboard');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   
-  // Classes data
+  // Classes data - lecturer's workload
   const [lecturerClasses, setLecturerClasses] = useState<any[]>([]);
+  const [lecturerAssignments, setLecturerAssignments] = useState<any[]>([]);
   
   // Setup form state for lecturer self-assignment
   const [courses, setCourses] = useState<any[]>([]);
@@ -97,13 +108,24 @@ export default function LecturerDashboard() {
   // Selected class for marks entry
   const [selectedClass, setSelectedClass] = useState<any>(null);
   const [selectedSemesterAssignment, setSelectedSemesterAssignment] = useState<SemesterAssignment | null>(null);
+  const [selectedIntake, setSelectedIntake] = useState<string>('');
   
-  // Marks entry state
+  // Marks entry state - Updated for Part 3
   const [students, setStudents] = useState<Student[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [existingMarks, setExistingMarks] = useState<Map<string, ExamMark>>(new Map());
   const [selectedExamType, setSelectedExamType] = useState<string>('cat');
-  const [marksData, setMarksData] = useState<Map<string, { cat_marks: number | null; end_term_marks: number | null }>>(new Map());
+  const [marksData, setMarksData] = useState<Map<string, { 
+    cat_marks: number | null; 
+    end_term_marks: number | null;
+    practical_marks: number | null;
+    is_absent: boolean;
+    is_submitted: boolean;
+  }>>(new Map());
+  
+  // Submission tracking
+  const [submissionStatus, setSubmissionStatus] = useState<Map<string, { submitted: number; total: number }>>(new Map());
+  const [isSubmittingMarks, setIsSubmittingMarks] = useState(false);
   
   // Window status
   const [isWindowOpen, setIsWindowOpen] = useState(false);
@@ -419,6 +441,7 @@ export default function LecturerDashboard() {
   // Navigate to marks entry
   const enterMarks = async (cls: any) => {
     setSelectedClass(cls);
+    setSelectedIntake(cls.intake_month || '');
     
     // Find semester assignment
     const { data: semData } = await supabase
@@ -511,7 +534,20 @@ export default function LecturerDashboard() {
     
     const { data } = await supabase
       .from('exam_marks')
-      .select('application_id, unit_code, exam_type, cat_marks, end_term_marks, marks')
+      .select(`
+        application_id, 
+        unit_code, 
+        exam_type, 
+        cat_marks, 
+        end_term_marks, 
+        practical_marks,
+        marks, 
+        grade,
+        is_submitted,
+        is_absent,
+        lecturer_id,
+        intake
+      `)
       .eq('class_id', classId)
       .in('unit_code', unitCodes)
       .eq('exam_type', selectedExamType);
@@ -523,6 +559,9 @@ export default function LecturerDashboard() {
     });
     
     setExistingMarks(marksMap);
+    
+    // Also load submission status
+    await loadSubmissionStatus();
   };
 
   // Handle exam type change
@@ -538,13 +577,20 @@ export default function LecturerDashboard() {
   };
 
   // Handle mark input
-  const handleMarkChange = (studentId: string, unitCode: string, field: 'cat_marks' | 'end_term_marks', value: number) => {
+  const handleMarkChange = (studentId: string, unitCode: string, field: 'cat_marks' | 'end_term_marks' | 'practical_marks', value: number) => {
     const key = `${studentId}-${unitCode}`;
-    const current = marksData.get(key) || { cat_marks: null, end_term_marks: null };
+    const current = marksData.get(key) || { 
+      cat_marks: null, 
+      end_term_marks: null, 
+      practical_marks: null,
+      is_absent: false,
+      is_submitted: false
+    };
     
     // Validate ranges
     if (field === 'cat_marks' && (value < 0 || value > 30)) return;
     if (field === 'end_term_marks' && (value < 0 || value > 70)) return;
+    if (field === 'practical_marks' && (value < 0 || value > 30)) return;
     
     const updated = {
       ...current,
@@ -554,11 +600,22 @@ export default function LecturerDashboard() {
     setMarksData(new Map(marksData.set(key, updated)));
   };
 
-  // Calculate total marks
-  const calculateTotal = (cat: number | null, endTerm: number | null) => {
+  // Calculate total marks - Updated for Part 3 (includes practical for CDACC)
+  const calculateTotal = (cat: number | null, endTerm: number | null, practical: number | null, isAbsent: boolean) => {
+    if (isAbsent) return 0;
     const catVal = cat || 0;
     const endVal = endTerm || 0;
-    return catVal + endVal;
+    const practicalVal = practical || 0;
+    return catVal + endVal + practicalVal;
+  };
+
+  // Calculate grade based on total marks
+  const calculateGrade = (total: number) => {
+    if (total >= 70) return 'A';
+    if (total >= 60) return 'B';
+    if (total >= 50) return 'C';
+    if (total >= 40) return 'D';
+    return 'E';
   };
 
   // Determine pass/fail
@@ -580,14 +637,21 @@ export default function LecturerDashboard() {
           const data = marksData.get(key);
           const existing = existingMarks.get(key);
           
+          // Skip if no data and no existing mark
           if (!data && !existing) continue;
+          
+          // Skip if already submitted (can't edit submitted marks)
+          if (existing?.is_submitted || data?.is_submitted) continue;
           
           const catMarks = data?.cat_marks ?? existing?.cat_marks ?? null;
           const endTermMarks = data?.end_term_marks ?? existing?.end_term_marks ?? null;
+          const practicalMarks = data?.practical_marks ?? existing?.practical_marks ?? null;
+          const isAbsent = data?.is_absent ?? existing?.is_absent ?? false;
           
-          if (catMarks === null && endTermMarks === null && selectedExamType === 'cat') continue;
+          if (!isAbsent && catMarks === null && endTermMarks === null && selectedExamType === 'cat') continue;
           
-          const totalMarks = calculateTotal(catMarks, endTermMarks);
+          const totalMarks = calculateTotal(catMarks, endTermMarks, practicalMarks, isAbsent);
+          const grade = isAbsent ? 'ABS' : calculateGrade(totalMarks);
           
           marksToSave.push({
             application_id: student.application_id,
@@ -597,9 +661,15 @@ export default function LecturerDashboard() {
             unit_code: unit.unit_code,
             semester: selectedClass.semester,
             exam_type: selectedExamType,
-            cat_marks: selectedExamType === 'combined' ? catMarks : null,
-            end_term_marks: selectedExamType === 'combined' ? endTermMarks : null,
+            cat_marks: catMarks,
+            end_term_marks: endTermMarks,
+            practical_marks: practicalMarks,
             marks: totalMarks,
+            grade: grade,
+            is_absent: isAbsent,
+            is_submitted: false, // Not submitted yet, just saved as draft
+            lecturer_id: lecturerId,
+            intake: selectedIntake,
             semester_assignment_id: selectedSemesterAssignment.id
           });
         }
@@ -634,6 +704,118 @@ export default function LecturerDashboard() {
       setError(`Failed to save marks: ${err.message}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Submit marks - locks them for editing and triggers result release
+  const submitMarks = async () => {
+    if (!selectedClass || !selectedSemesterAssignment || !lecturerId) return;
+    
+    setIsSubmittingMarks(true);
+    setError('');
+    
+    try {
+      // Update all marks for this class/semester to is_submitted = true
+      const { error: submitError } = await supabase
+        .from('exam_marks')
+        .update({ is_submitted: true })
+        .eq('lecturer_id', lecturerId)
+        .eq('class_id', selectedClass.class_id)
+        .eq('semester', selectedClass.semester)
+        .eq('intake', selectedIntake)
+        .eq('is_submitted', false); // Only submit unsaved marks
+      
+      if (submitError) {
+        throw submitError;
+      }
+      
+      setSuccess('Marks submitted successfully! Results will be released for fee-cleared students.');
+      setTimeout(() => setSuccess(''), 5000);
+      
+      // Reload existing marks to show submitted status
+      await loadExistingMarks(selectedClass.class_id, units);
+      
+    } catch (err: any) {
+      console.error('Submit error:', err);
+      setError(`Failed to submit marks: ${err.message}`);
+    } finally {
+      setIsSubmittingMarks(false);
+    }
+  };
+
+  // Handle absent toggle
+  const handleAbsentToggle = (studentId: string, unitCode: string, isAbsent: boolean) => {
+    const key = `${studentId}-${unitCode}`;
+    const current = marksData.get(key) || { 
+      cat_marks: null, 
+      end_term_marks: null, 
+      practical_marks: null,
+      is_absent: false,
+      is_submitted: false
+    };
+    
+    const updated = {
+      ...current,
+      is_absent: isAbsent,
+      // Clear marks if marked absent
+      cat_marks: isAbsent ? null : current.cat_marks,
+      end_term_marks: isAbsent ? null : current.end_term_marks,
+      practical_marks: isAbsent ? null : current.practical_marks
+    };
+    
+    setMarksData(new Map(marksData.set(key, updated)));
+  };
+
+  // Handle practical marks input (for CDACC courses)
+  const handlePracticalMarkChange = (studentId: string, unitCode: string, value: number) => {
+    const key = `${studentId}-${unitCode}`;
+    const current = marksData.get(key) || { 
+      cat_marks: null, 
+      end_term_marks: null, 
+      practical_marks: null,
+      is_absent: false,
+      is_submitted: false
+    };
+    
+    // Validate range (0-30)
+    if (value < 0 || value > 30) return;
+    
+    const updated = {
+      ...current,
+      practical_marks: value
+    };
+    
+    setMarksData(new Map(marksData.set(key, updated)));
+  };
+
+  // Load submission status for all units
+  const loadSubmissionStatus = async () => {
+    if (!selectedClass || !lecturerId) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('exam_marks')
+        .select('unit_code, is_submitted')
+        .eq('lecturer_id', lecturerId)
+        .eq('class_id', selectedClass.class_id)
+        .eq('semester', selectedClass.semester)
+        .eq('intake', selectedIntake);
+      
+      if (error) throw error;
+      
+      // Calculate submission stats per unit
+      const stats = new Map<string, { submitted: number; total: number }>();
+      
+      for (const mark of (data || [])) {
+        const current = stats.get(mark.unit_code) || { submitted: 0, total: 0 };
+        current.total++;
+        if (mark.is_submitted) current.submitted++;
+        stats.set(mark.unit_code, current);
+      }
+      
+      setSubmissionStatus(stats);
+    } catch (err) {
+      console.error('Error loading submission status:', err);
     }
   };
 
@@ -686,6 +868,25 @@ export default function LecturerDashboard() {
                 className="px-4 py-2 glass-neu-btn text-white text-sm font-semibold"
               >
                 ← Back to Classes
+              </button>
+            )}
+            {viewMode === 'dashboard' && (
+              <button
+                onClick={() => {
+                  loadSubmissionStatus();
+                  setViewMode('submissions');
+                }}
+                className="px-4 py-2 glass-neu-btn text-white text-sm font-semibold"
+              >
+                Submission Status
+              </button>
+            )}
+            {(viewMode === 'submissions' || viewMode === 'setup') && (
+              <button
+                onClick={() => setViewMode('dashboard')}
+                className="px-4 py-2 glass-neu-btn text-white text-sm font-semibold"
+              >
+                ← Back to Dashboard
               </button>
             )}
             <button
@@ -906,55 +1107,99 @@ export default function LecturerDashboard() {
                           
                           const catMarks = current?.cat_marks ?? existing?.cat_marks ?? null;
                           const endTermMarks = current?.end_term_marks ?? existing?.end_term_marks ?? null;
-                          const total = calculateTotal(catMarks, endTermMarks);
+                          const practicalMarks = current?.practical_marks ?? existing?.practical_marks ?? null;
+                          const isAbsent = current?.is_absent ?? existing?.is_absent ?? false;
+                          const isSubmitted = existing?.is_submitted ?? false;
+                          const total = calculateTotal(catMarks, endTermMarks, practicalMarks, isAbsent);
+                          const grade = isAbsent ? 'ABS' : calculateGrade(total);
                           
                           return (
                             <td key={unit.unit_code} className="p-3">
-                              {selectedExamType === 'cat' && (
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="30"
-                                  step="0.5"
-                                  value={catMarks ?? ''}
-                                  onChange={(e) => handleMarkChange(student.application_id, unit.unit_code, 'cat_marks', parseFloat(e.target.value) || 0)}
-                                  disabled={!isWindowOpen}
-                                  className="w-20 px-2 py-1 bg-white/10 border border-white/30 rounded text-white text-center disabled:opacity-30"
-                                />
+                              {/* Submitted Badge */}
+                              {isSubmitted && (
+                                <div className="mb-1 text-xs text-green-400 font-semibold">✓ SUBMITTED</div>
                               )}
                               
-                              {selectedExamType === 'end_term' && (
+                              {/* Absent Toggle */}
+                              <label className="flex items-center gap-1 mb-2 cursor-pointer">
                                 <input
-                                  type="number"
-                                  min="0"
-                                  max="70"
-                                  step="0.5"
-                                  value={endTermMarks ?? ''}
-                                  onChange={(e) => handleMarkChange(student.application_id, unit.unit_code, 'end_term_marks', parseFloat(e.target.value) || 0)}
-                                  disabled={!isWindowOpen}
-                                  className="w-20 px-2 py-1 bg-white/10 border border-white/30 rounded text-white text-center disabled:opacity-30"
+                                  type="checkbox"
+                                  checked={isAbsent}
+                                  onChange={(e) => handleAbsentToggle(student.application_id, unit.unit_code, e.target.checked)}
+                                  disabled={!isWindowOpen || isSubmitted}
+                                  className="w-3 h-3 rounded border-white/30"
                                 />
+                                <span className="text-xs text-purple-300">Absent</span>
+                              </label>
+                              
+                              {!isAbsent && (
+                                <>
+                                  {selectedExamType === 'cat' && (
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max="30"
+                                      step="0.5"
+                                      value={catMarks ?? ''}
+                                      onChange={(e) => handleMarkChange(student.application_id, unit.unit_code, 'cat_marks', parseFloat(e.target.value) || 0)}
+                                      disabled={!isWindowOpen || isSubmitted}
+                                      className="w-20 px-2 py-1 bg-white/10 border border-white/30 rounded text-white text-center disabled:opacity-30"
+                                    />
+                                  )}
+                                  
+                                  {selectedExamType === 'end_term' && (
+                                    <>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        max="70"
+                                        step="0.5"
+                                        value={endTermMarks ?? ''}
+                                        onChange={(e) => handleMarkChange(student.application_id, unit.unit_code, 'end_term_marks', parseFloat(e.target.value) || 0)}
+                                        disabled={!isWindowOpen || isSubmitted}
+                                        className="w-20 px-2 py-1 bg-white/10 border border-white/30 rounded text-white text-center disabled:opacity-30 mb-1"
+                                      />
+                                      {/* Practical marks for CDACC courses */}
+                                      {selectedClass?.exam_type_allowed?.includes('practical') && (
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          max="30"
+                                          step="0.5"
+                                          placeholder="Prac"
+                                          value={practicalMarks ?? ''}
+                                          onChange={(e) => handlePracticalMarkChange(student.application_id, unit.unit_code, parseFloat(e.target.value) || 0)}
+                                          disabled={!isWindowOpen || isSubmitted}
+                                          className="w-20 px-2 py-1 bg-white/10 border border-white/30 rounded text-white text-center disabled:opacity-30 text-xs"
+                                        />
+                                      )}
+                                    </>
+                                  )}
+                                  
+                                  {selectedExamType === 'mock' && (
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max="100"
+                                      step="0.5"
+                                      value={total || ''}
+                                      disabled={!isWindowOpen || isSubmitted}
+                                      className="w-20 px-2 py-1 bg-white/10 border border-white/30 rounded text-white text-center disabled:opacity-30"
+                                    />
+                                  )}
+                                </>
                               )}
                               
-                              {selectedExamType === 'mock' && (
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  step="0.5"
-                                  value={total || ''}
-                                  disabled={!isWindowOpen}
-                                  className="w-20 px-2 py-1 bg-white/10 border border-white/30 rounded text-white text-center disabled:opacity-30"
-                                />
-                              )}
-                              
-                              {/* Total and Pass/Fail */}
-                              {(catMarks !== null || endTermMarks !== null) && (
+                              {/* Total, Grade and Pass/Fail */}
+                              {(catMarks !== null || endTermMarks !== null || isAbsent) && (
                                 <div className="mt-1 text-xs">
                                   <span className="text-white font-semibold">{total}</span>
-                                  <span className={`ml-2 ${isPass(total) ? 'text-green-400' : 'text-red-400'}`}>
-                                    {isPass(total) ? 'PASS' : 'FAIL'}
-                                  </span>
+                                  <span className="text-purple-300 ml-1">({grade})</span>
+                                  {!isAbsent && (
+                                    <span className={`ml-2 ${isPass(total) ? 'text-green-400' : 'text-red-400'}`}>
+                                      {isPass(total) ? 'PASS' : 'FAIL'}
+                                    </span>
+                                  )}
                                 </div>
                               )}
                             </td>
@@ -967,16 +1212,32 @@ export default function LecturerDashboard() {
               )}
             </div>
 
-            {/* Save Button */}
+            {/* Action Buttons */}
             {isWindowOpen && (
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-3">
                 <button
                   onClick={saveMarks}
                   disabled={loading}
+                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold disabled:opacity-50"
+                >
+                  {loading ? 'Saving...' : 'Save Draft'}
+                </button>
+                <button
+                  onClick={submitMarks}
+                  disabled={isSubmittingMarks || loading}
                   className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold disabled:opacity-50"
                 >
-                  {loading ? 'Saving...' : 'Save Marks'}
+                  {isSubmittingMarks ? 'Submitting...' : 'Submit Marks'}
                 </button>
+              </div>
+            )}
+            
+            {/* Fee Clearance Warning */}
+            {students.some(s => s.financial_hold) && (
+              <div className="mt-4 p-3 bg-yellow-500/20 border border-yellow-500/50 rounded-lg">
+                <p className="text-yellow-300 text-sm">
+                  ⚠️ Some students have fee holds. Their results will be blocked until they reach 95% fee clearance.
+                </p>
               </div>
             )}
           </div>
@@ -1099,6 +1360,65 @@ export default function LecturerDashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        )}
+
+        {/* SUBMISSIONS VIEW */}
+        {viewMode === 'submissions' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-white">Mark Submission Status</h2>
+              <button
+                onClick={() => setViewMode('dashboard')}
+                className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm font-semibold"
+              >
+                Back to Dashboard
+              </button>
+            </div>
+
+            {/* Submission Status Table */}
+            <div className="glass-neu p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">Unit Submission Overview</h3>
+              
+              {submissionStatus.size === 0 ? (
+                <p className="text-purple-300">No marks recorded yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {Array.from(submissionStatus.entries()).map(([unitCode, stats]) => (
+                    <div key={unitCode} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                      <div>
+                        <span className="text-white font-medium">{unitCode}</span>
+                        <span className="text-purple-300 text-sm ml-2">
+                          {stats.submitted} / {stats.total} submitted
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {stats.submitted === stats.total ? (
+                          <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm">
+                            ✓ Complete
+                          </span>
+                        ) : (
+                          <span className="px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-sm">
+                            ⏳ {stats.total - stats.submitted} remaining
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Instructions */}
+            <div className="glass-neu p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">Submission Rules</h3>
+              <ul className="space-y-2 text-purple-300 text-sm">
+                <li>• Save marks as draft before submitting</li>
+                <li>• Once submitted, marks cannot be edited</li>
+                <li>• Results are automatically released for fee-cleared students</li>
+                <li>• Students with fee holds will see their results after reaching 95% clearance</li>
+              </ul>
+            </div>
           </div>
         )}
       </div>

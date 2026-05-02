@@ -41,21 +41,35 @@ interface Application {
 interface FeePayment {
   id: string;
   application_id: string;
+  semester_id: string;
+  module_id?: string;
   payment_type: string;
   amount: number;
   payment_method: string;
   transaction_id: string;
-  payment_date: string;
-  semester: number;
-  module: number;
-  status: string;
   receipt_number: string;
-  notes: string;
+  payment_date: string;
+  status: string;
   application: {
     full_name: string;
     admission_number: string;
     course_id: string;
   };
+  semesters?: {
+    semester_index: number;
+    module_index: number;
+  } | null;
+  modules?: {
+    module_index: number;
+  } | null;
+}
+
+interface Semester {
+  id: string;
+  semester_index: number;
+  module_index: number;
+  fee: number;
+  practical_fee: number;
 }
 
 export default function PaymentsPage() {
@@ -71,31 +85,42 @@ export default function PaymentsPage() {
   const [feeTypes, setFeeTypes] = useState(DEFAULT_FEE_TYPES);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedExamBody, setSelectedExamBody] = useState<string>('all');
-  type PaymentFormData = {
-    application_id: string;
-    payment_type: 'tuition' | 'practical' | 'exam' | 'other';
-    amount: number;
-    payment_method: 'cash' | 'bank_transfer' | 'card' | 'mpesa';
-    transaction_id: string;
-    payment_date: string;
-    semester: number;
-    module: number;
-    notes: string;
-  };
+   type PaymentFormData = {
+     application_id: string;
+     semester_id: string;
+     payment_type: 'tuition' | 'practical' | 'exam' | 'other';
+     amount: number;
+     payment_method: 'cash' | 'bank_transfer' | 'card' | 'mpesa';
+     transaction_id: string;
+     receipt_number: string;
+     payment_date: string;
+     notes: string;
+   };
 
   const [formData, setFormData] = useState<PaymentFormData>({
     application_id: '',
+    semester_id: '',
     payment_type: 'tuition',
     amount: 0,
     payment_method: 'cash',
     transaction_id: '',
+    receipt_number: '',
     payment_date: new Date().toISOString().split('T')[0],
-    semester: 1,
-    module: 1,
     notes: ''
   });
+
+  // Student fee balance and clearance info
+  const [studentBalance, setStudentBalance] = useState<{
+    total_balance: number;
+    current_semester_fee: number;
+    amount_paid_current: number;
+    clearance_pct: number;
+    amount_needed_for_95: number;
+    is_cleared: boolean;
+  } | null>(null);
   const [receiptNumber, setReceiptNumber] = useState('');
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
+  const [availableSemesters, setAvailableSemesters] = useState<Semester[]>([]);
 
   const generateReceiptNumber = useCallback(() => {
     const year = new Date().getFullYear();
@@ -103,12 +128,12 @@ export default function PaymentsPage() {
     return `REC-${year}-${random}`;
   }, []);
 
-  const loadPayments = useCallback(async (campusFilter: string) => {
-    if (!supabase) return;
-    let query = supabase
-      .from('fee_payments')
-      .select(`*,application:applications!inner(full_name,admission_number,course_id,campus)`)
-      .order('payment_date', { ascending: false });
+   const loadPayments = useCallback(async (campusFilter: string) => {
+     if (!supabase) return;
+     let query = supabase
+       .from('fee_payments')
+       .select(`*,application:applications!inner(full_name,admission_number,course_id,campus),semesters(semester_index,module_index),modules(module_index)`)
+       .order('payment_date', { ascending: false });
     if (campusFilter && campusFilter !== 'all') {
       const campusVariants = [
         campusFilter,
@@ -144,6 +169,55 @@ export default function PaymentsPage() {
     else { setApplications(data || []); }
   }, [supabase]);
 
+  // Load student balance and clearance status using database function
+  const loadStudentBalance = useCallback(async (admissionNumber: string) => {
+    if (!supabase) return;
+    try {
+      // Call the database function to get student balance
+      const { data, error } = await supabase.rpc('get_student_balance', {
+        p_admission_number: admissionNumber
+      });
+      
+      if (error) {
+        console.error('Error loading student balance:', error);
+        setStudentBalance(null);
+        return;
+      }
+      
+      // Get fee clearance status for current semester
+      const { data: clearanceData, error: clearanceError } = await supabase
+        .from('v_fee_clearance_status')
+        .select('*')
+        .eq('admission_number', admissionNumber)
+        .order('semester', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (clearanceError) {
+        console.log('Clearance data not available:', clearanceError);
+      }
+      
+      // Calculate amount needed for 95% clearance
+      const currentSemesterFee = data?.total_balance || 0;
+      const amountPaid = clearanceData?.amount_paid || 0;
+      const requiredFor95 = currentSemesterFee * 0.95;
+      const amountNeeded = Math.max(0, requiredFor95 - amountPaid);
+      const clearancePct = clearanceData?.paid_pct || 0;
+      
+      setStudentBalance({
+        total_balance: data?.total_balance || 0,
+        current_semester_fee: currentSemesterFee,
+        amount_paid_current: amountPaid,
+        clearance_pct: clearancePct,
+        amount_needed_for_95: amountNeeded,
+        is_cleared: clearanceData?.clearance_status === 'cleared' || clearancePct >= 95
+      });
+    } catch (err) {
+      console.error('Error in loadStudentBalance:', err);
+      setStudentBalance(null);
+    }
+  }, [supabase]);
+
   useEffect(() => {
     const client = createClient();
     setSupabase(client);
@@ -167,87 +241,57 @@ export default function PaymentsPage() {
     const application = applications.find(app => app.id === applicationId);
     if (application) {
       setSelectedApplication(application);
-      setFormData({
-        ...formData,
-        application_id: applicationId,
-        semester: application.current_semester,
-        module: application.current_module
-      });
-
-      // Load student's course fee structure
-      try {
-        const { data: student } = await supabase
-          .from('applications')
-          .select('course_type_id, current_semester, current_module')
-          .eq('id', applicationId)
-          .single();
-
-        if (student) {
-          // Get course type info
-          const { data: courseType } = await supabase
-            .from('course_types')
-            .select('*, courses(*)')
-            .eq('id', student.course_type_id)
-            .single();
-
-          if (courseType) {
-            const examBody = courseType.courses?.exam_body || 'internal';
-
-            // Get module and semester data
-            const { data: module } = await supabase
-              .from('modules')
-              .select('*, semesters(*)')
-              .eq('course_type_id', student.course_type_id)
-              .eq('module_index', student.current_module)
-              .single();
-
-            if (module) {
-              let tuitionAmount = 0;
-              let practicalAmount = 0;
-              let examAmount = 0;
-
-              if (examBody === 'internal' && courseType.study_mode === 'short-course') {
-                // Short course - use course_id link
-                const { data: shortCourse } = await supabase
-                  .from('short_courses')
-                  .select('*')
-                  .eq('course_id', courseType.course_id)
-                  .single();
-                if (shortCourse) {
-                  tuitionAmount = shortCourse.first_installment + shortCourse.subsequent_installment;
-                  practicalAmount = shortCourse.practical_fee;
-                }
-              } else if (examBody === 'CDACC' && module.semesters && module.semesters.length === 0) {
-                // CDACC once_per_stage
-                tuitionAmount = module.fee;
-                examAmount = module.exam_fee;
-              } else {
-                // Standard modular courses
-                const semester = module.semesters?.find((s: any) => s.semester_index === student.current_semester);
-                if (semester) {
-                  tuitionAmount = semester.fee;
-                  practicalAmount = semester.practical_fee;
-                  examAmount = module.exam_fee;
-                  // JP: add course-level exam fee
-                  if (examBody === 'JP') {
-                    examAmount += courseType.exam_fee || 0;
-                  }
-                }
-              }
-
-              // Update FEE_TYPES with actual amounts
-              const updatedFeeTypes = [
-                { id: 'tuition', label: 'Tuition Fee', icon: '🎓', amount: tuitionAmount },
-                { id: 'practical', label: 'Practical Fee', icon: '🔬', amount: practicalAmount },
-                { id: 'exam', label: 'Exam Fee', icon: '📝', amount: examAmount },
-                { id: 'other', label: 'Other Fee', icon: '💼', amount: 0 },
-              ];
-              setFeeTypes(updatedFeeTypes);
-            }
+      
+      // Load student's balance and clearance status
+      await loadStudentBalance(application.admission_number);
+      
+       // Load available semesters for this student
+       try {
+         const { data: semesters, error: semError } = await supabase
+           .from('semesters')
+           .select('id, semester_index, module_index, fee, practical_fee')
+           .eq('application_id', applicationId)
+           .order('semester_index', { ascending: true });
+           
+         if (!semError && semesters) {
+           const typedSemesters: Semester[] = semesters;
+           setAvailableSemesters(typedSemesters);
+           
+           // Auto-select current semester
+           const currentSem = typedSemesters.find(s => s.semester_index === application.current_semester);
+          if (currentSem) {
+            setFormData(prev => ({
+              ...prev,
+              application_id: applicationId,
+              semester_id: currentSem.id
+            }));
           }
         }
       } catch (err) {
-        console.error('Error loading fee structure:', err);
+        console.error('Error loading semesters:', err);
+      }
+      
+      // Load fee structure from view
+      try {
+        const { data: feeStructure } = await supabase
+          .from('v_course_fee_structure')
+          .select('*')
+          .eq('course_id', application.course_id)
+          .eq('level', application.course_types?.level || 'general')
+          .eq('semester', application.current_semester)
+          .single();
+          
+        if (feeStructure) {
+          const updatedFeeTypes = [
+            { id: 'tuition', label: 'Tuition Fee', icon: '🎓', amount: feeStructure.tuition_fee || 0 },
+            { id: 'practical', label: 'Practical Fee', icon: '🔬', amount: feeStructure.practical_fee || 0 },
+            { id: 'exam', label: 'Exam Fee', icon: '📝', amount: feeStructure.exam_fee || 0 },
+            { id: 'extra', label: 'Other Fee', icon: '💼', amount: 0 },
+          ];
+          setFeeTypes(updatedFeeTypes);
+        }
+      } catch (err) {
+        console.error('Error loading fee structure from view:', err);
       }
     }
   };
@@ -261,32 +305,62 @@ export default function PaymentsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.semester_id) {
+      alert('Please select a semester');
+      return;
+    }
+    
     const receiptNum = generateReceiptNumber();
     setReceiptNumber(receiptNum);
+    
     const submitData = {
-      ...formData,
+      application_id: formData.application_id,
+      semester_id: formData.semester_id,
       amount: parseFloat(formData.amount.toString()),
-      semester: parseInt(formData.semester.toString()),
-      module: parseInt(formData.module.toString()),
+      payment_method: formData.payment_method,
+      transaction_id: formData.transaction_id,
       receipt_number: receiptNum,
+      payment_date: formData.payment_date,
+      payment_type: formData.payment_type,
       status: 'completed' as const
     };
+    
     const { error } = await supabase.from('fee_payments').insert([submitData]);
-    if (error) { console.error('Error recording payment:', error); } 
-    else {
-      const { updateFinancialHoldAfterPayment } = await import('@/lib/fee-calculation');
-      await updateFinancialHoldAfterPayment(formData.application_id);
+    if (error) { 
+      console.error('Error recording payment:', error);
+      alert('Error recording payment: ' + error.message);
+    } else {
+      // Database trigger automatically calculates clearance - no manual update needed
       setShowReceipt(true);
       await loadPayments(campus);
+      // Refresh student balance to show updated clearance
+      if (selectedApplication) {
+        await loadStudentBalance(selectedApplication.admission_number);
+      }
     }
   };
 
   const handleNewPayment = () => {
-    setShowReceipt(false); setShowForm(false); setSelectedApplication(null);
+    setShowReceipt(false); 
+    setShowForm(false); 
+    setSelectedApplication(null);
+    setStudentBalance(null);
+    setAvailableSemesters([]);
     setFeeTypes(DEFAULT_FEE_TYPES);
     setSelectedExamBody('all');
     setSearchQuery('');
-    setFormData({ application_id: '', payment_type: 'tuition', amount: 0, payment_method: 'cash', transaction_id: '', payment_date: new Date().toISOString().split('T')[0], semester: 1, module: 1, notes: '' });
+    setFormData({ 
+      application_id: '', 
+      semester_id: '',
+      payment_type: 'tuition', 
+      amount: 0, 
+      payment_method: 'cash', 
+      transaction_id: '', 
+      receipt_number: '',
+      payment_date: new Date().toISOString().split('T')[0], 
+      notes: '' 
+    });
   };
 
   const getCampusName = (c: string) => c === 'main' ? 'Main Campus' : 'West Campus';
@@ -446,6 +520,48 @@ export default function PaymentsPage() {
                           <div className="text-sm font-bold text-red-600 mt-1">Balance: KES {selectedApplication.total_balance?.toLocaleString() || 0}</div>
                         </div>
                       </div>
+                      
+                      {/* Student Balance & Clearance Info */}
+                      {studentBalance && (
+                        <div className="mt-4 pt-4 border-t border-purple-200">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                            <div>
+                              <div className="text-gray-500 text-xs">Clearance</div>
+                              <div className={`font-bold ${studentBalance.is_cleared ? 'text-green-600' : 'text-orange-600'}`}>
+                                {studentBalance.clearance_pct.toFixed(1)}%
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-gray-500 text-xs">Paid This Sem</div>
+                              <div className="font-medium text-gray-700">
+                                KES {studentBalance.amount_paid_current.toLocaleString()}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-gray-500 text-xs">Semester Fee</div>
+                              <div className="font-medium text-gray-700">
+                                KES {studentBalance.current_semester_fee.toLocaleString()}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-gray-500 text-xs">Need for 95%</div>
+                              <div className={`font-bold ${studentBalance.amount_needed_for_95 > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                KES {studentBalance.amount_needed_for_95.toLocaleString()}
+                              </div>
+                            </div>
+                          </div>
+                          {studentBalance.amount_needed_for_95 > 0 && (
+                            <div className="mt-2 text-xs text-orange-600 bg-orange-50 p-2 rounded">
+                              ⚠️ Student needs KES {studentBalance.amount_needed_for_95.toLocaleString()} more to reach 95% clearance for results
+                            </div>
+                          )}
+                          {studentBalance.is_cleared && (
+                            <div className="mt-2 text-xs text-green-600 bg-green-50 p-2 rounded">
+                              ✅ Student is fee cleared (≥95%). Results will be released automatically.
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -500,21 +616,30 @@ export default function PaymentsPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Payment Date</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Payment Date *</label>
                       <input type="date" value={formData.payment_date} onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}
                         className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent text-base" required />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Semester</label>
-                      <input type="number" value={formData.semester} onChange={(e) => setFormData({ ...formData, semester: parseInt(e.target.value) || 1 })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent text-base" min="1" max="6" required />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Module</label>
-                      <input type="number" value={formData.module} onChange={(e) => setFormData({ ...formData, module: parseInt(e.target.value) || 1 })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent text-base" min="1" required />
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Select Semester *</label>
+                      <select 
+                        value={formData.semester_id} 
+                        onChange={(e) => setFormData({ ...formData, semester_id: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent text-base" 
+                        required
+                      >
+                        <option value="">-- Select Semester --</option>
+                        {availableSemesters.map((sem) => (
+                          <option key={sem.id} value={sem.id}>
+                            Semester {sem.semester_index} (Module {sem.module_index}) - KES {sem.fee?.toLocaleString() || 0}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Required for automatic 95% clearance calculation
+                      </p>
                     </div>
                   </div>
 
@@ -552,27 +677,32 @@ export default function PaymentsPage() {
             </div>
           )}
 
-          {showReceipt && selectedApplication && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                <div className="text-center mb-6">
-                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4"><svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg></div>
-                  <h2 className="text-2xl font-bold text-gray-800 mb-2">Payment Recorded Successfully!</h2>
-                  <div className="bg-purple-100 text-purple-700 px-4 py-2 rounded-full text-sm font-mono font-bold inline-block">{receiptNumber}</div>
-                </div>
-                <div className="bg-gray-50 rounded-xl p-6 mb-6 space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div><span className="text-xs text-gray-500">Student</span><div className="font-medium">{selectedApplication.full_name}</div><div className="text-sm text-gray-500 font-mono">{selectedApplication.admission_number}</div></div>
-                    <div><span className="text-xs text-gray-500">Fee Type</span><div className="font-medium capitalize">{formData.payment_type}</div></div>
-                    <div><span className="text-xs text-gray-500">Amount</span><div className="font-bold text-lg">KES {formData.amount.toLocaleString()}</div></div>
-                    <div><span className="text-xs text-gray-500">Payment Method</span><div className="font-medium capitalize">{formData.payment_method}</div></div>
-                    <div><span className="text-xs text-gray-500">Date</span><div className="font-medium">{new Date(formData.payment_date).toLocaleDateString()}</div></div>
-                    <div><span className="text-xs text-gray-500">Sem/Mod</span><div className="font-medium">S{formData.semester} M{formData.module}</div></div>
-                    {formData.transaction_id && formData.transaction_id !== 'N/A - Cash Payment' && (
-                      <div className="col-span-2"><span className="text-xs text-gray-500">Transaction Reference</span><div className="font-mono font-medium">{formData.transaction_id}</div></div>
-                    )}
-                  </div>
-                </div>
+           {showReceipt && selectedApplication && (
+             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+               <div className="bg-white rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                 <div className="text-center mb-6">
+                   <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4"><svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg></div>
+                   <h2 className="text-2xl font-bold text-gray-800 mb-2">Payment Recorded Successfully!</h2>
+                   <div className="bg-purple-100 text-purple-700 px-4 py-2 rounded-full text-sm font-mono font-bold inline-block">{receiptNumber}</div>
+                 </div>
+                 <div className="bg-gray-50 rounded-xl p-6 mb-6 space-y-4">
+                   <div className="grid grid-cols-2 gap-4">
+                     <div><span className="text-xs text-gray-500">Student</span><div className="font-medium">{selectedApplication.full_name}</div><div className="text-sm text-gray-500 font-mono">{selectedApplication.admission_number}</div></div>
+                     <div><span className="text-xs text-gray-500">Fee Type</span><div className="font-medium capitalize">{formData.payment_type}</div></div>
+                     <div><span className="text-xs text-gray-500">Amount</span><div className="font-bold text-lg">KES {formData.amount.toLocaleString()}</div></div>
+                     <div><span className="text-xs text-gray-500">Payment Method</span><div className="font-medium capitalize">{formData.payment_method}</div></div>
+                     <div><span className="text-xs text-gray-500">Date</span><div className="font-medium">{new Date(formData.payment_date).toLocaleDateString()}</div></div>
+                     {(() => {
+                       const sem = availableSemesters.find(s => s.id === formData.semester_id);
+                       return sem ? (
+                         <div><span className="text-xs text-gray-500">Sem/Mod</span><div className="font-medium">S{sem.semester_index} M{sem.module_index}</div></div>
+                       ) : null;
+                     })()}
+                     {formData.transaction_id && formData.transaction_id !== 'N/A - Cash Payment' && (
+                       <div className="col-span-2"><span className="text-xs text-gray-500">Transaction Reference</span><div className="font-mono font-medium">{formData.transaction_id}</div></div>
+                     )}
+                   </div>
+                 </div>
                 <div className="flex gap-3">
                   <button onClick={handleNewPayment} className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-xl transition-all duration-200 font-semibold shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50">Record Another Payment</button>
                   <button onClick={() => { setShowReceipt(false); setShowForm(false); setSelectedApplication(null); setReceiptNumber(''); }}
@@ -603,7 +733,7 @@ export default function PaymentsPage() {
                       <td className="py-3 px-4 font-bold">KES {payment.amount.toLocaleString()}</td>
                       <td className="py-3 px-4 capitalize">{payment.payment_method}</td>
                       <td className="py-3 px-4">{new Date(payment.payment_date).toLocaleDateString()}</td>
-                      <td className="py-3 px-4">S{payment.semester} M{payment.module}</td>
+                       <td className="py-3 px-4">S{payment.semesters?.semester_index || '?'} M{payment.modules?.module_index || '?'}</td>
                       <td className="py-3 px-4"><span className={`px-2 py-1 rounded text-xs font-medium ${payment.status === 'completed' ? 'bg-green-500/20 text-green-300' : payment.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300' : payment.status === 'failed' ? 'bg-red-500/20 text-red-300' : 'bg-gray-500/20 text-gray-300'}`}>{payment.status}</span></td>
                     </tr>
                   ))

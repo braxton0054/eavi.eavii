@@ -10,6 +10,7 @@ type LevelKey = 'diploma' | 'certificate' | 'artisan' | 'level6' | 'level5' | 'l
 type ExamBody = 'JP' | 'CDACC' | 'KNEC' | 'internal';
 
 interface Unit {
+  id: string;
   course_id: string;
   unit_code: string;
   name: string;
@@ -208,14 +209,20 @@ export default function UnitsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">Loading...</div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex items-center gap-3 text-gray-600">
+          <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span className="text-sm font-medium">Loading units...</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Units Management</h1>
@@ -223,7 +230,7 @@ export default function UnitsPage() {
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Search */}
             <div>
@@ -262,12 +269,12 @@ export default function UnitsPage() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="all">All Levels</option>
-                <option value="diploma">Diploma</option>
-                <option value="certificate">Certificate</option>
-                <option value="artisan">Artisan</option>
-                <option value="level6">Level 6</option>
-                <option value="level5">Level 5</option>
-                <option value="level4">Level 4</option>
+                <option value="diploma">KNEC Diploma</option>
+                <option value="certificate">KNEC Certificate</option>
+                <option value="artisan">KNEC Artisan</option>
+                <option value="level6">CDACC Level 6</option>
+                <option value="level5">CDACC Level 5</option>
+                <option value="level4">CDACC Level 4</option>
               </select>
             </div>
           </div>
@@ -275,21 +282,21 @@ export default function UnitsPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow p-4">
+          <div className="bg-gray-100 rounded-lg p-4">
             <div className="text-2xl font-bold text-gray-900">{units.length}</div>
             <div className="text-sm text-gray-600">Total Units</div>
           </div>
-          <div className="bg-white rounded-lg shadow p-4">
+          <div className="bg-gray-100 rounded-lg p-4">
             <div className="text-2xl font-bold text-blue-600">{filteredUnits.length}</div>
             <div className="text-sm text-gray-600">Filtered Units</div>
           </div>
-          <div className="bg-white rounded-lg shadow p-4">
+          <div className="bg-gray-100 rounded-lg p-4">
             <div className="text-2xl font-bold text-green-600">
               {new Set(units.map((u) => u.course_id)).size}
             </div>
             <div className="text-sm text-gray-600">Total Courses</div>
           </div>
-          <div className="bg-white rounded-lg shadow p-4">
+          <div className="bg-gray-100 rounded-lg p-4">
             <div className="text-2xl font-bold text-purple-600">
               {new Set(units.filter((u) => u.exam_body === 'KNEC').map((u) => u.course_id)).size}
             </div>
@@ -298,7 +305,7 @@ export default function UnitsPage() {
         </div>
 
         {/* Units Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -335,7 +342,7 @@ export default function UnitsPage() {
                   </tr>
                 ) : (
                   filteredUnits.map((unit) => (
-                    <tr key={`${unit.course_id}-${unit.unit_code}`} className="hover:bg-gray-50">
+                    <tr key={unit.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {unit.unit_code}
                       </td>
