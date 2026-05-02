@@ -923,6 +923,12 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                         </div>
                       </div>
                       <div className="flex gap-2 mt-3">
+                        <Link
+                          href={`/admin/student-details/${application.id}`}
+                          className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-xs font-semibold text-center"
+                        >
+                          View Details
+                        </Link>
                         {application.status === 'pending' && (
                           <>
                             <button
@@ -1004,7 +1010,13 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                             {application.classes?.class_name || '-'}
                           </td>
                           <td className="py-4 px-4">
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 flex-wrap">
+                              <Link
+                                href={`/admin/student-details/${application.id}`}
+                                className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors duration-300 text-sm font-semibold"
+                              >
+                                Details
+                              </Link>
                               {application.status === 'pending' && (
                                 <>
                                   <button

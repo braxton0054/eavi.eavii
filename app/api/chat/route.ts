@@ -16,7 +16,7 @@ const supabaseFunctions = {
       properties: {
         limit: {
           type: 'number',
-          description: 'Maximum number of records to return (default: 20)',
+          description: 'Maximum number of records to return (default: 25)',
         },
         campus: {
           type: 'string',
@@ -36,7 +36,7 @@ const supabaseFunctions = {
       properties: {
         limit: {
           type: 'number',
-          description: 'Maximum number of records to return (default: 20)',
+          description: 'Maximum number of records to return (default: 10)',
         },
         studentId: {
           type: 'string',
@@ -52,7 +52,7 @@ const supabaseFunctions = {
       properties: {
         limit: {
           type: 'number',
-          description: 'Maximum number of records to return (default: 20)',
+          description: 'Maximum number of records to return (default: 15)',
         },
         courseId: {
           type: 'string',
@@ -68,7 +68,7 @@ const supabaseFunctions = {
       properties: {
         limit: {
           type: 'number',
-          description: 'Maximum number of records to return (default: 20)',
+          description: 'Maximum number of records to return (default: 15)',
         },
         campus: {
           type: 'string',
@@ -84,7 +84,7 @@ const supabaseFunctions = {
       properties: {
         limit: {
           type: 'number',
-          description: 'Maximum number of records to return (default: 20)',
+          description: 'Maximum number of records to return (default: 15)',
         },
         status: {
           type: 'string',
@@ -104,7 +104,7 @@ const supabaseFunctions = {
       properties: {
         limit: {
           type: 'number',
-          description: 'Maximum number of records to return (default: 50)',
+          description: 'Maximum number of records to return (default: 20)',
         },
         logType: {
           type: 'string',
@@ -339,12 +339,12 @@ async function executeSupabaseQuery(functionName: string, args: any) {
         
         // Normalize campus value
         const normalizedCampus = args.campus?.toLowerCase().trim();
-        
+
         let studentQuery = supabase
           .from('v_student_financials')
           .select('*, courses(name)')
-          .limit(args.limit || 50);
-        
+          .limit(args.limit || 25);
+
         // Handle both 'main'/'west' and 'Main Campus'/'West Campus' formats
         if (normalizedCampus && normalizedCampus !== 'all') {
           const campusVariants = normalizedCampus.includes('west') 
@@ -399,38 +399,38 @@ async function executeSupabaseQuery(functionName: string, args: any) {
         };
         break;
 
-      case 'queryFees':
-        dataType = 'financials';
-        const { data: payments, error: paymentsError } = await supabase
-          .from('fee_payments')
-          .select('*')
-          .order('payment_date', { ascending: false })
-          .limit(args.limit || 20);
-        
-        if (paymentsError) {
-          return {
-            error: true,
-            errorType: 'database_error',
-            message: 'Unable to retrieve payment records.',
-            suggestion: 'Check if the fee_payments table exists and has the correct permissions.',
-            technicalDetails: paymentsError.message,
-          };
-        }
-        
-        const { data: installments, error: installmentsError } = await supabase
-          .from('payment_installments')
-          .select('*')
-          .order('due_date', { ascending: false })
-          .limit(args.limit || 20);
-        
-        if (installmentsError) {
-          console.warn('Installments query warning:', installmentsError);
-        }
-        
-        const { data: financials, error: financialsError } = await supabase
-          .from('v_student_financials')
-          .select('*')
-          .limit(args.limit || 20);
+case 'queryFees':
+         dataType = 'financials';
+         const { data: payments, error: paymentsError } = await supabase
+           .from('fee_payments')
+           .select('*')
+           .order('payment_date', { ascending: false })
+           .limit(args.limit || 10);  // Reduced from 20 to 10
+         
+         if (paymentsError) {
+           return {
+             error: true,
+             errorType: 'database_error',
+             message: 'Unable to retrieve payment records.',
+             suggestion: 'Check if the fee_payments table exists and has the correct permissions.',
+             technicalDetails: paymentsError.message,
+           };
+         }
+         
+         const { data: installments, error: installmentsError } = await supabase
+           .from('payment_installments')
+           .select('*')
+           .order('due_date', { ascending: false })
+           .limit(args.limit || 10);  // Reduced from 20 to 10
+         
+         if (installmentsError) {
+           console.warn('Installments query warning:', installmentsError);
+         }
+         
+         const { data: financials, error: financialsError } = await supabase
+           .from('v_student_financials')
+           .select('*')
+           .limit(args.limit || 10);  // Reduced from 20 to 10
         
         if (financialsError) {
           console.warn('Financials view query warning:', financialsError);
@@ -465,12 +465,12 @@ async function executeSupabaseQuery(functionName: string, args: any) {
         result = { courses };
         break;
 
-      case 'queryLecturers':
-        dataType = 'lecturers';
-        let lecturerQuery = supabase
-          .from('lecturers')
-          .select('*')
-          .limit(args.limit || 20);
+case 'queryLecturers':
+         dataType = 'lecturers';
+         let lecturerQuery = supabase
+           .from('lecturers')
+           .select('*')
+           .limit(args.limit || 15);  // Reduced from 20 to 15
         
         if (args.campus && args.campus !== 'all') {
           lecturerQuery = lecturerQuery.eq('campus', args.campus);
@@ -525,12 +525,12 @@ async function executeSupabaseQuery(functionName: string, args: any) {
         result = { applications };
         break;
 
-      case 'querySystemLogs':
-        let logQuery = supabase
-          .from('system_logs')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(args.limit || 50);
+case 'querySystemLogs':
+         let logQuery = supabase
+           .from('system_logs')
+           .select('*')
+           .order('created_at', { ascending: false })
+           .limit(args.limit || 20);  // Reduced from 50 to 20
         
         if (args.logType) {
           logQuery = logQuery.eq('log_type', args.logType);
@@ -899,26 +899,124 @@ async function updateIssueMemory(message: string, aiResponse: string) {
   }
 }
 
+// Humanize AI response to make it more conversational
+async function humanizeResponse(rawResponse: string): Promise<string> {
+  // Skip humanization if response is very short
+  if (!rawResponse || rawResponse.length < 50) {
+    return rawResponse;
+  }
+
+  try {
+    // Use AI to humanize the response and remove ALL markdown
+    const humanizePrompt = `Rewrite this in a warm, conversational tone without markdown formatting:
+
+${rawResponse}`;
+
+    let humanizedResponse = '';
+    
+    // Try Groq first
+    try {
+      const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [
+            { role: 'system', content: 'You are an expert at converting structured data into natural, conversational language without any markdown formatting.' },
+            { role: 'user', content: humanizePrompt }
+          ],
+          temperature: 0.95,
+max_tokens: 800,
+         }),
+       });
+
+       if (groqResponse.ok) {
+         const groqData = await groqResponse.json();
+         humanizedResponse = groqData.choices[0]?.message?.content || rawResponse;
+       }
+     } catch (err) {
+       console.warn('Groq humanization failed, trying Mistral...');
+     }
+
+     // Fallback to Mistral
+     if (!humanizedResponse && process.env.MISTRAL_API_KEY) {
+       try {
+         const mistralResponse = await fetch('https://api.mistral.ai/v1/chat/completions', {
+           method: 'POST',
+           headers: {
+             'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`,
+             'Content-Type': 'application/json',
+           },
+           body: JSON.stringify({
+             model: 'mistral-large-latest',
+             messages: [
+               { role: 'system', content: 'Convert structured data to natural language without markdown.' },
+               { role: 'user', content: humanizePrompt }
+             ],
+             temperature: 0.95,
+max_tokens: 800,
+            }),
+          });
+
+if (mistralResponse.ok) {
+             const mistralData = await mistralResponse.json();
+             humanizedResponse = mistralData.choices[0]?.message?.content || rawResponse;
+           }
+         } catch (err) {
+           console.warn('Mistral humanization also failed');
+         }
+       }
+
+       // Final cleanup - remove any remaining markdown symbols
+       if (humanizedResponse) {
+         humanizedResponse = humanizedResponse
+           .replace(/^#{1,6}\s+/gm, '')
+           .replace(/^[*\-]\s+/gm, '')
+           .replace(/\*\*(.+?)\*\*/g, '$1')
+           .replace(/\*(.+?)\*/g, '$1')
+           .replace(/`(.+?)`/g, '$1')
+           .replace(/\[(.+?)\]\(.+?\)/g, '$1')
+           .trim();
+       }
+
+    return humanizedResponse || rawResponse;
+  } catch (error) {
+    console.error('Humanization error:', error);
+    return rawResponse; // Return original if humanization fails
+  }
+}
+
 export async function POST(request: NextRequest) {
+  let finalUserId = '00000000-0000-0000-0000-000000000000';
+  let finalCampus = 'main';
+  let userMessage = '';
+  let userRole = '';
+  let userName = '';
+
   try {
     console.log('=== CHAT API REQUEST ===');
     console.log('Timestamp:', new Date().toISOString());
     console.log('URL:', request.url);
-    
+
     const body = await request.json();
     console.log('Request body:', JSON.stringify(body, null, 2));
-    
-    const { message, userId, campus, userRole, userName } = body;
 
-    if (!message) {
+    const { message: msg, userId, campus, role, name } = body;
+    userMessage = msg;
+    userRole = role;
+    userName = name;
+    finalUserId = userId || finalUserId;
+    finalCampus = campus || finalCampus;
+
+    if (!userMessage) {
       console.error('ERROR: Message is required');
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
     }
-    
-    console.log('Message received:', message.substring(0, 100));
 
-    const finalUserId = userId || '00000000-0000-0000-0000-000000000000';
-    const finalCampus = campus || 'main';
+    console.log('Message received:', userMessage.substring(0, 100));
 
     // Fetch AI memory
     const aiMemory = await fetchAIMemory(finalUserId, false);
@@ -936,28 +1034,31 @@ export async function POST(request: NextRequest) {
 
     // Build system prompt with memory context
     let memoryContext = '';
-    
+
     if (aiMemory.userFacts && aiMemory.userFacts.length > 0) {
       memoryContext += '\n\nUser Facts I Remember:\n';
-      aiMemory.userFacts.forEach((mem: any) => {
+      aiMemory.userFacts.slice(0, 5).forEach((mem: any) => {
         memoryContext += `- ${mem.fact_key}: ${mem.fact_value}\n`;
       });
     }
 
-    if (aiMemory.chatHistory && aiMemory.chatHistory.length > 0) {
+if (aiMemory.chatHistory && aiMemory.chatHistory.length > 0) {
       memoryContext += '\n\nRecent Conversation:\n';
-      aiMemory.chatHistory.forEach((msg: any) => {
+      aiMemory.chatHistory.slice(0, 5).forEach((msg: any) => {
         memoryContext += `${msg.role}: ${msg.message}\n`;
       });
     }
 
-    // Fetch Supabase schema for database context
+    // Fetch Supabase schema for database context (reduced for token efficiency)
     const schemaTables = await getSupabaseSchema();
-    const schemaContext = schemaTables.length > 0 
-      ? getSimplifiedSchema(schemaTables, 15) 
+    // Only include essential tables, limit columns to reduce tokens
+    const essentialTables = ['students', 'applications', 'courses', 'fee_payments', 'lecturers', 'classes'];
+    const filteredSchema = schemaTables.filter(t => essentialTables.includes(t.table));
+    const schemaContext = filteredSchema.length > 0
+      ? getSimplifiedSchema(filteredSchema, 5)
       : 'Database schema not available';
 
-    const userContext = userRole || userName 
+    const userContext = userRole || userName
       ? `\n\nCURRENT USER CONTEXT:\n- Role: ${userRole || 'Unknown'}\n- Name: ${userName || 'Unknown'}\n- Campus: ${finalCampus}\n- User ID: ${finalUserId}\n\nIMPORTANT: You already know this user's role. DO NOT ask them to identify themselves or their role. Address them directly based on their role.`
       : '';
 
@@ -976,6 +1077,16 @@ You are an expert database analyst and developer assistant. Use the schema above
 - Suggest schema improvements with specific code
 - Write optimized Supabase queries
 - Spot performance bottlenecks and security risks
+
+HUMANIZATION RULES - VERY IMPORTANT:
+1. Convert structured academic data into natural, conversational explanations
+2. Avoid rigid formatting unless the user explicitly requests it
+3. Use simple, human-like language, short paragraphs, and occasional bullet points
+4. Do not sound like a database or API response
+5. When presenting lists or structured information, rewrite them in a friendly tone as if explaining to a student in a conversation
+6. Avoid excessive headings and strict formatting
+7. Default to chat mode unless user requests structured format
+8. Use temperature-appropriate language (warm, helpful, conversational)
 
 ERROR HANDLING AND VALIDATION INSTRUCTIONS:
 
@@ -1047,7 +1158,7 @@ DATA PRESENTATION GUIDELINES:
     // Initialize conversation for agentic loop
     const conversationMessages: any[] = [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: message },
+      { role: 'user', content: userMessage },
     ];
     
     let aiResponse = '';
@@ -1059,52 +1170,83 @@ DATA PRESENTATION GUIDELINES:
     while (iteration < maxIterations) {
       iteration++;
       
-      // Call Groq API
-      const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: conversationMessages,
-          tools,
-          tool_choice: 'auto',
-          temperature: 0.7,
-          max_tokens: 2000,
-        }),
-      });
+      let aiMessage: any = null;
+      let lastError: string = '';
+      
+      // Try Groq first
+      try {
+        const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+model: 'llama-3.3-70b-versatile',
+             messages: conversationMessages,
+             tools,
+             tool_choice: 'auto',
+             temperature: 0.9,
+             max_tokens: 1500,
+           }),
+         });
 
-      if (!groqResponse.ok) {
-        const errorText = await groqResponse.text();
-        const status = groqResponse.status;
-        const statusText = groqResponse.statusText;
-        
-        console.error('=== GROQ API ERROR ===');
-        console.error('Status:', status, statusText);
-        console.error('Response:', errorText);
-        console.error('Headers:', Object.fromEntries(groqResponse.headers.entries()));
-        console.error('======================');
-        
-        // Handle rate limit specifically
-        if (status === 429 || errorText.includes('rate_limit')) {
-          return NextResponse.json({ 
-            error: 'AI service rate limit exceeded. Please try again in a few seconds.',
-            details: errorText,
-            retryAfter: groqResponse.headers.get('retry-after') || '60',
-          }, { status: 429 });
+         if (groqResponse.ok) {
+           const groqData = await groqResponse.json();
+           aiMessage = groqData.choices[0]?.message;
+           console.log('✅ Groq AI responded successfully');
+         } else {
+           const errorText = await groqResponse.text();
+           lastError = `Groq: ${groqResponse.status} ${errorText}`;
+           console.error('❌ Groq failed:', groqResponse.status, errorText);
+         }
+       } catch (groqErr: any) {
+         lastError = `Groq error: ${groqErr.message}`;
+         console.error('❌ Groq exception:', groqErr.message);
+       }
+
+       // Fallback to Mistral if Groq failed
+       if (!aiMessage && process.env.MISTRAL_API_KEY) {
+         try {
+           console.log('🔄 Trying Mistral AI as fallback...');
+           const mistralResponse = await fetch('https://api.mistral.ai/v1/chat/completions', {
+             method: 'POST',
+             headers: {
+               'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`,
+               'Content-Type': 'application/json',
+             },
+             body: JSON.stringify({
+               model: 'mistral-large-latest',
+               messages: conversationMessages,
+               tools,
+               tool_choice: 'auto',
+               temperature: 0.9,
+               max_tokens: 1500,  // Reduced from 2000
+             }),
+          });
+
+          if (mistralResponse.ok) {
+            const mistralData = await mistralResponse.json();
+            aiMessage = mistralData.choices[0]?.message;
+            console.log('✅ Mistral AI responded successfully (fallback)');
+          } else {
+            const errorText = await mistralResponse.text();
+            lastError += ` | Mistral: ${mistralResponse.status} ${errorText}`;
+            console.error('❌ Mistral also failed:', mistralResponse.status, errorText);
+          }
+        } catch (mistralErr: any) {
+          lastError += ` | Mistral error: ${mistralErr.message}`;
+          console.error('❌ Mistral exception:', mistralErr.message);
         }
-        
-        return NextResponse.json({ 
-          error: 'Failed to get response from AI',
-          details: errorText,
-          status: status,
-        }, { status: 500 });
       }
 
-      const groqData = await groqResponse.json();
-      const aiMessage = groqData.choices[0]?.message;
+      // If both failed, return error
+      if (!aiMessage) {
+        return NextResponse.json({ 
+          error: 'Both AI services failed',
+          details: lastError,
+        }, { status: 500 });
+      }
 
       // Check if AI wants to call tools
       const hasToolCalls = aiMessage?.tool_calls && aiMessage.tool_calls.length > 0;
@@ -1170,13 +1312,16 @@ DATA PRESENTATION GUIDELINES:
     // Save to memory (async, don't await)
     const registryId = aiMemory.userRegistry?.id;
     if (registryId) {
-      saveChatHistory(registryId, message, aiResponse);
-      extractAndSaveFacts(registryId, message, aiResponse);
+      saveChatHistory(registryId, userMessage, aiResponse);
+      extractAndSaveFacts(registryId, userMessage, aiResponse);
     }
-    updateIssueMemory(message, aiResponse);
+    updateIssueMemory(userMessage, aiResponse);
+
+    // Humanize the response to make it more conversational
+    const humanizedResponse = await humanizeResponse(aiResponse);
 
     return NextResponse.json({ 
-      response: aiResponse,
+      response: humanizedResponse,
       toolResults: allToolResults,
       usedMemory: (aiMemory.longTermMemory?.length ?? 0) > 0 || (aiMemory.chatHistory?.length ?? 0) > 0,
     });
@@ -1186,6 +1331,116 @@ DATA PRESENTATION GUIDELINES:
     console.error('Error stack:', error?.stack || 'No stack trace');
     console.error('Error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
     console.error('======================');
+
+    // Log error to database
+    try {
+      await supabase.from('system_logs').insert({
+        log_type: 'error',
+        module: 'chat_api',
+        message: error?.message || 'Unknown error',
+        details: {
+          userId: finalUserId || 'Not provided',
+          userRole: userRole || 'Not provided',
+          userName: userName || 'Not provided',
+          campus: finalCampus || 'Not provided',
+          userMessage: userMessage?.substring(0, 500),
+          stack: error?.stack,
+          timestamp: new Date().toISOString(),
+        },
+        severity: 'high',
+      });
+    } catch (logError) {
+      console.error('Failed to log error to database:', logError);
+    }
+
+    // Send email notification about the error using Resend
+    try {
+      const errorMessage = error?.message || 'Unknown error occurred';
+      const errorStack = error?.stack || 'No stack trace available';
+      const timestamp = new Date().toISOString();
+
+      const adminEmail = process.env.ADMIN_EMAIL || 'admin@eavi.ac.ke';
+
+      if (process.env.RESEND_API_KEY && adminEmail) {
+        const resendResponse = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: 'EAVI Chatbot <onboarding@resend.dev>',
+            to: [adminEmail],
+            subject: '🚨 Chatbot Error Alert',
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background: #dc2626; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+                  <h2 style="margin: 0;">🚨 Chatbot Error Alert</h2>
+                </div>
+                <div style="border: 1px solid #e5e7eb; border-top: none; padding: 20px; border-radius: 0 0 8px 8px;">
+                  <h3 style="color: #111; margin-top: 0;">Error Details</h3>
+                  
+                  <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                      <td style="padding: 10px 0; font-weight: bold; color: #374151;">Timestamp:</td>
+                      <td style="padding: 10px 0; color: #6b7280;">${timestamp}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                      <td style="padding: 10px 0; font-weight: bold; color: #374151;">User ID:</td>
+                      <td style="padding: 10px 0; color: #6b7280;">${finalUserId || 'Not provided'}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                      <td style="padding: 10px 0; font-weight: bold; color: #374151;">User Role:</td>
+                      <td style="padding: 10px 0; color: #6b7280;">${userRole || 'Not provided'}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                      <td style="padding: 10px 0; font-weight: bold; color: #374151;">User Name:</td>
+                      <td style="padding: 10px 0; color: #6b7280;">${userName || 'Not provided'}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                      <td style="padding: 10px 0; font-weight: bold; color: #374151;">Campus:</td>
+                      <td style="padding: 10px 0; color: #6b7280;">${finalCampus || 'Not provided'}</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                      <td style="padding: 10px 0; font-weight: bold; color: #374151;">User Message:</td>
+                      <td style="padding: 10px 0; color: #6b7280;">${userMessage?.substring(0, 200) || 'Not available'}</td>
+                    </tr>
+                  </table>
+                  
+                  <div style="background: #fef2f2; border-left: 4px solid #dc2626; padding: 15px; margin: 20px 0;">
+                    <h4 style="margin: 0 0 10px 0; color: #991b1b;">Error Message:</h4>
+                    <p style="margin: 0; color: #7f1d1d; font-family: monospace; font-size: 14px;">${errorMessage}</p>
+                  </div>
+                  
+                  <div style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                    <h4 style="margin: 0 0 10px 0; color: #374151;">Stack Trace:</h4>
+                    <pre style="margin: 0; color: #6b7280; font-size: 12px; overflow-x: auto; white-space: pre-wrap;">${errorStack}</pre>
+                  </div>
+                  
+                  <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
+                  <p style="font-size: 12px; color: #6b7280; margin: 0;">
+                    This is an automated notification from the EAVI Chatbot system.<br />
+                    Please check the server logs and database for more details.
+                  </p>
+                </div>
+              </div>
+            `,
+          }),
+        });
+
+        if (resendResponse.ok) {
+          const resendData = await resendResponse.json();
+          console.log('✅ Error notification email sent via Resend to:', adminEmail, 'ID:', resendData.id);
+        } else {
+          const errorText = await resendResponse.text();
+          console.error('❌ Failed to send error email via Resend:', resendResponse.status, errorText);
+        }
+      } else {
+        console.warn('⚠️ Resend API key or admin email not configured. Set RESEND_API_KEY and ADMIN_EMAIL in .env.local');
+      }
+    } catch (emailError: any) {
+      console.error('Failed to send error notification email:', emailError);
+    }
     
     return NextResponse.json({ 
       error: 'Internal server error',

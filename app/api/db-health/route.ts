@@ -60,13 +60,19 @@ export async function GET() {
       if (data) {
         finalRlsData = await Promise.all(
           data.map(async (t) => {
-            const { data: rlsInfo } = await supabase
-              .rpc('check_rls_status', { table_name: t.table_name })
-              .catch(() => ({ data: { rls_enabled: false } }));
-            return {
-              tablename: t.table_name,
-              rls_enabled: rlsInfo?.rls_enabled || false,
-            };
+            try {
+              const { data: rlsInfo } = await supabase
+                .rpc('check_rls_status', { table_name: t.table_name });
+              return {
+                tablename: t.table_name,
+                rls_enabled: rlsInfo?.rls_enabled || false,
+              };
+            } catch {
+              return {
+                tablename: t.table_name,
+                rls_enabled: false,
+              };
+            }
           })
         );
       }
