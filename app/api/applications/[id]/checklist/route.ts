@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
@@ -12,6 +12,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const supabase = getSupabase();
     const { id } = await params;
     const { data: application, error } = await supabase
       .from('applications')
@@ -63,6 +64,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const supabase = getSupabase();
     const { id } = await params;
     const body = await request.json();
     const { has_spring_file, has_rem_paper, has_kcse_photocopy, has_kcpe_photocopy } = body;

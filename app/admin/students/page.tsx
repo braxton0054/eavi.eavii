@@ -17,6 +17,7 @@ interface Student {
   phone: string;
   course: string;
   course_type?: string;
+  department?: string;
   campus: string;
   kcse_grade: string;
   application_date: string;
@@ -139,7 +140,7 @@ export default function StudentsPage() {
     try {
       let query = supabase
         .from('applications')
-        .select('*, courses(name), course_types(level)')
+        .select('*, courses(name, departments(name)), course_types(level))')
         .order('application_date', { ascending: false });
 
       // Filter by campus to show only this campus's students
@@ -165,7 +166,8 @@ export default function StudentsPage() {
         const enrichedData = (data || []).map((student: any) => ({
           ...student,
           course: student.courses?.name,
-          course_type: student.course_types?.level
+          course_type: student.course_types?.level,
+          department: student.courses?.departments?.name
         }));
         setStudents(enrichedData);
       }
@@ -522,6 +524,10 @@ export default function StudentsPage() {
                           <span className="text-gray-900">{student.kcse_grade}</span>
                         </div>
                         <div className="flex justify-between">
+                          <span className="text-gray-500">Department:</span>
+                          <span className="text-gray-900">{student.department || '-'}</span>
+                        </div>
+                        <div className="flex justify-between">
                           <span className="text-gray-500">Course:</span>
                           <span className="text-gray-900 text-right">{student.course}</span>
                         </div>
@@ -530,12 +536,22 @@ export default function StudentsPage() {
                           <span className="text-gray-900 capitalize">{student.course_type || '-'}</span>
                         </div>
                         <div className="flex justify-between">
+                          <span className="text-gray-500">Module:</span>
+                          <span className="text-gray-900">{student.current_module || '-'}</span>
+                        </div>
+                        <div className="flex justify-between">
                           <span className="text-gray-500">Semester:</span>
                           <span className="text-gray-900">{student.current_semester || '-'}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-500">Class:</span>
                           <span className="text-gray-900">{student.class_name || '-'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Financial Hold:</span>
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${student.financial_hold ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
+                            {student.financial_hold ? 'On Hold' : 'Clear'}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -552,10 +568,13 @@ export default function StudentsPage() {
                         <th className="text-left py-3 px-6 text-gray-500 font-medium text-xs uppercase tracking-wider">Phone</th>
                         <th className="text-left py-3 px-6 text-gray-500 font-medium text-xs uppercase tracking-wider">Email</th>
                         <th className="text-left py-3 px-6 text-gray-500 font-medium text-xs uppercase tracking-wider">KCSE Grade</th>
+                        <th className="text-left py-3 px-6 text-gray-500 font-medium text-xs uppercase tracking-wider">Department</th>
                         <th className="text-left py-3 px-6 text-gray-500 font-medium text-xs uppercase tracking-wider">Course</th>
                         <th className="text-left py-3 px-6 text-gray-500 font-medium text-xs uppercase tracking-wider">Type</th>
+                        <th className="text-left py-3 px-6 text-gray-500 font-medium text-xs uppercase tracking-wider">Module</th>
                         <th className="text-left py-3 px-6 text-gray-500 font-medium text-xs uppercase tracking-wider">Semester</th>
                         <th className="text-left py-3 px-6 text-gray-500 font-medium text-xs uppercase tracking-wider">Class</th>
+                        <th className="text-left py-3 px-6 text-gray-500 font-medium text-xs uppercase tracking-wider">Financial Hold</th>
                         <th className="text-left py-3 px-6 text-gray-500 font-medium text-xs uppercase tracking-wider">Status</th>
                         <th className="text-left py-3 px-6 text-gray-500 font-medium text-xs uppercase tracking-wider">Actions</th>
                       </tr>
@@ -568,10 +587,19 @@ export default function StudentsPage() {
                           <td className="py-4 px-6 text-gray-600 text-sm">{student.phone}</td>
                           <td className="py-4 px-6 text-gray-600 text-sm">{student.email || '-'}</td>
                           <td className="py-4 px-6 text-gray-600 text-sm">{student.kcse_grade}</td>
+                          <td className="py-4 px-6 text-gray-600 text-sm">{student.department || '-'}</td>
                           <td className="py-4 px-6 text-gray-600 text-sm">{student.course}</td>
                           <td className="py-4 px-6 text-gray-600 text-sm capitalize">{student.course_type || '-'}</td>
+                          <td className="py-4 px-6 text-gray-600 text-sm">{student.current_module || '-'}</td>
                           <td className="py-4 px-6 text-gray-600 text-sm">{student.current_semester || '-'}</td>
                           <td className="py-4 px-6 text-gray-600 text-sm">{student.class_name || '-'}</td>
+                          <td className="py-4 px-6">
+                            {student.financial_hold ? (
+                              <span className="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800">On Hold</span>
+                            ) : (
+                              <span className="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">Clear</span>
+                            )}
+                          </td>
                           <td className="py-4 px-6">
                             <span className={`px-2 py-1 rounded text-xs font-medium ${
                               student.status === 'enrolled' 

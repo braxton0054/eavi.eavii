@@ -193,6 +193,33 @@ export default function ApplyPage() {
     return 'internal';
   };
 
+  // Format course type with exam body for display
+  const formatCourseTypeLabel = (level: string, examBody: string): string => {
+    const labels: Record<string, Record<string, string>> = {
+      KNEC: {
+        diploma: 'KNEC Diploma',
+        certificate: 'KNEC Certificate',
+        artisan: 'KNEC Artisan',
+        craft: 'KNEC Craft',
+      },
+      CDACC: {
+        level6: 'CDACC Level 6 (Higher Diploma)',
+        level5: 'CDACC Level 5 (Diploma)',
+        level4: 'CDACC Level 4 (Certificate)',
+      },
+      JP: {
+        diploma: 'JP Diploma',
+        certificate: 'JP Certificate',
+      },
+      internal: {
+        diploma: 'Internal Diploma',
+        certificate: 'Internal Certificate',
+        short_course: 'Short Course',
+      },
+    };
+    return labels[examBody]?.[level] || `${examBody} ${level}`;
+  };
+
   // Get available course types for a course based on student's grade and exam body
   const getAvailableCourseTypes = (course: any, studentGrade: string, examBody: string): string[] => {
     if (!course || !studentGrade || !examBody) return [];
@@ -839,7 +866,9 @@ export default function ApplyPage() {
                     {availableCourseTypes.length === 0 ? 'No types available for your grade' : 'Select Type'}
                   </option>
                   {availableCourseTypes.map(type => (
-                    <option key={type} value={type} className="text-gray-900 capitalize">{type}</option>
+                    <option key={type} value={type} className="text-gray-900">
+                      {formatCourseTypeLabel(type, formData.examBody)}
+                    </option>
                   ))}
                 </select>
                 {availableCourseTypes.length === 0 && (

@@ -11,7 +11,7 @@ const pool = process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('YOU
   : null;
 
 // Initialize Supabase client as fallback
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
@@ -60,6 +60,7 @@ async function executeWithPool(sql: string) {
 // Execute SQL using Supabase RPC (fallback method)
 async function executeWithSupabase(sql: string) {
   try {
+    const supabase = getSupabase();
     const { error } = await supabase.rpc('execute_sql', { sql_query: sql });
     
     if (error) {

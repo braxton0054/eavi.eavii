@@ -371,6 +371,7 @@ export default function ApplicationsPage() {
       let courseName = 'Unknown';
       let courseLevel = 'General';
       let validCourseId = courseId;
+      let courseTypeData: { id: string; level: string } | null = null;
       
       if (courseId) {
         // Check if course exists in courses table
@@ -401,15 +402,18 @@ export default function ApplicationsPage() {
           courseName = courseData.name;
         }
         
-        // Get course type/level
-        const { data: courseTypeData } = await supabase
+        // Get course type/level and id
+        const selectedCourseType = selectedApplication?.course_type || 'diploma';
+        const { data: courseTypeResult } = await supabase
           .from('course_types')
-          .select('level')
+          .select('id, level')
           .eq('course_id', validCourseId)
+          .ilike('level', `%${selectedCourseType}%`)
           .single();
-        
-        if (courseTypeData) {
-          courseLevel = courseTypeData.level;
+
+        if (courseTypeResult) {
+          courseTypeData = courseTypeResult;
+          courseLevel = courseTypeResult.level;
         }
       }
       
@@ -477,12 +481,13 @@ export default function ApplicationsPage() {
         classId = newClass.id;
       }
 
-      // Update application status, admission number, class, and document checklist in Supabase
+      // Update application status, admission number, class, course_type_id and document checklist in Supabase
       const { error: updateError } = await supabase
         .from('applications')
         .update({
           status: 'enrolled',
           admission_number: newAdmissionNumber,
+          course_type_id: courseTypeData?.id,
           current_module: 1,
           current_semester: 1,
           class_id: selectedClassId,

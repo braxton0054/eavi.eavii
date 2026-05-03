@@ -2117,6 +2117,16 @@ export default function CoursesPage() {
         return;
       }
 
+      // Determine exam_body from course ID prefix
+      const getExamBodyFromId = (id: string): string => {
+        const prefix = id.split('-')[0];
+        if (prefix === 'CDACC') return 'CDACC';
+        if (prefix === 'KNEC') return 'KNEC';
+        if (prefix === 'JP') return 'JP';
+        if (prefix === 'INT' || prefix === 'INSTALL') return 'internal';
+        return 'KNEC'; // default
+      };
+
       // Save to relational tables
       let courseId;
       if (editingCourse) {
@@ -2126,7 +2136,8 @@ export default function CoursesPage() {
           {
             name: formData.courseName,
             department_id: departmentId,
-            min_kcse_grade: formData.minKcseGrade || 'C-'
+            min_kcse_grade: formData.minKcseGrade || 'C-',
+            exam_body: getExamBodyFromId(editingCourse)
           }
         ]).eq('id', editingCourse).select().single();
 
@@ -2146,7 +2157,8 @@ export default function CoursesPage() {
             id: formData.courseId,
             name: formData.courseName,
             department_id: departmentId,
-            min_kcse_grade: formData.minKcseGrade || 'C-'
+            min_kcse_grade: formData.minKcseGrade || 'C-',
+            exam_body: getExamBodyFromId(formData.courseId)
           }
         ]).select().single();
 

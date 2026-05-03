@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
@@ -38,6 +38,7 @@ interface HealthIssue {
 
 export async function GET() {
   try {
+    const supabase = getSupabase();
     // Use raw SQL queries since we may not have the RPC functions set up
     const { data: rlsData, error: rlsError } = await supabase.rpc('get_rls_status');
     const { data: indexData, error: indexError } = await supabase.rpc('get_indexes');

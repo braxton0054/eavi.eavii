@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
@@ -9,6 +9,7 @@ const supabase = createClient(
 // GET - List exam schedules for a bridge group
 export async function GET(request: NextRequest) {
   try {
+    const supabase = getSupabase();
     const { searchParams } = new URL(request.url);
     const bridgeGroupId = searchParams.get('bridge_group_id');
 
@@ -44,6 +45,7 @@ export async function GET(request: NextRequest) {
 // POST - Create new exam schedule
 export async function POST(request: NextRequest) {
   try {
+    const supabase = getSupabase();
     const body = await request.json();
 
     const { data, error } = await supabase
@@ -75,9 +77,11 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PUT - Update exam schedule status
+// PUT - Update exam schedule
 export async function PUT(request: NextRequest) {
   try {
+    const supabase = getSupabase();
+    const body = await request.json();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -87,8 +91,6 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    const body = await request.json();
 
     const { data, error } = await supabase
       .from('bridge_exam_schedules')
@@ -120,9 +122,10 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// DELETE - Delete exam schedule
+// DELETE - Remove exam schedule
 export async function DELETE(request: NextRequest) {
   try {
+    const supabase = getSupabase();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
