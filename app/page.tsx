@@ -1,391 +1,453 @@
 'use client';
 
-import Link from 'next/link';
+import { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
-import { useState } from 'react';
+import Link from 'next/link';
 
-export default function LandingPage() {
-  const [coursesOpen, setCoursesOpen] = useState(false);
+const programs = [
+  { code: 'HIT', name: 'Health Records & Information Technology', levels: 'L4 · L5 · L6', dept: 'Health Sciences' },
+  { code: 'PTT', name: 'Perioperative Theatre Technology', levels: 'L5 · L6', dept: 'Surgical Sciences' },
+  { code: 'MED', name: 'Medical Engineering', levels: 'L4 · L5 · L6', dept: 'Engineering' },
+  { code: 'CHA', name: 'Community Health Assistant', levels: 'L5 · L6', dept: 'Community Health' },
+  { code: 'OTT', name: 'Orthopedic & Trauma Technology', levels: 'L5', dept: 'Surgical Sciences' },
+  { code: 'CNP', name: 'Counselling & Psychology', levels: 'L6', dept: 'Psychology' },
+];
+
+const campuses = [
+  { name: 'Main Campus', address: 'City Plaza', city: 'Eldoret', tel: '0726044022', display: '0726 044 022' },
+  { name: 'West Campus', address: 'Mailinne, Near Kapyemit', city: 'Eldoret', tel: '0748022044', display: '0748 022 044' },
+  { name: 'Town Campus', address: 'Skymart Building', city: 'Eldoret', tel: '0726044022', display: '0726 044 022' },
+];
+
+const marqueeItems = ['TVETA Accredited', 'CDACC Registered', '3 Campuses · Eldoret', 'Health Sciences', 'Medical Engineering', 'Counselling & Psychology', 'Community Health', 'Perioperative Theatre Tech', 'Bursary Available', 'Min. KCSE D-'];
+
+export default function Home() {
+  const [mounted, setMounted] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [ticker, setTicker] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+    timerRef.current = setInterval(() => setTicker(t => (t + 1) % programs.length), 3000);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, []);
 
   return (
-    <div className="min-h-screen bg-white font-sans text-gray-900">
-      {/* Top Navigation Bar */}
-      <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4">
-          {/* Top Bar - Logo & Accredited Badge */}
-          <div className="flex items-center justify-between py-3 border-b border-gray-100">
-            <div className="flex items-center gap-3">
-              <Image src="/logo.webp" alt="EAVI Logo" width={50} height={50} className="object-contain" />
-              <div className="hidden sm:block">
-                <span className="font-bold text-purple-900 text-xl block leading-tight">East Africa Vision Institute</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="bg-green-100 text-green-700 text-xs font-semibold px-3 py-1.5 rounded-full border border-green-200">
-                Accredited · TVETA Registered
-              </span>
-            </div>
-          </div>
-          
-          {/* Main Navigation Bar */}
-          <div className="flex items-center justify-between py-3">
-            {/* Left Navigation */}
-            <div className="hidden lg:flex items-center gap-8">
-              <Link href="/" className="text-gray-700 hover:text-purple-700 font-semibold transition-colors text-sm">Home</Link>
-              <Link href="/courses" className="text-gray-700 hover:text-purple-700 font-semibold transition-colors text-sm">Departments</Link>
-              <Link href="/downloads" className="text-gray-700 hover:text-purple-700 font-semibold transition-colors text-sm">Downloads</Link>
-              <Link href="/contact" className="text-gray-700 hover:text-purple-700 font-semibold transition-colors text-sm">Contact Us</Link>
-              <Link href="/campuses" className="text-gray-700 hover:text-purple-700 font-semibold transition-colors text-sm">Campuses</Link>
-              <Link href="/gallery" className="text-gray-700 hover:text-purple-700 font-semibold transition-colors text-sm">Gallery</Link>
-            </div>
+    <>
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400;1,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap');
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        :root{
+          --dp:#0e0020;
+          --mid:#26004d;
+          --rich:#5b0fa8;
+          --light:#9b5de5;
+          --gold:#c9a84c;
+          --gold-l:#e8cc7e;
+          --w:rgba(255,255,255,1);
+          --w4:rgba(255,255,255,0.4);
+          --w12:rgba(255,255,255,0.12);
+          --w06:rgba(255,255,255,0.06);
+          --g12:rgba(201,168,76,0.12);
+          --g25:rgba(201,168,76,0.25);
+        }
+        html{scroll-behavior:smooth}
+        body{background:var(--dp);color:#fff;font-family:'DM Sans',sans-serif;overflow-x:hidden;min-height:100vh}
+        a{text-decoration:none}
 
-            {/* Right Login Buttons */}
-            <div className="flex items-center gap-2">
-              <Link href="/login/admin" className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs font-semibold transition-colors border border-gray-300">Admin</Link>
-              <Link href="/login/lecturer" className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs font-semibold transition-colors border border-gray-300">Lecturer</Link>
-              <Link href="/login/student" className="bg-purple-700 text-white px-4 py-1.5 rounded text-xs font-semibold hover:bg-purple-800 transition-colors">Student Login</Link>
-            </div>
+        body::after{
+          content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.03;
+          background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+        }
+
+        .e-orb{position:fixed;border-radius:50%;filter:blur(90px);pointer-events:none;z-index:0}
+        .e-orb1{width:700px;height:700px;top:-250px;right:-200px;background:radial-gradient(circle,rgba(91,15,168,.5) 0%,transparent 65%)}
+        .e-orb2{width:450px;height:450px;bottom:-100px;left:-120px;background:radial-gradient(circle,rgba(201,168,76,.1) 0%,transparent 70%)}
+        .e-orb3{width:350px;height:350px;top:55%;left:35%;background:radial-gradient(circle,rgba(155,93,229,.18) 0%,transparent 70%)}
+
+        .eavi-reveal{opacity:0;transform:translateY(26px);transition:opacity .85s cubic-bezier(.16,1,.3,1),transform .85s cubic-bezier(.16,1,.3,1)}
+        .eavi-in{opacity:1!important;transform:translateY(0)!important}
+
+        .e-nav{
+          position:fixed;top:0;left:0;right:0;z-index:200;
+          height:70px;padding:0 5vw;
+          display:flex;align-items:center;justify-content:space-between;gap:16px;
+          background:rgba(14,0,32,.7);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);
+          border-bottom:1px solid rgba(201,168,76,.1);
+        }
+        .e-brand{display:flex;align-items:center;gap:12px}
+        .e-logo{width:44px;height:44px;border-radius:10px;overflow:hidden;border:1px solid var(--g25);position:relative;flex-shrink:0}
+        .e-name{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:#fff;line-height:1;letter-spacing:.02em}
+        .e-sub{font-size:10px;color:var(--gold);letter-spacing:.12em;text-transform:uppercase;margin-top:3px}
+        .e-navlinks{display:flex;align-items:center;gap:4px}
+        .e-nl{padding:8px 15px;font-size:13px;color:rgba(255,255,255,.6);border-radius:6px;transition:all .2s}
+        .e-nl:hover{color:#fff;background:rgba(255,255,255,.07)}
+        .e-ncta{padding:9px 20px;font-size:13px;font-weight:500;color:var(--dp);background:var(--gold);border-radius:7px;letter-spacing:.03em;transition:all .2s}
+        .e-ncta:hover{background:var(--gold-l);transform:translateY(-1px)}
+        .e-burger{display:none;background:none;border:1px solid var(--w12);border-radius:6px;padding:8px;cursor:pointer;color:#fff;align-items:center;justify-content:center}
+        .e-mmenu{position:fixed;top:70px;left:0;right:0;z-index:199;background:rgba(14,0,32,.97);backdrop-filter:blur(28px);border-bottom:1px solid rgba(201,168,76,.1);padding:18px 5vw;display:flex;flex-direction:column;gap:8px}
+        .e-mlink{display:block;padding:13px 16px;font-size:15px;color:rgba(255,255,255,.7);border:1px solid var(--w06);border-radius:8px;text-align:center;transition:all .2s}
+        .e-mlink:hover{color:#fff;background:rgba(255,255,255,.05)}
+        .e-mlink.gold{background:var(--gold);color:var(--dp);font-weight:600;border-color:var(--gold)}
+
+        .e-hero{
+          min-height:100vh;padding-top:70px;
+          display:grid;grid-template-columns:55% 45%;
+          align-items:center;position:relative;z-index:1;
+        }
+        .e-hleft{padding:72px 5vw 72px 5vw}
+        .e-eyebrow{
+          display:flex;align-items:center;gap:0;
+          font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+          color:var(--gold);font-weight:500;margin-bottom:28px;
+        }
+        .e-rule{display:inline-block;width:44px;height:1.5px;background:var(--gold);margin-right:14px;flex-shrink:0}
+        .e-h1{
+          font-family:'Playfair Display',serif;
+          font-size:clamp(44px,5vw,78px);
+          font-weight:900;line-height:.97;
+          letter-spacing:-.025em;color:#fff;margin-bottom:24px;
+        }
+        .e-h1 em{font-style:italic;color:var(--gold)}
+        .e-hsub{font-size:15px;line-height:1.72;color:rgba(255,255,255,.48);max-width:410px;margin-bottom:40px;font-weight:300}
+        .e-hbtns{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:48px}
+        .e-btnpri{
+          display:inline-flex;align-items:center;gap:8px;
+          padding:14px 26px;font-size:13.5px;font-weight:500;letter-spacing:.04em;
+          color:var(--dp);background:var(--gold);border-radius:8px;transition:all .2s;
+        }
+        .e-btnpri:hover{background:var(--gold-l);transform:translateY(-2px);box-shadow:0 14px 36px rgba(201,168,76,.22)}
+        .e-btnghost{
+          display:inline-flex;align-items:center;gap:8px;
+          padding:14px 26px;font-size:13.5px;color:rgba(255,255,255,.65);
+          border:1px solid var(--w12);border-radius:8px;transition:all .2s;
+        }
+        .e-btnghost:hover{color:#fff;border-color:var(--g25);background:rgba(255,255,255,.04)}
+        .e-stats{display:flex;align-items:center;gap:0;padding-top:28px;border-top:1px solid var(--w06)}
+        .e-stat{display:flex;flex-direction:column;gap:3px;padding-right:28px;margin-right:28px;border-right:1px solid var(--w06)}
+        .e-stat:last-child{border-right:none}
+        .e-sv{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:#fff;line-height:1}
+        .e-sl{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.35)}
+
+        .e-hright{
+          height:100vh;display:flex;align-items:center;
+          justify-content:center;position:relative;overflow:hidden;
+        }
+        .e-stack{position:relative;width:320px;height:440px}
+        .e-ticket{
+          position:absolute;width:288px;
+          border:1px solid rgba(255,255,255,.09);
+          border-radius:18px;padding:26px 24px;
+          backdrop-filter:blur(12px);
+          transition:all .7s cubic-bezier(.16,1,.3,1);
+        }
+        .e-t0{top:0;left:32px;transform:rotate(5deg);z-index:1;opacity:.35;background:rgba(255,255,255,.025)}
+        .e-t1{top:18px;left:16px;transform:rotate(2.5deg);z-index:2;opacity:.6;background:rgba(255,255,255,.035)}
+        .e-t2{top:36px;left:0;transform:rotate(0deg);z-index:3;opacity:1;background:rgba(45,0,77,.7);border-color:var(--g25)}
+        .e-tcode{font-family:'Playfair Display',serif;font-size:11px;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:14px}
+        .e-tname{font-family:'Playfair Display',serif;font-size:19px;font-weight:700;color:#fff;line-height:1.25;margin-bottom:8px}
+        .e-tdept{font-size:11px;color:rgba(255,255,255,.38);letter-spacing:.06em;text-transform:uppercase;margin-bottom:20px}
+        .e-tlevel{display:inline-block;padding:5px 11px;border-radius:5px;background:var(--g12);color:var(--gold-l);font-size:11px;letter-spacing:.1em}
+        .e-tdeco{position:absolute;bottom:20px;right:20px;width:38px;height:38px;border-radius:50%;border:1.5px solid var(--g25);display:flex;align-items:center;justify-content:center;font-size:16px}
+
+        .e-mq{border-top:1px solid rgba(201,168,76,.1);border-bottom:1px solid rgba(201,168,76,.1);overflow:hidden;padding:13px 0;background:rgba(201,168,76,.03);position:relative;z-index:1}
+        .e-mqt{display:flex;animation:mqscroll 30s linear infinite;white-space:nowrap}
+        .e-mqi{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:rgba(201,168,76,.65);padding:0 30px;display:inline-flex;align-items:center;gap:14px;flex-shrink:0}
+        .e-mqdot{width:4px;height:4px;border-radius:50%;background:var(--gold);opacity:.45;flex-shrink:0}
+        @keyframes mqscroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+        .e-sec{padding:88px 5vw;position:relative;z-index:1}
+        .e-sectitle{font-family:'Playfair Display',serif;font-size:clamp(30px,3.8vw,50px);font-weight:900;color:#fff;line-height:1.08;margin-bottom:14px}
+        .e-sectitle em{font-style:italic;color:var(--gold)}
+        .e-secbody{font-size:15px;color:rgba(255,255,255,.42);max-width:500px;line-height:1.72;font-weight:300;margin-bottom:52px}
+
+        .e-pgrid{display:grid;grid-template-columns:1.8fr 1fr 1fr;gap:14px}
+        .e-pcard{
+          border:1px solid var(--w06);border-radius:16px;padding:26px 24px;
+          background:rgba(255,255,255,.02);position:relative;overflow:hidden;
+          transition:all .3s;cursor:default;
+        }
+        .e-pcard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--gold),transparent);opacity:0;transition:opacity .3s}
+        .e-pcard:hover{border-color:var(--g25);background:rgba(255,255,255,.042);transform:translateY(-3px)}
+        .e-pcard:hover::before{opacity:1}
+        .e-pcard.feat{grid-row:span 2}
+        .e-pcode{font-family:'Playfair Display',serif;font-size:11px;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:13px}
+        .e-pname{font-family:'Playfair Display',serif;font-size:19px;font-weight:700;color:#fff;line-height:1.28;margin-bottom:7px}
+        .e-pcard.feat .e-pname{font-size:24px}
+        .e-pdept{font-size:12px;color:rgba(255,255,255,.32);margin-bottom:18px}
+        .e-plevel{display:inline-block;padding:5px 11px;border-radius:5px;border:1px solid var(--g25);color:var(--gold-l);font-size:11px;letter-spacing:.08em}
+
+        .e-cgrid{display:grid;grid-template-columns:1fr 1fr;gap:72px;align-items:start;margin-top:52px}
+        .e-ctl{position:relative;padding-left:36px}
+        .e-ctl::before{content:'';position:absolute;left:7px;top:14px;bottom:14px;width:1px;background:linear-gradient(to bottom,var(--gold) 0%,rgba(201,168,76,.08) 100%)}
+        .e-ci{position:relative;padding-bottom:42px}
+        .e-ci:last-child{padding-bottom:0}
+        .e-cdot{position:absolute;left:-32px;top:7px;width:16px;height:16px;border-radius:50%;border:2px solid var(--gold);background:var(--dp);display:flex;align-items:center;justify-content:center}
+        .e-cdot::after{content:'';width:6px;height:6px;border-radius:50%;background:var(--gold)}
+        .e-cname{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#fff;margin-bottom:4px}
+        .e-caddr{font-size:13px;color:rgba(255,255,255,.38);margin-bottom:12px}
+        .e-ctel{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--gold);font-weight:500;transition:color .2s}
+        .e-ctel:hover{color:var(--gold-l)}
+
+        .e-cside{display:flex;flex-direction:column;gap:18px}
+        .e-bcard{
+          border:1px solid var(--g25);border-radius:20px;padding:34px 30px;
+          background:linear-gradient(135deg,rgba(201,168,76,.07) 0%,rgba(38,0,77,.4) 100%);
+          position:relative;overflow:hidden;
+        }
+        .e-bcard::before{content:'"';position:absolute;top:-24px;right:16px;font-family:'Playfair Display',serif;font-size:180px;color:rgba(201,168,76,.05);line-height:1;pointer-events:none;user-select:none}
+        .e-blabel{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:10px}
+        .e-btitle{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:#fff;margin-bottom:10px;line-height:1.22}
+        .e-bbody{font-size:13px;color:rgba(255,255,255,.42);line-height:1.65;margin-bottom:22px}
+        .e-bdl{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;font-size:13px;font-weight:500;color:var(--dp);background:var(--gold);border-radius:8px;transition:all .2s;letter-spacing:.02em}
+        .e-bdl:hover{background:var(--gold-l);transform:translateY(-1px)}
+        .e-ecard{border:1px solid var(--w06);border-radius:14px;padding:22px 26px;display:flex;align-items:center;justify-content:space-between;gap:14px;background:rgba(255,255,255,.02)}
+        .e-elabel{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:6px}
+        .e-eaddr{font-size:12.5px;color:rgba(255,255,255,.65);transition:color .2s;word-break:break-all}
+        .e-eaddr:hover{color:var(--gold)}
+
+        .e-agrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:52px}
+        .e-acard{border:1px solid var(--w06);border-radius:16px;padding:30px 26px;background:rgba(255,255,255,.02);transition:all .3s}
+        .e-acard:hover{border-color:rgba(201,168,76,.18);background:rgba(255,255,255,.04)}
+        .e-anum{font-family:'Playfair Display',serif;font-size:46px;font-weight:900;color:rgba(201,168,76,.15);line-height:1;margin-bottom:14px}
+        .e-atitle{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:#fff;margin-bottom:8px}
+        .e-abody{font-size:13px;color:rgba(255,255,255,.38);line-height:1.65}
+        .e-tveta{display:inline-flex;align-items:center;gap:8px;padding:11px 20px;border:1px solid var(--g25);border-radius:8px;font-size:13px;color:var(--gold);transition:all .2s;margin-top:44px}
+        .e-tveta:hover{background:rgba(201,168,76,.07);border-color:var(--gold)}
+
+        .e-footer{border-top:1px solid var(--w06);padding:28px 5vw;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;position:relative;z-index:1}
+        .e-fcopy{font-size:12px;color:rgba(255,255,255,.22);letter-spacing:.04em}
+        .e-flinks{display:flex;align-items:center;gap:18px}
+        .e-flink{font-size:12px;color:rgba(255,255,255,.28);transition:color .2s;letter-spacing:.04em}
+        .e-flink:hover{color:var(--gold)}
+
+        @media(max-width:1024px){
+          .e-pgrid{grid-template-columns:1fr 1fr}
+          .e-pcard.feat{grid-row:span 1}
+          .e-pcard.feat .e-pname{font-size:19px}
+          .e-cgrid{grid-template-columns:1fr;gap:48px}
+          .e-agrid{grid-template-columns:1fr 1fr}
+        }
+        @media(max-width:768px){
+          .e-hero{grid-template-columns:1fr;min-height:auto}
+          .e-hleft{padding:56px 5vw 40px}
+          .e-hright{display:none}
+          .e-h1{font-size:42px}
+          .e-navlinks{display:none}
+          .e-burger{display:flex}
+          .e-pgrid{grid-template-columns:1fr}
+          .e-agrid{grid-template-columns:1fr}
+          .e-footer{flex-direction:column;text-align:center}
+          .e-stats{flex-wrap:wrap;gap:16px}
+          .e-stat{border-right:none;margin-right:0;padding-right:0}
+        }
+      `}</style>
+
+      <div className="e-orb e-orb1" />
+      <div className="e-orb e-orb2" />
+      <div className="e-orb e-orb3" />
+
+      <nav className="e-nav">
+        <div className="e-brand">
+          <div className="e-logo">
+            <Image src="/logo.webp" alt="EAVI Logo" fill className="object-contain p-1" priority />
+          </div>
+          <div>
+            <div className="e-name">EAVI</div>
+            <div className="e-sub">East Africa Vision Institute</div>
           </div>
         </div>
+
+        <div className="e-navlinks">
+          <Link href="/login/admin" className="e-nl">Admin</Link>
+          <Link href="/login/lecturer" className="e-nl">Lecturer</Link>
+          <Link href="/login/student" className="e-nl">Student portal</Link>
+          <Link href="/apply" className="e-ncta">Apply now →</Link>
+        </div>
+
+        <button className="e-burger" onClick={() => setMenuOpen(o => !o)} aria-label="Toggle menu">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            {menuOpen
+              ? <path d="M2 2l14 14M16 2L2 16" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
+              : <path d="M2 5h14M2 9h14M2 13h14" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>}
+          </svg>
+        </button>
       </nav>
 
-      {/* Hero Section - Clean Design without Background Image */}
-      <header className="relative min-h-[600px] flex items-center bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950">
-        {/* Animated Background Elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-indigo-600/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-          <div className="absolute top-1/2 left-1/2 w-72 h-72 bg-purple-500/15 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+      {menuOpen && (
+        <div className="e-mmenu">
+          {[{href:'/login/admin',label:'Admin login'},{href:'/login/lecturer',label:'Lecturer login'},{href:'/login/student',label:'Student portal'}].map(l => (
+            <Link key={l.href} href={l.href} className="e-mlink" onClick={() => setMenuOpen(false)}>{l.label}</Link>
+          ))}
+          <Link href="/apply" className="e-mlink gold" onClick={() => setMenuOpen(false)}>Apply now →</Link>
         </div>
+      )}
 
-        <div className="relative z-10 max-w-7xl mx-auto px-4 py-20 w-full">
-          <div className="max-w-2xl mx-auto text-center">
-            <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
-              East Africa Vision Institute
-            </h1>
-            <p className="text-2xl text-purple-100 mb-12">
-              Your Gateway to Quality Technical & Vocational Education in Eldoret
-            </p>
-            
-            {/* Buttons - Stacked Vertically */}
-            <div className="flex flex-col items-center gap-4">
-              {/* Primary Action */}
-              <Link href="/apply" className="bg-green-600 text-white px-16 py-6 rounded-xl text-2xl font-bold hover:bg-green-700 transition-all shadow-xl hover:shadow-2xl transform hover:scale-105 w-full max-w-md">
-                Apply Now
-              </Link>
-              
-              {/* Secondary Actions Row */}
-              <div className="flex flex-wrap justify-center gap-3 w-full max-w-md">
-                <div className="relative">
-                  <button 
-                    onClick={() => setCoursesOpen(!coursesOpen)}
-                    className="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors shadow-lg flex items-center gap-2"
-                  >
-                    Courses
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                  {coursesOpen && (
-                    <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-xl shadow-2xl overflow-hidden z-50">
-                      <div className="p-3 space-y-2">
-                        <div className="bg-purple-50 rounded-lg p-2">
-                          <h3 className="font-bold text-purple-900 text-sm">KNEC Courses</h3>
-                          <p className="text-xs text-gray-600">Grade: C- (minus)</p>
-                        </div>
-                        <div className="bg-purple-50 rounded-lg p-2">
-                          <h3 className="font-bold text-purple-900 text-sm">JP Courses</h3>
-                          <p className="text-xs text-gray-600">Grade: D (plain)</p>
-                        </div>
-                        <div className="bg-purple-50 rounded-lg p-2">
-                          <h3 className="font-bold text-purple-900 text-sm">Short Courses</h3>
-                          <p className="text-xs text-gray-600">Open to all</p>
-                        </div>
-                        <Link href="/courses" className="block text-center py-2 text-purple-600 text-sm font-semibold hover:bg-purple-50 rounded-lg">
-                          View All →
-                        </Link>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <Link href="/login/student" className="bg-white/10 backdrop-blur-md border border-white/30 hover:bg-white/20 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
-                  Student Portal
-                </Link>
-                <Link href="/about" className="bg-white/10 backdrop-blur-md border border-white/30 hover:bg-white/20 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
-                  About Us
-                </Link>
-              </div>
-            </div>
+      <section className="e-hero">
+        <div className={`e-hleft eavi-reveal ${mounted ? 'eavi-in' : ''}`} style={{transitionDelay:'0.1s'}}>
+          <div className="e-eyebrow">
+            <span className="e-rule" />
+            Accredited · TVETA/PRIVATE/TVC/0062/2017
           </div>
-        </div>
-      </header>
 
-      {/* Stats Section */}
-      <section className="bg-purple-50 py-12">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {[
-              { value: '20+', label: 'Programs Offered' },
-              { value: '3', label: 'Campuses' },
-              { value: '5000+', label: 'Graduates' },
-              { value: '15+', label: 'Years Experience' }
-            ].map((stat) => (
-              <div key={stat.label} className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-purple-900">{stat.value}</div>
-                <div className="text-sm text-gray-600 mt-1">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+          <h1 className="e-h1">
+            Build a<br />career<br /><em>worth having.</em>
+          </h1>
 
-      {/* Programs Section */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Our Programs</h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">Choose from a wide range of accredited diploma, certificate, and artisan courses designed to prepare you for the modern workforce.</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              { title: 'Healthcare', icon: '🏥', courses: 'Community Health, Phlebotomy, Caregivers' },
-              { title: 'Technology', icon: '💻', courses: 'Web Development, Mobile Technology, CCTV Management' },
-              { title: 'Business', icon: '📊', courses: 'Sales & Marketing, Project Management, Purchasing & Supplies' },
-              { title: 'Engineering', icon: '⚙️', courses: 'Automotive, Electrical Installation, Plumbing' },
-              { title: 'Creative Arts', icon: '🎨', courses: 'Fashion Design, Graphic Design, Hair & Beauty' },
-              { title: 'Education', icon: '📚', courses: 'Teacher Training, English, Sociology' }
-            ].map((program) => (
-              <div key={program.title} className="bg-gray-50 rounded-xl p-6 hover:shadow-lg transition-shadow border border-gray-200">
-                <div className="text-4xl mb-4">{program.icon}</div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">{program.title}</h3>
-                <p className="text-gray-600 text-sm">{program.courses}</p>
-              </div>
-            ))}
-          </div>
-          <div className="text-center mt-10">
-            <Link href="/apply" className="inline-block bg-purple-700 text-white px-8 py-3 rounded-lg font-semibold hover:bg-purple-800 transition-colors">
-              View All Programs
+          <p className="e-hsub">
+            East Africa Vision Institute offers CDACC and JP accredited programmes across healthcare, engineering, and community development — in the heart of Eldoret.
+          </p>
+
+          <div className="e-hbtns">
+            <Link href="/apply" className="e-btnpri">
+              Start application
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M7 2l5 5-5 5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </Link>
+            <Link href="/login/student" className="e-btnghost">Student portal</Link>
           </div>
-        </div>
-      </section>
 
-      {/* Principal's Message */}
-      <section className="py-16 bg-purple-50">
-        <div className="max-w-4xl mx-auto px-4">
-          <div className="bg-white rounded-2xl p-8 md:p-12 shadow-lg border border-purple-100">
-            <div className="text-center mb-8">
-              <div className="w-24 h-24 bg-purple-200 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <span className="text-4xl">👨‍🎓</span>
+          <div className="e-stats">
+            {[{v:'3',l:'Campuses'},{v:'15+',l:'Programmes'},{v:'D-',l:'Min. Grade'},{v:'CDACC',l:'Registered',i:true}].map((s) => (
+              <div key={s.l} className="e-stat">
+                <div className="e-sv" style={s.i ? {fontStyle:'italic',color:'var(--gold)',fontSize:20} : {}}>{s.v}</div>
+                <div className="e-sl">{s.l}</div>
               </div>
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Message from the Principal</h2>
-              <p className="text-purple-600 font-medium">Welcome to East Africa Vision Institute</p>
-            </div>
-            <blockquote className="text-gray-700 text-lg leading-relaxed text-center italic">
-              "At EAVI, we believe in transforming lives through quality education. Our commitment is to provide industry-relevant training that empowers our students to thrive in the workforce and contribute meaningfully to society. Join us in this journey of excellence."
-            </blockquote>
-            <div className="text-center mt-6">
-              <p className="font-bold text-gray-900">— Principal, EAVI</p>
-            </div>
+            ))}
+          </div>
+        </div>
+
+        <div className={`e-hright eavi-reveal ${mounted ? 'eavi-in' : ''}`} style={{transitionDelay:'0.3s'}}>
+          <div className="e-stack">
+            {[(ticker+2)%programs.length,(ticker+1)%programs.length,ticker].map((idx,i) => {
+              const p = programs[idx];
+              return (
+                <div key={`${idx}-${i}`} className={`e-ticket e-t${i}`}>
+                  <div className="e-tcode">{p.code} Programme</div>
+                  <div className="e-tname">{p.name}</div>
+                  <div className="e-tdept">{p.dept}</div>
+                  <div className="e-tlevel">{p.levels}</div>
+                  <div className="e-tdeco">🎓</div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      {/* Dean of Students Message */}
-      <section className="py-16 bg-white">
-        <div className="max-w-4xl mx-auto px-4">
-          <div className="bg-gradient-to-br from-purple-900 to-indigo-900 rounded-2xl p-8 md:p-12 text-white shadow-lg">
-            <div className="text-center mb-8">
-              <div className="w-24 h-24 bg-white/20 rounded-full mx-auto mb-4 flex items-center justify-center">
-                <span className="text-4xl">👩‍💼</span>
-              </div>
-              <h2 className="text-2xl md:text-3xl font-bold mb-2">Dean of Students</h2>
-              <p className="text-purple-200 font-medium">Student Affairs & Welfare</p>
-            </div>
-            <blockquote className="text-purple-100 text-lg leading-relaxed text-center italic">
-              "We are dedicated to nurturing not just academic excellence, but also character and leadership. Our students are our priority, and we ensure a supportive environment where everyone can thrive and achieve their dreams."
-            </blockquote>
-            <div className="text-center mt-6">
-              <p className="font-bold">— Dean of Students, EAVI</p>
-            </div>
-          </div>
+      <div className={`e-mq eavi-reveal ${mounted ? 'eavi-in' : ''}`} style={{transitionDelay:'0.45s'}}>
+        <div className="e-mqt">
+          {[...Array(2)].flatMap((_,r) =>
+            marqueeItems.map((item,i) => (
+              <span key={`${r}-${i}`} className="e-mqi">
+                <span className="e-mqdot"/>
+                {item}
+              </span>
+            ))
+          )}
         </div>
-      </section>
+      </div>
 
-      {/* Clubs and Society */}
-      <section className="py-16 bg-gradient-to-br from-green-50 to-purple-50">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Clubs & Societies</h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">Beyond academics, we offer vibrant student activities that build leadership, teamwork, and lifelong friendships.</p>
-          </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { name: 'Student Government', icon: '🗳️', desc: 'Student leadership & representation' },
-              { name: 'Tech Club', icon: '💻', desc: 'Technology & innovation hub' },
-              { name: 'Sports & Athletics', icon: '⚽', desc: 'Fitness & competitive sports' },
-              { name: 'Cultural Society', icon: '🎭', desc: 'Arts, music & cultural events' },
-              { name: 'Entrepreneurship Club', icon: '💡', desc: 'Business skills & startups' },
-              { name: 'Community Service', icon: '🤝', desc: 'Volunteering & social impact' },
-              { name: 'Environmental Club', icon: '🌱', desc: 'Sustainability & green initiatives' },
-              { name: 'Debate Society', icon: '🎤', desc: 'Public speaking & critical thinking' }
-            ].map((club) => (
-              <div key={club.name} className="bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow border border-gray-100">
-                <div className="text-4xl mb-3">{club.icon}</div>
-                <h3 className="font-bold text-gray-900 mb-2">{club.name}</h3>
-                <p className="text-gray-600 text-sm">{club.desc}</p>
+      <section className="e-sec">
+        <div className={`eavi-reveal ${mounted ? 'eavi-in' : ''}`} style={{transitionDelay:'0.1s'}}>
+          <div className="e-eyebrow"><span className="e-rule"/>What we offer</div>
+          <h2 className="e-sectitle">Our <em>programmes</em></h2>
+          <p className="e-secbody">CDACC and JP accredited courses across healthcare, engineering, and community sciences — built for the real world.</p>
+
+          <div className="e-pgrid">
+            {programs.map((p,i) => (
+              <div key={p.code} className={`e-pcard${i===0?' feat':''}`}>
+                <div className="e-pcode">{p.code}</div>
+                <div className="e-pname">{p.name}</div>
+                <div className="e-pdept">{p.dept}</div>
+                <div className="e-plevel">{p.levels}</div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Core Values */}
-      <section className="py-16 bg-purple-900 text-white">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Our Core Values</h2>
-            <p className="text-purple-200 max-w-2xl mx-auto">The principles that guide everything we do at EAVI</p>
-          </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[
-              { title: 'Excellence', desc: 'Striving for the highest standards in education and service', icon: '⭐' },
-              { title: 'Integrity', desc: 'Upholding honesty, transparency, and ethical conduct', icon: '🛡️' },
-              { title: 'Innovation', desc: 'Embracing new ideas and technologies for better learning', icon: '💡' },
-              { title: 'Inclusivity', desc: 'Creating opportunities for all regardless of background', icon: '🤝' },
-              { title: 'Professionalism', desc: 'Maintaining high standards of competence and conduct', icon: '👔' },
-              { title: 'Community', desc: 'Building strong relationships and supporting each other', icon: '🏫' }
-            ].map((value) => (
-              <div key={value.title} className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 hover:bg-white/20 transition-all">
-                <div className="text-3xl mb-3">{value.icon}</div>
-                <h3 className="text-xl font-bold mb-2">{value.title}</h3>
-                <p className="text-purple-200 text-sm">{value.desc}</p>
-              </div>
-            ))}
-          </div>
+      <section className="e-sec" style={{paddingTop:0}}>
+        <div className={`eavi-reveal ${mounted ? 'eavi-in' : ''}`} style={{transitionDelay:'0.15s'}}>
+          <div className="e-eyebrow"><span className="e-rule"/>Where to find us</div>
+          <h2 className="e-sectitle">Our <em>campuses</em></h2>
         </div>
-      </section>
 
-      {/* Floating WhatsApp Button */}
-      <a 
-        href="https://wa.me/254726044022" 
-        target="_blank" 
-        rel="noopener noreferrer"
-        className="fixed bottom-6 right-6 bg-green-500 hover:bg-green-600 text-white p-4 rounded-full shadow-2xl hover:shadow-3xl transition-all hover:scale-110 z-50 flex items-center gap-2"
-      >
-        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.241-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.004 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413"/>
-        </svg>
-        <span className="font-semibold hidden sm:inline">Chat with Us</span>
-      </a>
-
-      {/* Why Choose Us */}
-      <section className="py-16 bg-purple-900 text-white">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Why Choose EAVI?</h2>
-            <p className="text-purple-200 max-w-2xl mx-auto">We're committed to providing quality education that transforms lives.</p>
-          </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { title: 'Flexible Learning', desc: 'Study at your own pace with diploma, certificate, and artisan levels' },
-              { title: 'Affordable Fees', desc: 'Quality education with bursary support available for eligible students' },
-              { title: 'Industry-Ready', desc: 'Practical skills training that prepares you for real-world jobs' },
-              { title: 'Accredited', desc: 'Registered with TVETA, CDACC, and Ministry of Education' }
-            ].map((feature) => (
-              <div key={feature.title} className="bg-purple-800/50 rounded-xl p-6">
-                <h3 className="text-xl font-bold mb-2">{feature.title}</h3>
-                <p className="text-purple-200 text-sm">{feature.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Campuses Section */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Our Campuses</h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">Conveniently located across Eldoret to serve you better.</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              { name: 'Main Campus', location: 'City Plaza, Eldoret', phone: '0726 044 022' },
-              { name: 'West Campus', location: 'Mailinne (Near Kapyemit Dispensary)', phone: '0748 022 044' },
-              { name: 'Town Campus', location: 'Skymart Building, Eldoret', phone: '0726 044 022' }
-            ].map((campus) => (
-              <div key={campus.name} className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                <h3 className="text-xl font-bold text-gray-900 mb-2">{campus.name}</h3>
-                <p className="text-gray-600 mb-2">{campus.location}</p>
-                <a href={`tel:${campus.phone.replace(/ /g, '')}`} className="text-purple-700 font-semibold hover:text-purple-800" suppressHydrationWarning>
-                  {campus.phone}
+        <div className="e-cgrid">
+          <div className={`e-ctl eavi-reveal ${mounted ? 'eavi-in' : ''}`} style={{transitionDelay:'0.2s'}}>
+            {campuses.map(c => (
+              <div key={c.name} className="e-ci">
+                <div className="e-cdot"/>
+                <div className="e-cname">{c.name}</div>
+                <div className="e-caddr">{c.address} · {c.city}</div>
+                <a href={`tel:${c.tel}`} className="e-ctel" suppressHydrationWarning>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  {c.display}
                 </a>
               </div>
             ))}
           </div>
-        </div>
-      </section>
 
-      {/* CTA Section */}
-      <section className="py-16 bg-gradient-to-r from-green-600 to-green-700 text-white">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Start Your Journey?</h2>
-          <p className="text-green-100 mb-8 text-lg">Apply now and join thousands of students who have transformed their careers at EAVI.</p>
-          <div className="flex flex-wrap gap-4 justify-center">
-            <Link href="/apply" className="bg-white text-green-700 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition-colors shadow-lg">
-              Apply Now
-            </Link>
-            <a href="/bursary-form.pdf" target="_blank" rel="noopener noreferrer" className="border-2 border-white text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-white/10 transition-colors">
-              Download Bursary Form
-            </a>
-          </div>
-        </div>
-      </section>
+          <div className={`e-cside eavi-reveal ${mounted ? 'eavi-in' : ''}`} style={{transitionDelay:'0.25s'}}>
+            <div className="e-bcard">
+              <div className="e-blabel">Financial support</div>
+              <div className="e-btitle">Bursary available for eligible students</div>
+              <div className="e-bbody">Don't let finances stop your education. Apply for bursary support and take the first step toward your future.</div>
+              <a href="/api/bursary" download="bursary-form.pdf" className="e-bdl">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                Download bursary form
+              </a>
+            </div>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="grid md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Image src="/logo.webp" alt="EAVI Logo" width={40} height={40} className="object-contain" />
-                <span className="font-bold text-lg">EAVI</span>
+            <div className="e-ecard">
+              <div>
+                <div className="e-elabel">Email us</div>
+                <a href="mailto:support@eastafricavisioninstitute.ac.ke" className="e-eaddr" suppressHydrationWarning>
+                  support@eastafricavisioninstitute.ac.ke
+                </a>
               </div>
-              <p className="text-gray-400 text-sm">East Africa Vision Institute - Empowering futures through quality technical education.</p>
-            </div>
-            <div>
-              <h4 className="font-bold mb-4">Quick Links</h4>
-              <ul className="space-y-2 text-gray-400 text-sm">
-                <li><Link href="/apply" className="hover:text-white transition-colors">Apply Now</Link></li>
-                <li><Link href="/login/student" className="hover:text-white transition-colors">Student Portal</Link></li>
-                <li><a href="/bursary-form.pdf" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Bursary Form</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold mb-4">Programs</h4>
-              <ul className="space-y-2 text-gray-400 text-sm">
-                <li>Healthcare</li>
-                <li>Technology</li>
-                <li>Business</li>
-                <li>Engineering</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold mb-4">Contact</h4>
-              <ul className="space-y-2 text-gray-400 text-sm">
-                <li>support@eastafricavisioninstitute.ac.ke</li>
-                <li>0726 044 022</li>
-                <li>Eldoret, Kenya</li>
-              </ul>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{opacity:.2,flexShrink:0}}><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
           </div>
-          <div className="border-t border-gray-800 pt-8 text-center text-gray-400 text-sm">
-            <p className="mb-2">© 2026 East Africa Vision Institute. All rights reserved.</p>
-            <p className="text-purple-400 font-medium">Developed and Maintained by: EAVI ICT Department</p>
+        </div>
+      </section>
+
+      <section className="e-sec" style={{paddingTop:0}}>
+        <div className={`eavi-reveal ${mounted ? 'eavi-in' : ''}`} style={{transitionDelay:'0.1s'}}>
+          <div className="e-eyebrow"><span className="e-rule"/>About EAVI</div>
+          <h2 className="e-sectitle">Education that <em>transforms.</em></h2>
+          <p className="e-secbody">Registered with the Ministry of Education and TVETA, East Africa Vision Institute equips students with practical, industry-aligned skills across healthcare, beauty, engineering, ICT, fashion, business, and community development.</p>
+
+          <a href="https://www.tveta.go.ke/institution-details/?details=TVETA/PRIVATE/TVC/0062/2017" target="_blank" rel="noopener noreferrer" className="e-tveta">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            Verify TVETA / CDACC registration ↗
+          </a>
+
+          <div className="e-agrid">
+            {[
+              {n:'01',t:'Our Mission',b:"Providing industry-relevant, hands-on training that empowers students to thrive in today's competitive workforce and contribute meaningfully to society."},
+              {n:'02',t:'Why Choose EAVI',b:'Flexible learning, affordable fees with bursary support, diverse CDACC and JP programmes, and career-focused training at three Eldoret campuses.'},
+              {n:'03',t:'Our Commitment',b:'Accessible education for all — minimum KCSE grade D- — giving every Kenyan learner a genuine opportunity to build a better future.'},
+            ].map(c => (
+              <div key={c.n} className="e-acard">
+                <div className="e-anum">{c.n}</div>
+                <div className="e-atitle">{c.t}</div>
+                <div className="e-abody">{c.b}</div>
+              </div>
+            ))}
           </div>
+        </div>
+      </section>
+
+      <footer className="e-footer">
+        <div className="e-fcopy">© {new Date().getFullYear()} East Africa Vision Institute. All rights reserved.</div>
+        <div className="e-flinks">
+          <Link href="/login/admin" className="e-flink">Admin</Link>
+          <Link href="/login/lecturer" className="e-flink">Lecturer</Link>
+          <Link href="/login/student" className="e-flink">Student</Link>
+          <Link href="/apply" className="e-flink" style={{color:'var(--gold)'}}>Apply now →</Link>
         </div>
       </footer>
-    </div>
+    </>
   );
 }

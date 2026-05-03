@@ -3,901 +3,1196 @@
 import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/client';
 import { useRouter } from 'next/navigation';
-import { 
-  Search, 
-  ArrowLeft, 
-  User, 
-  CreditCard, 
-  Calendar, 
-  Receipt, 
-  Wallet, 
-  CheckCircle, 
-  AlertCircle,
-  Building,
-  GraduationCap,
-  FileText,
-  ChevronRight,
-  Loader2
+import {
+  Search, ArrowLeft, User, CreditCard, Calendar, Receipt,
+  Wallet, CheckCircle, AlertCircle, Building, GraduationCap,
+  FileText, ChevronRight, Loader2, Shield, BookOpen,
+  TrendingUp, Clock, Banknote, Smartphone, X, RefreshCw
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
-// Payment type options matching database enum
+// ─── CONSTANTS matching exact DB values ──────────────────────────────────────
 const PAYMENT_TYPES = [
-  { id: 'tuition', label: 'Tuition Fee', icon: GraduationCap },
-  { id: 'practical', label: 'Practical Fee', icon: Building },
-  { id: 'exam', label: 'Exam Fee', icon: FileText },
-  { id: 'attachment', label: 'Attachment Fee', icon: Building },
-  { id: 'registration', label: 'Registration Fee', icon: Receipt },
-  { id: 'penalty', label: 'Penalty/Fine', icon: AlertCircle },
+  { id: 'tuition',      label: 'Tuition Fee',      icon: GraduationCap },
+  { id: 'practical',    label: 'Practical Fee',     icon: Building },
+  { id: 'exam',         label: 'Exam Fee',          icon: FileText },
+  { id: 'attachment',   label: 'Attachment Fee',    icon: BookOpen },
+  { id: 'registration', label: 'Registration Fee',  icon: Receipt },
+  { id: 'penalty',      label: 'Penalty / Fine',    icon: AlertCircle },
 ];
 
-// Payment methods matching database enum
+// payment_method values in fee_payments table
 const PAYMENT_METHODS = [
-  { value: 'mpesa', label: 'M-Pesa', color: 'bg-green-100 text-green-700' },
-  { value: 'bank_transfer', label: 'Bank Transfer', color: 'bg-blue-100 text-blue-700' },
-  { value: 'equity_bank', label: 'Equity Bank', color: 'bg-red-100 text-red-700' },
-  { value: 'kcb_bank', label: 'KCB Bank', color: 'bg-amber-100 text-amber-700' },
-  { value: 'cash', label: 'Cash', color: 'bg-gray-100 text-gray-700' },
+  { value: 'mpesa',         label: 'M-Pesa',        icon: Smartphone,  ref: true  },
+  { value: 'bank_transfer', label: 'Bank Transfer',  icon: Banknote,    ref: true  },
+  { value: 'equity_bank',   label: 'Equity Bank',   icon: Banknote,    ref: true  },
+  { value: 'kcb_bank',      label: 'KCB Bank',      icon: Banknote,    ref: true  },
+  { value: 'cash',          label: 'Cash',           icon: Wallet,      ref: false },
 ];
 
-// Interfaces for data types
+const STATUSES = [
+  { value: 'completed', label: 'Completed' },
+  { value: 'pending',   label: 'Pending'   },
+  { value: 'failed',    label: 'Failed'    },
+];
+
+// ─── TYPES matching exact DB / view columns ───────────────────────────────────
+
+// v_student_profile columns
 interface StudentProfile {
-  id: string;
-  full_name: string;
+  application_id:   string;
   admission_number: string;
-  course_name: string;
-  course_level: string;
-  current_module_label: string;
-  campus: string;
-  financial_hold: boolean;
-  total_balance: number;
-  total_expected: number;
-  total_paid: number;
-  last_payment_date: string | null;
-  course_id: string;
-  course_type_id: string;
-  current_module: number;
+  full_name:        string;
+  phone:            string;
+  campus:           string;
+  intake:           string;
+  stream_type:      string;
+  current_module:   number;
   current_semester: number;
+  financial_hold:   boolean;
+  total_balance:    number;
+  credit_balance:   number;
+  student_status:   string;
+  sponsorship_type: string;
+  sponsor_name:     string;
+  last_payment_date: string | null;
+  course_id:        string;
+  course_type_id:   string;
+  course_name:      string;
+  course_exam_body: string;
+  department_name:  string;
+  course_level:     string;
+  module_id:        string;
+  module_index:     number;
+  module_label:     string;
+  payment_mode:     string;
+  module_fee:       number;
+  exam_fee:         number;
+  has_attachment:   boolean;
+  is_attachment_stage: boolean;
+  semester_id:      string;
+  semester_index:   number;
+  semester_fee:     number;
+  practical_fee:    number;
+  total_expected:   number;
+  total_paid:       number;
+  is_final_period:  boolean;
 }
 
+// v_student_fee_summary columns
 interface FeeSummary {
-  semester_id: string;
-  module_id: string;
-  semester_index: number;
-  module_index: number;
-  module_label: string;
-  total_expected: number;
-  total_paid: number;
-  balance: number;
-  tuition_fee: number;
-  practical_fee: number;
-  additional_fees: number;
+  application_id:       string;
+  admission_number:     string;
+  module_id:            string;
+  module_index:         number;
+  module_label:         string;
+  payment_mode:         string;
+  exam_fee:             number;
+  module_exam_body:     string;
+  semester_id:          string;
+  semester_index:       number;
+  tuition_fee:          number;
+  practical_fee:        number;
+  additional_fees:      number;
+  installment_amount:   number;
+  installment_status:   string;
+  total_paid:           number;
+  balance:              number;
+  due_date:             string | null;
+  attempt_number:       number;
 }
 
+// v_student_payment_history columns
 interface PaymentHistory {
-  id: string;
-  receipt_number: string;
-  payment_date: string;
-  amount: number;
-  payment_method: string;
-  payment_status: string;
-  module_label: string;
+  id:              string;
+  application_id:  string;
+  receipt_number:  string;
+  payment_date:    string;
+  amount:          number;
+  payment_method:  string;
+  payment_type:    string;
+  payment_status:  string;
+  transaction_id:  string | null;
+  notes:           string | null;
+  created_at:      string;
+  module_index:    number;
+  module_label:    string;
+  payment_mode:    string;
   semester_number: number;
+  semester_fee:    number;
 }
 
-interface Module {
-  id: string;
-  module_index: number;
-  label: string;
-  exam_body: string;
+// v_fee_clearance_status columns
+interface ClearanceStatus {
+  admission_number:  string;
+  student_name:      string;
+  campus:            string;
+  course_name:       string;
+  module_index:      number;
+  semester:          number;
+  semester_id:       string;
+  paid_pct:          number;
+  fee_cleared:       boolean;
+  clearance_status:  string;
+  total_units:       number;
+  results_released:  number;
+  results_pending:   number;
 }
 
-interface Semester {
-  id: string;
-  semester_index: number;
-  module_index: number;
-  module_id: string;
-}
-
+// fee_payments insert shape — matches table exactly
 interface PaymentFormData {
   application_id: string;
-  semester_id: string;
-  module_id: string;
-  payment_type: string;
-  amount: number;
-  payment_method: string;
-  transaction_id: string;
-  receipt_number: string;
-  payment_date: string;
-  notes: string;
+  semester_id:    string;   // uuid — required for 95% clearance trigger
+  module_id:      string;   // uuid — auto-filled from semester selection
+  payment_type:   string;   // NOT NULL
+  amount:         number;   // NOT NULL
+  payment_method: string;   // NOT NULL
+  transaction_id: string;   // nullable
+  payment_date:   string;   // date NOT NULL
+  status:         string;   // default: completed
+  receipt_number: string;   // nullable but we always generate
+  notes:          string;   // nullable
 }
 
+// Simple search result from applications table
+interface SearchResult {
+  id:               string;
+  full_name:        string;
+  admission_number: string;
+  course_name:      string;
+  course_level:     string;
+  campus:           string;
+  financial_hold:   boolean;
+  current_module:   number;
+  current_semester: number;
+  course_type_id:   string;
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+const fmt = (n: number) => `KES ${Number(n || 0).toLocaleString()}`;
+const initials = (name: string) =>
+  name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+const genReceipt = () => {
+  const d = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  return `RCP-${d}-${Math.floor(Math.random() * 900 + 100)}`;
+};
+const pctColor = (pct: number) =>
+  pct >= 95 ? 'text-emerald-600' : pct >= 50 ? 'text-amber-500' : 'text-red-500';
+const pctBg = (pct: number) =>
+  pct >= 95
+    ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800'
+    : pct >= 50
+    ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800'
+    : 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800';
+
+// ─── CLEARANCE PREVIEW ────────────────────────────────────────────────────────
+function ClearancePreview({
+  summary,
+  newAmount,
+}: {
+  summary: FeeSummary | null;
+  newAmount: number;
+}) {
+  if (!summary || !newAmount) return null;
+  const total    = summary.tuition_fee + summary.practical_fee + summary.additional_fees;
+  const newPaid  = summary.total_paid + newAmount;
+  const newPct   = Math.min((newPaid / total) * 100, 100);
+  const oldPct   = Math.min((summary.total_paid / total) * 100, 100);
+  const willClear = newPct >= 95;
+
+  return (
+    <div className={`rounded-xl border p-4 text-sm ${pctBg(newPct)}`}>
+      <div className="flex justify-between mb-2 text-slate-500 dark:text-slate-400">
+        <span>Before payment</span>
+        <span className={`font-bold ${pctColor(oldPct)}`}>{oldPct.toFixed(1)}%</span>
+      </div>
+      <div className="flex justify-between mb-3 text-slate-500 dark:text-slate-400">
+        <span>After payment</span>
+        <span className={`font-bold ${pctColor(newPct)}`}>{newPct.toFixed(1)}%</span>
+      </div>
+      {/* Progress */}
+      <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden mb-3">
+        <div
+          className={`h-full rounded-full transition-all duration-700 ${
+            willClear ? 'bg-emerald-500' : newPct >= 50 ? 'bg-amber-400' : 'bg-red-400'
+          }`}
+          style={{ width: `${newPct}%` }}
+        />
+      </div>
+      <p className={`font-semibold text-sm ${willClear ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}`}>
+        {willClear
+          ? '✓ Results will unlock automatically after saving'
+          : `⚠ Pay ${fmt(total * 0.95 - newPaid)} more to unlock results`}
+      </p>
+    </div>
+  );
+}
+
+// ─── SEMESTER CARD ────────────────────────────────────────────────────────────
+function SemesterCard({
+  summary,
+  selected,
+  onClick,
+}: {
+  summary: FeeSummary;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  const total = summary.tuition_fee + summary.practical_fee + summary.additional_fees;
+  const pct   = Math.min(Math.round((summary.total_paid / total) * 100), 100);
+  const cleared = pct >= 95;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full text-left p-4 rounded-xl border transition-all ${
+        selected
+          ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 dark:border-indigo-400'
+          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 hover:border-slate-300 dark:hover:border-slate-600'
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-semibold text-slate-900 dark:text-white text-sm">
+            {summary.module_label}
+            <span className="mx-1.5 text-slate-400">·</span>
+            <span className="text-slate-500 dark:text-slate-400">Semester {summary.semester_index}</span>
+          </p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 font-mono">
+            Tuition {fmt(summary.tuition_fee)}
+            {summary.practical_fee > 0 && ` + Practical ${fmt(summary.practical_fee)}`}
+            {summary.additional_fees > 0 && ` + Extra ${fmt(summary.additional_fees)}`}
+          </p>
+        </div>
+        <div className="text-right flex-shrink-0">
+          <p className={`text-sm font-bold ${cleared ? 'text-emerald-600' : 'text-red-500'}`}>
+            {cleared ? 'Cleared' : fmt(summary.balance)}
+          </p>
+          <p className={`text-xs font-semibold mt-0.5 ${pctColor(pct)}`}>{pct}% paid</p>
+        </div>
+      </div>
+      {/* mini progress */}
+      <div className="mt-3 h-1.5 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ${
+            cleared ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-400' : 'bg-red-400'
+          }`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </button>
+  );
+}
+
+// ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 export default function PaymentsPage() {
   const router = useRouter();
   const [supabase, setSupabase] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [campus, setCampus] = useState('');
-  
-  // Section 1: Student Lookup
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<StudentProfile[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [campus, setCampus]     = useState('');
+
+  // Search
+  const [searchQuery, setSearchQuery]           = useState('');
+  const [searchResults, setSearchResults]       = useState<SearchResult[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(null);
-  
-  // Section 2: Semester Balance & History
-  const [feeSummary, setFeeSummary] = useState<FeeSummary[]>([]);
-  const [paymentHistory, setPaymentHistory] = useState<PaymentHistory[]>([]);
-  
-  // Section 3: Payment Form
-  const [availableModules, setAvailableModules] = useState<Module[]>([]);
-  const [availableSemesters, setAvailableSemesters] = useState<Semester[]>([]);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [searching, setSearching]               = useState(false);
+
+  // Student data
+  const [selectedStudent, setSelectedStudent]   = useState<StudentProfile | null>(null);
+  const [feeSummary, setFeeSummary]             = useState<FeeSummary[]>([]);
+  const [paymentHistory, setPaymentHistory]     = useState<PaymentHistory[]>([]);
+  const [clearanceStatus, setClearanceStatus]   = useState<ClearanceStatus[]>([]);
+  const [loadingStudent, setLoadingStudent]     = useState(false);
+
+  // Form
+  const [selectedSemSummary, setSelectedSemSummary] = useState<FeeSummary | null>(null);
+  const [errors, setErrors]     = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  
-  const [formData, setFormData] = useState<PaymentFormData>({
+  const [lastReceipt, setLastReceipt] = useState('');
+
+  const [form, setForm] = useState<PaymentFormData>({
     application_id: '',
-    semester_id: '',
-    module_id: '',
-    payment_type: 'tuition',
-    amount: 0,
-    payment_method: 'cash',
+    semester_id:    '',
+    module_id:      '',
+    payment_type:   'tuition',
+    amount:         0,
+    payment_method: 'mpesa',
     transaction_id: '',
-    receipt_number: '',
-    payment_date: new Date().toISOString().split('T')[0],
-    notes: ''
+    payment_date:   new Date().toISOString().split('T')[0],
+    status:         'completed',
+    receipt_number: genReceipt(),
+    notes:          '',
   });
 
-  // Generate receipt number: RCP-YYYYMMDD-XXX
-  const generateReceiptNumber = useCallback(() => {
-    const date = new Date();
-    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
-    const random = Math.floor(Math.random() * 900 + 100).toString();
-    return `RCP-${dateStr}-${random}`;
-  }, []);
-
-  // Initialize Supabase and check auth
+  // ── Init ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     const client = createClient();
     setSupabase(client);
-
     const checkAuth = async () => {
       const { data: { session } } = await client.auth.getSession();
       if (!session) { router.push('/login/admin'); return; }
-      const userRole = session.user?.user_metadata?.role;
-      if (userRole !== 'admin') { router.push('/login/admin'); return; }
-      const userCampus = session.user?.user_metadata?.campus || localStorage.getItem('adminCampus');
-      setCampus(userCampus);
+      if (session.user?.user_metadata?.role !== 'admin') { router.push('/login/admin'); return; }
+      const c = session.user?.user_metadata?.campus || localStorage.getItem('adminCampus') || '';
+      setCampus(c);
       setLoading(false);
     };
     checkAuth();
   }, [router]);
 
-  // Search students as user types
+  // ── Search ────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!supabase || searchQuery.length < 2) {
       setSearchResults([]);
       setShowSearchResults(false);
       return;
     }
-
-    const searchStudents = async () => {
-      const { data, error } = await supabase
+    setSearching(true);
+    const t = setTimeout(async () => {
+      const { data } = await supabase
         .from('applications')
-        .select('id, full_name, admission_number, courses(name), course_types(level), current_module, campus, financial_hold, status')
+        .select(`
+          id, full_name, admission_number, campus,
+          financial_hold, current_module, current_semester, course_type_id,
+          courses(name), course_types(level)
+        `)
         .eq('status', 'enrolled')
         .or(`full_name.ilike.%${searchQuery}%,admission_number.ilike.%${searchQuery}%`)
-        .limit(10);
+        .limit(8);
 
-      if (!error && data) {
-        const mapped = data.map((app: any) => ({
-          id: app.id,
-          full_name: app.full_name,
-          admission_number: app.admission_number,
-          course_name: app.courses?.name || '',
-          course_level: app.course_types?.level || '',
-          current_module_label: `Module ${app.current_module}`,
-          campus: app.campus,
-          financial_hold: app.financial_hold,
-        }));
-        setSearchResults(mapped as StudentProfile[]);
+      if (data) {
+        setSearchResults(data.map((a: any) => ({
+          id:               a.id,
+          full_name:        a.full_name,
+          admission_number: a.admission_number,
+          course_name:      a.courses?.name || '',
+          course_level:     a.course_types?.level || '',
+          campus:           a.campus,
+          financial_hold:   a.financial_hold,
+          current_module:   a.current_module,
+          current_semester: a.current_semester,
+          course_type_id:   a.course_type_id,
+        })));
         setShowSearchResults(true);
       }
-    };
-
-    const timeout = setTimeout(searchStudents, 300);
-    return () => clearTimeout(timeout);
+      setSearching(false);
+    }, 300);
+    return () => clearTimeout(t);
   }, [searchQuery, supabase]);
 
-  // Load student profile and fee data
-  const selectStudent = async (student: StudentProfile) => {
+  // ── Select student ────────────────────────────────────────────────────────
+  const selectStudent = async (s: SearchResult) => {
     if (!supabase) return;
-    
-    setSelectedStudent(student);
-    setSearchQuery(student.full_name);
     setShowSearchResults(false);
+    setSearchQuery(s.full_name);
+    setLoadingStudent(true);
     setShowSuccess(false);
-    
-    // Load full profile from v_student_profile
+    setSelectedSemSummary(null);
+
+    // v_student_profile — full profile with current module/semester fee info
     const { data: profile } = await supabase
       .from('v_student_profile')
       .select('*')
-      .eq('admission_number', student.admission_number)
+      .eq('admission_number', s.admission_number)
       .single();
-    
-    if (profile) {
-      setSelectedStudent({ ...student, ...profile });
-    }
-    
-    // Load fee summary from v_student_fee_summary
+
+    setSelectedStudent(profile || null);
+
+    // v_student_fee_summary — all semesters with balances
     const { data: summary } = await supabase
       .from('v_student_fee_summary')
       .select('*')
-      .eq('application_id', student.id)
+      .eq('application_id', s.id)
       .order('module_index', { ascending: true })
       .order('semester_index', { ascending: true });
-    
+
     setFeeSummary(summary || []);
-    
-    // Load payment history from v_student_payment_history
+
+    // v_student_payment_history — recent payments
     const { data: history } = await supabase
       .from('v_student_payment_history')
       .select('*')
-      .eq('application_id', student.id)
+      .eq('application_id', s.id)
       .order('payment_date', { ascending: false })
       .limit(20);
-    
+
     setPaymentHistory(history || []);
-    
-    // Load modules for course
-    const { data: modules } = await supabase
-      .from('modules')
-      .select('id, module_index, label, exam_body')
-      .eq('course_type_id', student.course_type_id || profile?.course_type_id)
+
+    // v_fee_clearance_status — per-semester clearance
+    const { data: clearance } = await supabase
+      .from('v_fee_clearance_status')
+      .select('*')
+      .eq('admission_number', s.admission_number)
       .order('module_index', { ascending: true });
-    
-    setAvailableModules(modules || []);
-    
-    // Pre-fill form
-    setFormData(prev => ({
+
+    setClearanceStatus(clearance || []);
+
+    setForm(prev => ({
       ...prev,
-      application_id: student.id,
-      receipt_number: generateReceiptNumber()
+      application_id: s.id,
+      receipt_number: genReceipt(),
     }));
-    
-    // Load semesters for first module
-    if (modules && modules.length > 0) {
-      loadSemestersForModule(modules[0].id);
-    }
+
+    setLoadingStudent(false);
   };
 
-  // Load semesters when module changes
-  const loadSemestersForModule = async (moduleId: string) => {
-    if (!supabase || !moduleId) return;
-    
-    const { data } = await supabase
-      .from('semesters')
-      .select('id, semester_index, module_index, module_id')
-      .eq('module_id', moduleId)
-      .order('semester_index', { ascending: true });
-    
-    setAvailableSemesters(data || []);
-  };
-
-  // Handle form field changes
-  const handleChange = (field: keyof PaymentFormData, value: string | number) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error for this field
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
-    }
-  };
-
-  // Select semester from fee summary
-  const selectSemester = (summary: FeeSummary) => {
-    setFormData(prev => ({
+  // ── Semester click from fee summary ──────────────────────────────────────
+  const handleSemesterClick = (summary: FeeSummary) => {
+    setSelectedSemSummary(summary);
+    setForm(prev => ({
       ...prev,
       semester_id: summary.semester_id,
-      module_id: summary.module_id,
-      amount: summary.balance > 0 ? summary.balance : 0
+      module_id:   summary.module_id,
+      amount:      summary.balance > 0 ? Math.round(summary.balance) : 0,
     }));
-    
-    // Scroll to payment form
-    document.getElementById('payment-form')?.scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('payment-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  // Validate form
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-    
-    if (!formData.application_id) {
-      newErrors.application_id = 'Please select a student';
-    }
-    if (!formData.semester_id && !formData.module_id) {
-      newErrors.semester_id = 'Please select a semester or module';
-    }
-    if (!formData.amount || formData.amount <= 0) {
-      newErrors.amount = 'Amount must be greater than 0';
-    }
-    if (!formData.receipt_number) {
-      newErrors.receipt_number = 'Receipt number is required';
-    }
-    if (!formData.payment_date) {
-      newErrors.payment_date = 'Payment date is required';
-    } else {
-      const paymentDate = new Date(formData.payment_date);
-      const today = new Date();
-      today.setHours(23, 59, 59, 999);
-      if (paymentDate > today) {
-        newErrors.payment_date = 'Payment date cannot be in the future';
-      }
-    }
-    if (formData.payment_method === 'mpesa' && !formData.transaction_id) {
-      newErrors.transaction_id = 'M-Pesa transaction ID is required';
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  // ── Field change ──────────────────────────────────────────────────────────
+  const setField = (field: keyof PaymentFormData, value: string | number) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }));
   };
 
-  // Submit payment
+  // ── Validate ──────────────────────────────────────────────────────────────
+  const validate = (): boolean => {
+    const e: Record<string, string> = {};
+    if (!form.application_id)          e.application_id = 'Select a student';
+    if (!form.semester_id)             e.semester_id    = 'Select a semester';
+    if (!form.amount || form.amount <= 0) e.amount      = 'Enter a valid amount';
+    if (!form.receipt_number)          e.receipt_number = 'Receipt number required';
+    if (!form.payment_date)            e.payment_date   = 'Select a date';
+    else if (new Date(form.payment_date) > new Date())
+                                       e.payment_date   = 'Date cannot be in the future';
+    const method = PAYMENT_METHODS.find(m => m.value === form.payment_method);
+    if (method?.ref && !form.transaction_id) e.transaction_id = 'Reference number required';
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm() || !supabase) return;
-    
+    if (!validate() || !supabase) return;
     setSubmitting(true);
-    
-    // Check receipt number uniqueness
-    const { data: existing } = await supabase
+
+    // Check receipt uniqueness
+    const { data: exists } = await supabase
       .from('fee_payments')
       .select('id')
-      .eq('receipt_number', formData.receipt_number)
-      .single();
-    
-    if (existing) {
-      setErrors(prev => ({ ...prev, receipt_number: 'Receipt number already exists' }));
+      .eq('receipt_number', form.receipt_number)
+      .maybeSingle();
+
+    if (exists) {
+      setErrors(prev => ({ ...prev, receipt_number: 'Receipt number already used' }));
       setSubmitting(false);
       return;
     }
-    
-    // Submit to API
-    const submitData = {
-      application_id: formData.application_id,
-      payment_type: formData.payment_type,
-      amount: formData.amount,
-      payment_method: formData.payment_method,
-      transaction_id: formData.transaction_id || null,
-      payment_date: formData.payment_date,
-      status: 'completed',
-      receipt_number: formData.receipt_number,
-      notes: formData.notes || null,
-      semester_id: formData.semester_id || null,
-      module_id: formData.module_id || null
-    };
-    
-    const { error } = await supabase.from('fee_payments').insert([submitData]);
-    
+
+    // Insert — fee_payments exact columns
+    const { error } = await supabase.from('fee_payments').insert([{
+      application_id: form.application_id,
+      payment_type:   form.payment_type,
+      amount:         Number(form.amount),
+      payment_method: form.payment_method,
+      transaction_id: form.transaction_id || null,
+      payment_date:   form.payment_date,
+      status:         form.status,
+      receipt_number: form.receipt_number,
+      notes:          form.notes || null,
+      semester_id:    form.semester_id || null,
+      module_id:      form.module_id   || null,
+    }]);
+
     if (error) {
-      alert('Error recording payment: ' + error.message);
+      alert('Error: ' + error.message);
       setSubmitting(false);
       return;
     }
-    
-    // Update financial hold if balance is cleared
-    const currentBalance = feeSummary.find(s => s.semester_id === formData.semester_id);
-    if (currentBalance && currentBalance.balance - formData.amount <= 0 && selectedStudent?.financial_hold) {
-      await supabase
-        .from('applications')
-        .update({ financial_hold: false })
-        .eq('id', formData.application_id);
-    }
-    
-    // Show success and refresh
+
+    // DB trigger fn_trigger_clearance_on_payment fires automatically here
+    // It calculates % paid, sets fee_cleared = true if >= 95%
+    // If is_submitted = true → results_released = true automatically
+    // No extra calls needed
+
+    setLastReceipt(form.receipt_number);
     setShowSuccess(true);
     setSubmitting(false);
-    
-    // Reload data
+
+    // Refresh student data
     if (selectedStudent) {
-      selectStudent(selectedStudent);
+      selectStudent({
+        id: selectedStudent.application_id,
+        full_name: selectedStudent.full_name,
+        admission_number: selectedStudent.admission_number,
+        course_name: selectedStudent.course_name,
+        course_level: selectedStudent.course_level,
+        campus: selectedStudent.campus,
+        financial_hold: selectedStudent.financial_hold,
+        current_module: selectedStudent.current_module,
+        current_semester: selectedStudent.current_semester,
+        course_type_id: selectedStudent.course_type_id,
+      });
     }
-    
-    // Reset form with new receipt number
-    setFormData(prev => ({
+
+    // Reset form fields
+    setForm(prev => ({
       ...prev,
       amount: 0,
       transaction_id: '',
       notes: '',
-      receipt_number: generateReceiptNumber()
+      receipt_number: genReceipt(),
+      semester_id: '',
+      module_id: '',
     }));
+    setSelectedSemSummary(null);
   };
 
-  // Get initials for avatar
-  const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-  };
-
-  // Format currency
-  const formatKES = (amount: number) => `KES ${amount.toLocaleString()}`;
-
+  // ─────────────────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="flex items-center gap-3 text-slate-600">
-          <Loader2 className="w-6 h-6 animate-spin" />
-          <span className="text-lg">Loading payment system...</span>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+        <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400">
+          <Loader2 className="w-5 h-5 animate-spin" />
+          <span className="font-medium">Loading payment system...</span>
         </div>
       </div>
     );
   }
 
+  // ── Current semester clearance for selected student ───────────────────────
+  const currentClearance = clearanceStatus.find(
+    c => selectedStudent && c.module_index === selectedStudent.current_module
+  );
+
   return (
-    <div className="min-h-screen bg-slate-50/50">
-      {/* Professional Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button 
-                onClick={() => router.push('/admin/dashboard')} 
-                className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-600"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              <div>
-                <h1 className="text-xl font-bold text-slate-900">Fee Payment</h1>
-                <p className="text-sm text-slate-500">Record and manage student payments</p>
-              </div>
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0C0C14] transition-colors">
+
+      {/* ── HEADER ─────────────────────────────────────────────────────────── */}
+      <header className="sticky top-0 z-40 bg-white dark:bg-slate-900/95 border-b border-slate-200 dark:border-slate-800 backdrop-blur-sm shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.push('/admin/dashboard')}
+              className="p-2 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800 transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div className="w-px h-6 bg-slate-200 dark:bg-slate-700" />
+            <div>
+              <h1 className="text-base font-bold text-slate-900 dark:text-white leading-tight">Fee Payment</h1>
+              <p className="text-xs text-slate-400 dark:text-slate-500 leading-tight">Record & manage student payments</p>
             </div>
-            <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-lg">
-              <Building className="w-4 h-4 text-slate-500" />
-              <span className="text-sm font-medium text-slate-700">
-                {campus === 'main' ? 'Main Campus' : 'West Campus'}
-              </span>
-            </div>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+            <Building className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+              {campus === 'main' ? 'Main Campus' : campus === 'west' ? 'West Campus' : campus || 'All Campuses'}
+            </span>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Section 1: Student Lookup - Professional Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-indigo-100 rounded-lg">
-              <Search className="w-5 h-5 text-indigo-600" />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+        {/* ── STUDENT SEARCH ───────────────────────────────────────────────── */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-visible">
+          <div className="p-6">
+            {/* Section header */}
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-950 flex items-center justify-center">
+                <Search className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-slate-900 dark:text-white text-sm">Student Lookup</h2>
+                <p className="text-xs text-slate-400 dark:text-slate-500">Search by admission number or name</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">Student Search</h2>
-              <p className="text-sm text-slate-500">Find student by admission number or name</p>
-            </div>
-          </div>
-          
-          <div className="relative max-w-2xl">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-slate-400" />
-            </div>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by admission number or full name..."
-              className="block w-full pl-11 pr-4 py-3.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50/50 text-slate-900 placeholder:text-slate-400"
-            />
-            
-            {/* Search Results Dropdown */}
-            {showSearchResults && searchResults.length > 0 && (
-              <div className="absolute z-20 w-full mt-2 bg-white rounded-xl shadow-xl border border-slate-200 max-h-72 overflow-auto">
-                {searchResults.map((student) => (
-                  <button
-                    key={student.id}
-                    onClick={() => selectStudent(student)}
-                    className="w-full text-left px-4 py-3.5 hover:bg-slate-50 border-b border-slate-100 last:border-0 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-semibold text-sm">
-                        {getInitials(student.full_name)}
+
+            {/* Search input */}
+            <div className="relative max-w-xl">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                {searching
+                  ? <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
+                  : <Search className="w-4 h-4 text-slate-400" />}
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onFocus={() => searchResults.length > 0 && setShowSearchResults(true)}
+                placeholder="Search by admission number or full name..."
+                className="w-full pl-10 pr-10 py-3 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => { setSearchQuery(''); setShowSearchResults(false); }}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+
+              {/* Dropdown results */}
+              {showSearchResults && searchResults.length > 0 && (
+                <div className="absolute z-50 top-full mt-1.5 w-full bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden max-h-72 overflow-y-auto">
+                  {searchResults.map(s => (
+                    <button
+                      key={s.id}
+                      onClick={() => selectStudent(s)}
+                      className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-800 border-b border-slate-100 dark:border-slate-800 last:border-0 transition-colors"
+                    >
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                        {initials(s.full_name)}
                       </div>
-                      <div>
-                        <div className="font-medium text-slate-900">{student.full_name}</div>
-                        <div className="text-sm text-slate-500">
-                          {student.admission_number} • {student.course_name}
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm text-slate-900 dark:text-white truncate">{s.full_name}</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 truncate">
+                          {s.admission_number} · {s.course_name} · {s.campus}
+                        </p>
+                      </div>
+                      {s.financial_hold && (
+                        <span className="ml-auto flex-shrink-0 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 px-2 py-0.5 rounded-full">
+                          Hold
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* ── STUDENT PROFILE CARD ──────────────────────────────────────── */}
+            {loadingStudent && (
+              <div className="mt-6 flex items-center justify-center py-10">
+                <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+              </div>
+            )}
+
+            {selectedStudent && !loadingStudent && (
+              <div className="mt-6 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 overflow-hidden">
+                <div className="p-5">
+                  <div className="flex items-start gap-4">
+                    {/* Avatar */}
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl shadow-lg flex-shrink-0">
+                      {initials(selectedStudent.full_name)}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-3 flex-wrap">
+                        <div>
+                          <h3 className="text-lg font-bold text-slate-900 dark:text-white">{selectedStudent.full_name}</h3>
+                          <div className="flex items-center flex-wrap gap-2 mt-1">
+                            <span className="font-mono text-xs px-2 py-0.5 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded">
+                              {selectedStudent.admission_number}
+                            </span>
+                            <span className="text-slate-300 dark:text-slate-600">·</span>
+                            <span className="text-xs text-slate-500 dark:text-slate-400">{selectedStudent.campus}</span>
+                            <span className="text-slate-300 dark:text-slate-600">·</span>
+                            <span className="text-xs text-slate-500 dark:text-slate-400">{selectedStudent.intake}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 mt-2">
+                            <GraduationCap className="w-3.5 h-3.5 text-slate-400" />
+                            <span className="text-xs text-slate-600 dark:text-slate-400">
+                              {selectedStudent.course_name}
+                              <span className="mx-1 text-slate-400">·</span>
+                              {selectedStudent.course_level}
+                              <span className="mx-1 text-slate-400">·</span>
+                              {selectedStudent.course_exam_body}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {selectedStudent.financial_hold && (
+                            <span className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-full">
+                              <AlertCircle className="w-3 h-3" />
+                              Financial Hold
+                            </span>
+                          )}
+                          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
+                            selectedStudent.student_status === 'enrolled'
+                              ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                          }`}>
+                            {selectedStudent.student_status}
+                          </span>
                         </div>
                       </div>
+
+                      {/* Metrics */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
+                        {[
+                          {
+                            label: 'Total Expected',
+                            value: fmt(selectedStudent.total_expected),
+                            color: 'text-slate-700 dark:text-slate-300',
+                          },
+                          {
+                            label: 'Total Paid',
+                            value: fmt(selectedStudent.total_paid),
+                            color: 'text-emerald-600 dark:text-emerald-400',
+                          },
+                          {
+                            label: 'Balance',
+                            value: fmt(selectedStudent.total_balance),
+                            color: selectedStudent.total_balance > 0
+                              ? 'text-red-600 dark:text-red-400'
+                              : 'text-emerald-600 dark:text-emerald-400',
+                          },
+                          {
+                            label: 'Last Payment',
+                            value: selectedStudent.last_payment_date
+                              ? new Date(selectedStudent.last_payment_date).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })
+                              : '—',
+                            color: 'text-slate-600 dark:text-slate-400',
+                          },
+                        ].map(m => (
+                          <div key={m.label} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3 shadow-sm">
+                            <p className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wide font-medium mb-1">{m.label}</p>
+                            <p className={`text-sm font-bold font-mono ${m.color}`}>{m.value}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Current module/semester info */}
+                      <div className="mt-3 flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
+                        <span className="flex items-center gap-1">
+                          <BookOpen className="w-3.5 h-3.5" />
+                          {selectedStudent.module_label || `Module ${selectedStudent.current_module}`}
+                          <ChevronRight className="w-3 h-3" />
+                          Semester {selectedStudent.current_semester}
+                        </span>
+                        {selectedStudent.sponsorship_type && selectedStudent.sponsorship_type !== 'self' && (
+                          <span className="flex items-center gap-1">
+                            <Shield className="w-3.5 h-3.5" />
+                            {selectedStudent.sponsor_name || selectedStudent.sponsorship_type}
+                          </span>
+                        )}
+                        {currentClearance && (
+                          <span className={`flex items-center gap-1 font-semibold ${pctColor(Number(currentClearance.paid_pct))}`}>
+                            <TrendingUp className="w-3.5 h-3.5" />
+                            {Number(currentClearance.paid_pct).toFixed(0)}% cleared this semester
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </button>
-                ))}
+                  </div>
+                </div>
               </div>
             )}
           </div>
-
-          {/* Selected Student Profile - Professional Card */}
-          {selectedStudent && (
-            <div className="mt-8 p-6 bg-gradient-to-r from-indigo-50/50 to-slate-50/50 rounded-xl border border-indigo-100">
-              <div className="flex items-start gap-5">
-                <div className="w-20 h-20 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-indigo-200 flex-shrink-0">
-                  {getInitials(selectedStudent.full_name)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h3 className="text-xl font-bold text-slate-900">{selectedStudent.full_name}</h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-xs font-mono font-medium">
-                          {selectedStudent.admission_number}
-                        </span>
-                        <span className="text-slate-400">•</span>
-                        <span className="text-sm text-slate-600">{selectedStudent.campus}</span>
-                      </div>
-                      <p className="text-sm text-slate-600 mt-2 flex items-center gap-2">
-                        <GraduationCap className="w-4 h-4 text-slate-400" />
-                        {selectedStudent.course_name}
-                        <span className="text-slate-400">•</span>
-                        {selectedStudent.course_level}
-                      </p>
-                    </div>
-                    {selectedStudent.financial_hold && (
-                      <span className="flex items-center gap-1.5 px-3 py-1.5 bg-red-100 text-red-700 rounded-full text-xs font-semibold">
-                        <AlertCircle className="w-3.5 h-3.5" />
-                        Financial Hold
-                      </span>
-                    )}
-                  </div>
-                  
-                  {/* Professional Metrics Cards */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                      <div className="text-xs text-slate-500 uppercase tracking-wide font-medium mb-1">Total Expected</div>
-                      <div className="text-lg font-bold text-slate-900">
-                        {formatKES(selectedStudent.total_expected || 0)}
-                      </div>
-                    </div>
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                      <div className="text-xs text-slate-500 uppercase tracking-wide font-medium mb-1">Total Paid</div>
-                      <div className="text-lg font-bold text-emerald-600">
-                        {formatKES(selectedStudent.total_paid || 0)}
-                      </div>
-                    </div>
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                      <div className="text-xs text-slate-500 uppercase tracking-wide font-medium mb-1">Balance</div>
-                      <div className={`text-lg font-bold ${(selectedStudent.total_balance || 0) > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                        {formatKES(selectedStudent.total_balance || 0)}
-                      </div>
-                    </div>
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                      <div className="text-xs text-slate-500 uppercase tracking-wide font-medium mb-1">Last Payment</div>
-                      <div className="text-lg font-bold text-slate-700">
-                        {selectedStudent.last_payment_date 
-                          ? new Date(selectedStudent.last_payment_date).toLocaleDateString() 
-                          : '—'}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Sections 2 & 3: Two Column Layout */}
-        {selectedStudent && (
+        {/* ── MAIN 2-COLUMN LAYOUT ─────────────────────────────────────────── */}
+        {selectedStudent && !loadingStudent && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Section 2: Semester Balance & History */}
+
+            {/* ── LEFT: FEE SUMMARY + PAYMENT HISTORY ────────────────────── */}
             <div className="space-y-6">
-              {/* Fee Summary - Professional Card */}
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="p-2 bg-emerald-100 rounded-lg">
-                    <Wallet className="w-5 h-5 text-emerald-600" />
+
+              {/* Fee Summary */}
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center">
+                    <Wallet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-semibold text-slate-900">Semester Balances</h2>
-                    <p className="text-sm text-slate-500">Outstanding fees by semester</p>
+                    <h2 className="font-semibold text-sm text-slate-900 dark:text-white">Semester Balances</h2>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">Click a semester to fill the payment form</p>
                   </div>
                 </div>
-                
-                {feeSummary.length === 0 ? (
-                  <div className="text-center py-8 bg-slate-50 rounded-xl">
-                    <p className="text-slate-500">No fee summary available.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {feeSummary.map((summary) => (
-                      <div 
-                        key={summary.semester_id} 
-                        className="p-4 bg-slate-50 rounded-xl border border-slate-200 hover:border-indigo-300 hover:shadow-sm transition-all group"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h4 className="font-semibold text-slate-900 flex items-center gap-2">
-                              {summary.module_label}
-                              <ChevronRight className="w-4 h-4 text-slate-400" />
-                              <span className="text-slate-600">Semester {summary.semester_index}</span>
-                            </h4>
-                            <div className="flex items-center gap-3 mt-2 text-sm text-slate-500">
-                              <span className="flex items-center gap-1">
-                                <span className="w-2 h-2 bg-blue-400 rounded-full"></span>
-                                Tuition {formatKES(summary.tuition_fee)}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <span className="w-2 h-2 bg-amber-400 rounded-full"></span>
-                                Practical {formatKES(summary.practical_fee)}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className={`text-lg font-bold ${summary.balance > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                              {summary.balance > 0 ? formatKES(summary.balance) : 'Paid'}
-                            </div>
-                            <button
-                              onClick={() => selectSemester(summary)}
-                              className="mt-2 text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1 ml-auto opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              Select
-                              <ChevronRight className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <div className="p-5 space-y-3">
+                  {feeSummary.length === 0 ? (
+                    <div className="text-center py-8 text-sm text-slate-400 dark:text-slate-500">
+                      No fee summary available
+                    </div>
+                  ) : (
+                    feeSummary.map(s => (
+                      <SemesterCard
+                        key={s.semester_id}
+                        summary={s}
+                        selected={selectedSemSummary?.semester_id === s.semester_id}
+                        onClick={() => handleSemesterClick(s)}
+                      />
+                    ))
+                  )}
+                </div>
               </div>
 
-              {/* Payment History - Professional Card */}
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <Receipt className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-semibold text-slate-900">Payment History</h2>
-                    <p className="text-sm text-slate-500">Recent transactions</p>
+              {/* Payment History */}
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-950 flex items-center justify-center">
+                      <Receipt className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <h2 className="font-semibold text-sm text-slate-900 dark:text-white">Payment History</h2>
+                      <p className="text-xs text-slate-400 dark:text-slate-500">{paymentHistory.length} transactions</p>
+                    </div>
                   </div>
                 </div>
-                
-                {paymentHistory.length === 0 ? (
-                  <div className="text-center py-8 bg-slate-50 rounded-xl">
-                    <p className="text-slate-500">No payments recorded.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3 max-h-96 overflow-auto pr-1">
-                    {paymentHistory.map((payment) => {
-                      const methodStyle = PAYMENT_METHODS.find(m => m.value === payment.payment_method)?.color || 'bg-gray-100 text-gray-700';
+                <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-96 overflow-y-auto">
+                  {paymentHistory.length === 0 ? (
+                    <div className="text-center py-10 text-sm text-slate-400 dark:text-slate-500">
+                      No payments recorded yet
+                    </div>
+                  ) : (
+                    paymentHistory.map(p => {
+                      const method = PAYMENT_METHODS.find(m => m.value === p.payment_method);
                       return (
-                        <div key={payment.id} className="p-4 bg-slate-50 rounded-xl border border-slate-100 hover:border-slate-200 transition-colors">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
-                                <CreditCard className="w-5 h-5 text-slate-400" />
-                              </div>
-                              <div>
-                                <div className="font-semibold text-slate-900">{formatKES(payment.amount)}</div>
-                                <div className="text-sm text-slate-500">
-                                  {payment.module_label} • Semester {payment.semester_number}
-                                </div>
-                                <div className="text-xs text-slate-400 mt-0.5">
-                                  {new Date(payment.payment_date).toLocaleDateString()}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-sm font-mono text-slate-600 bg-slate-100 px-2 py-1 rounded">{payment.receipt_number}</div>
-                              <span className={`inline-block mt-2 px-2.5 py-1 rounded-lg text-xs font-medium ${methodStyle}`}>
-                                {payment.payment_method}
+                        <div key={p.id} className="px-5 py-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                          <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
+                            <CreditCard className="w-4 h-4 text-slate-400" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-sm text-slate-900 dark:text-white">{fmt(p.amount)}</p>
+                            <p className="text-xs text-slate-400 dark:text-slate-500 truncate">
+                              {p.module_label} · Sem {p.semester_number}
+                              {p.transaction_id && ` · ${p.transaction_id}`}
+                            </p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="font-mono text-xs text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded mb-1.5">
+                              {p.receipt_number}
+                            </p>
+                            <div className="flex items-center gap-1.5 justify-end">
+                              <span className="text-xs text-slate-400">
+                                {new Date(p.payment_date).toLocaleDateString('en-KE', { day: 'numeric', month: 'short' })}
+                              </span>
+                              <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${
+                                p.payment_method === 'mpesa'
+                                  ? 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400'
+                                  : p.payment_method === 'cash'
+                                  ? 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                                  : 'bg-indigo-100 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-400'
+                              }`}>
+                                {method?.label || p.payment_method}
                               </span>
                             </div>
                           </div>
                         </div>
                       );
-                    })}
-                  </div>
-                )}
+                    })
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Section 3: Payment Form - Professional Card */}
-            <div id="payment-form" className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <CreditCard className="w-5 h-5 text-purple-600" />
+            {/* ── RIGHT: PAYMENT FORM ─────────────────────────────────────── */}
+            <div
+              id="payment-form"
+              className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden self-start sticky top-20"
+            >
+              <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-950 flex items-center justify-center">
+                  <CreditCard className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-900">Record Payment</h2>
-                  <p className="text-sm text-slate-500">Enter payment details</p>
+                  <h2 className="font-semibold text-sm text-slate-900 dark:text-white">Record Payment</h2>
+                  <p className="text-xs text-slate-400 dark:text-slate-500">
+                    {selectedSemSummary
+                      ? `${selectedSemSummary.module_label} · Semester ${selectedSemSummary.semester_index}`
+                      : 'Fill all required fields'}
+                  </p>
                 </div>
               </div>
-              
-              {showSuccess && (
-                <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-3">
-                  <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <CheckCircle className="w-5 h-5 text-emerald-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-emerald-900">Payment recorded successfully!</p>
-                    <p className="text-sm text-emerald-700">Receipt: {formData.receipt_number}</p>
-                  </div>
-                </div>
-              )}
-              
-              <form onSubmit={handleSubmit} className="space-y-5">
-                {/* Receipt Number */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Receipt Number <span className="text-red-500">*</span></label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Receipt className="h-4 w-4 text-slate-400" />
+
+              <div className="p-5">
+                {/* Success banner */}
+                {showSuccess && (
+                  <div className="mb-5 p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-sm text-emerald-900 dark:text-emerald-300">Payment recorded successfully</p>
+                      <p className="text-xs text-emerald-700 dark:text-emerald-500 mt-0.5 font-mono">Receipt: {lastReceipt}</p>
+                      <p className="text-xs text-emerald-600 dark:text-emerald-500 mt-1">
+                        Clearance check ran automatically — results will unlock if ≥ 95% paid.
+                      </p>
                     </div>
+                    <button onClick={() => setShowSuccess(false)} className="ml-auto text-emerald-500 hover:text-emerald-700 flex-shrink-0">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="space-y-5">
+
+                  {/* ── Semester selector (if not clicked from summary) ── */}
+                  {!selectedSemSummary && (
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">
+                        Semester <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={form.semester_id}
+                        onChange={e => {
+                          const sem = feeSummary.find(s => s.semester_id === e.target.value);
+                          if (sem) {
+                            setSelectedSemSummary(sem);
+                            setField('semester_id', sem.semester_id);
+                            setField('module_id', sem.module_id);
+                          }
+                        }}
+                        className={`w-full px-3 py-2.5 text-sm rounded-xl border bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors ${
+                          errors.semester_id ? 'border-red-400' : 'border-slate-300 dark:border-slate-700'
+                        }`}
+                      >
+                        <option value="">Select semester...</option>
+                        {feeSummary.map(s => (
+                          <option key={s.semester_id} value={s.semester_id}>
+                            {s.module_label} · Semester {s.semester_index} — {fmt(s.balance)} outstanding
+                          </option>
+                        ))}
+                      </select>
+                      {errors.semester_id && <p className="mt-1.5 text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.semester_id}</p>}
+                    </div>
+                  )}
+
+                  {/* Selected semester reminder */}
+                  {selectedSemSummary && (
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800">
+                      <div>
+                        <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">
+                          {selectedSemSummary.module_label} · Semester {selectedSemSummary.semester_index}
+                        </p>
+                        <p className="text-xs text-indigo-500 dark:text-indigo-400 font-mono mt-0.5">
+                          Outstanding: {fmt(selectedSemSummary.balance)}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedSemSummary(null); setField('semester_id', ''); setField('module_id', ''); }}
+                        className="text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* ── Payment Method ── */}
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">
+                      Payment Method <span className="text-red-500">*</span>
+                    </label>
+                    <div className="grid grid-cols-5 gap-2">
+                      {PAYMENT_METHODS.map(m => (
+                        <button
+                          key={m.value}
+                          type="button"
+                          onClick={() => { setField('payment_method', m.value); setField('transaction_id', ''); }}
+                          className={`flex flex-col items-center gap-1 py-3 px-1 rounded-xl border text-xs font-semibold transition-all ${
+                            form.payment_method === m.value
+                              ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300'
+                              : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'
+                          }`}
+                        >
+                          <m.icon className="w-4 h-4" />
+                          <span className="text-center leading-tight" style={{ fontSize: '10px' }}>
+                            {m.value === 'bank_transfer' ? 'Bank' : m.value === 'equity_bank' ? 'Equity' : m.value === 'kcb_bank' ? 'KCB' : m.label}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ── Amount + Payment Type ── */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">
+                        Amount <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <span className="text-xs font-bold text-slate-400">KES</span>
+                        </div>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={form.amount || ''}
+                          onChange={e => setField('amount', parseFloat(e.target.value) || 0)}
+                          placeholder="0"
+                          className={`w-full pl-12 pr-3 py-2.5 text-sm rounded-xl border bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors font-mono ${
+                            errors.amount ? 'border-red-400' : 'border-slate-300 dark:border-slate-700'
+                          }`}
+                        />
+                      </div>
+                      {errors.amount && <p className="mt-1 text-xs text-red-500">{errors.amount}</p>}
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">
+                        Payment Type <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={form.payment_type}
+                        onChange={e => setField('payment_type', e.target.value)}
+                        className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                      >
+                        {PAYMENT_TYPES.map(t => (
+                          <option key={t.id} value={t.id}>{t.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* ── Transaction ID ── */}
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">
+                      {form.payment_method === 'mpesa'         ? 'M-Pesa Code'
+                       : form.payment_method === 'bank_transfer' ? 'Bank Reference No.'
+                       : form.payment_method === 'equity_bank'   ? 'Equity Reference No.'
+                       : form.payment_method === 'kcb_bank'      ? 'KCB Reference No.'
+                       : 'Reference'}{' '}
+                      {PAYMENT_METHODS.find(m => m.value === form.payment_method)?.ref
+                        ? <span className="text-red-500">*</span>
+                        : <span className="text-slate-400 normal-case font-normal tracking-normal">(optional)</span>}
+                    </label>
                     <input
                       type="text"
-                      value={formData.receipt_number}
-                      onChange={(e) => handleChange('receipt_number', e.target.value)}
-                      className={`w-full pl-10 pr-3 py-2.5 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50/50 ${errors.receipt_number ? 'border-red-300' : 'border-slate-300'}`}
-                      placeholder="RCP-YYYYMMDD-XXX"
+                      value={form.transaction_id}
+                      onChange={e => setField('transaction_id', e.target.value)}
+                      disabled={form.payment_method === 'cash'}
+                      placeholder={
+                        form.payment_method === 'mpesa'          ? 'e.g. QHJ7X2341'
+                        : form.payment_method === 'cash'         ? 'Not required for cash'
+                        : 'Reference number'
+                      }
+                      className={`w-full px-3 py-2.5 text-sm rounded-xl border bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors font-mono disabled:bg-slate-100 dark:disabled:bg-slate-800/50 disabled:text-slate-400 ${
+                        errors.transaction_id ? 'border-red-400' : 'border-slate-300 dark:border-slate-700'
+                      }`}
+                    />
+                    {errors.transaction_id && <p className="mt-1 text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.transaction_id}</p>}
+                  </div>
+
+                  {/* ── Payment Date + Receipt Number ── */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">
+                        Payment Date <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                        </div>
+                        <input
+                          type="date"
+                          value={form.payment_date}
+                          onChange={e => setField('payment_date', e.target.value)}
+                          className={`w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors ${
+                            errors.payment_date ? 'border-red-400' : 'border-slate-300 dark:border-slate-700'
+                          }`}
+                        />
+                      </div>
+                      {errors.payment_date && <p className="mt-1 text-xs text-red-500">{errors.payment_date}</p>}
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">
+                        Receipt No. <span className="text-red-500">*</span>
+                        <span className="ml-1 normal-case font-normal tracking-normal text-slate-400">(auto)</span>
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <Receipt className="w-3.5 h-3.5 text-slate-400" />
+                        </div>
+                        <input
+                          type="text"
+                          value={form.receipt_number}
+                          onChange={e => setField('receipt_number', e.target.value)}
+                          placeholder="RCP-YYYYMMDD-XXX"
+                          className={`w-full pl-9 pr-8 py-2.5 text-sm rounded-xl border bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors font-mono ${
+                            errors.receipt_number ? 'border-red-400' : 'border-slate-300 dark:border-slate-700'
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setField('receipt_number', genReceipt())}
+                          className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                          title="Regenerate"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      {errors.receipt_number && <p className="mt-1 text-xs text-red-500">{errors.receipt_number}</p>}
+                    </div>
+                  </div>
+
+                  {/* ── Status ── */}
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">
+                      Status <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={form.status}
+                      onChange={e => setField('status', e.target.value)}
+                      className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                    >
+                      {STATUSES.map(s => (
+                        <option key={s.value} value={s.value}>{s.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* ── Notes ── */}
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">
+                      Notes <span className="text-slate-400 normal-case font-normal tracking-normal">(optional)</span>
+                    </label>
+                    <textarea
+                      value={form.notes}
+                      onChange={e => setField('notes', e.target.value)}
+                      rows={2}
+                      placeholder="e.g. Paid via KCB Branch, Nairobi..."
+                      className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors resize-none"
                     />
                   </div>
-                  {errors.receipt_number && <p className="mt-1.5 text-sm text-red-600 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{errors.receipt_number}</p>}
-                </div>
 
-                {/* Payment Date & Amount */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Payment Date <span className="text-red-500">*</span></label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Calendar className="h-4 w-4 text-slate-400" />
-                      </div>
-                      <input
-                        type="date"
-                        value={formData.payment_date}
-                        onChange={(e) => handleChange('payment_date', e.target.value)}
-                        className={`w-full pl-10 pr-3 py-2.5 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50/50 ${errors.payment_date ? 'border-red-300' : 'border-slate-300'}`}
-                      />
-                    </div>
-                    {errors.payment_date && <p className="mt-1.5 text-sm text-red-600">{errors.payment_date}</p>}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Amount (KES) <span className="text-red-500">*</span></label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <span className="text-slate-500 font-medium">KES</span>
-                      </div>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={formData.amount || ''}
-                        onChange={(e) => handleChange('amount', parseFloat(e.target.value) || 0)}
-                        className={`w-full pl-14 pr-3 py-2.5 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50/50 ${errors.amount ? 'border-red-300' : 'border-slate-300'}`}
-                        placeholder="0.00"
-                      />
-                    </div>
-                    {errors.amount && <p className="mt-1.5 text-sm text-red-600">{errors.amount}</p>}
-                  </div>
-                </div>
-
-                {/* Payment Type & Method */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Payment Type <span className="text-red-500">*</span></label>
-                    <select
-                      value={formData.payment_type}
-                      onChange={(e) => handleChange('payment_type', e.target.value)}
-                      className="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
-                    >
-                      {PAYMENT_TYPES.map(type => (
-                        <option key={type.id} value={type.id}>{type.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Payment Method <span className="text-red-500">*</span></label>
-                    <select
-                      value={formData.payment_method}
-                      onChange={(e) => handleChange('payment_method', e.target.value)}
-                      className="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
-                    >
-                      {PAYMENT_METHODS.map(method => (
-                        <option key={method.value} value={method.value}>{method.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Transaction ID */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Transaction ID {formData.payment_method === 'mpesa' && <span className="text-red-500">*</span>}
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.transaction_id}
-                    onChange={(e) => handleChange('transaction_id', e.target.value)}
-                    placeholder={formData.payment_method === 'mpesa' ? 'M-Pesa confirmation code' : formData.payment_method === 'cash' ? 'Not required for cash' : 'Bank reference number'}
-                    disabled={formData.payment_method === 'cash'}
-                    className={`w-full px-3 py-2.5 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50/50 ${
-                      errors.transaction_id ? 'border-red-300' : 'border-slate-300'
-                    } ${formData.payment_method === 'cash' ? 'bg-slate-100 text-slate-500' : ''}`}
-                  />
-                  {errors.transaction_id && <p className="mt-1.5 text-sm text-red-600">{errors.transaction_id}</p>}
-                </div>
-
-                {/* Module & Semester */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Module</label>
-                    <select
-                      value={formData.module_id}
-                      onChange={(e) => {
-                        handleChange('module_id', e.target.value);
-                        loadSemestersForModule(e.target.value);
-                      }}
-                      className="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
-                    >
-                      <option value="">Select module...</option>
-                      {availableModules.map(mod => (
-                        <option key={mod.id} value={mod.id}>{mod.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Semester</label>
-                    <select
-                      value={formData.semester_id}
-                      onChange={(e) => handleChange('semester_id', e.target.value)}
-                      className={`w-full px-3 py-2.5 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white ${errors.semester_id ? 'border-red-300' : 'border-slate-300'}`}
-                    >
-                      <option value="">Select semester...</option>
-                      {availableSemesters.map(sem => (
-                        <option key={sem.id} value={sem.id}>Semester {sem.semester_index}</option>
-                      ))}
-                    </select>
-                    {errors.semester_id && <p className="mt-1.5 text-sm text-red-600">{errors.semester_id}</p>}
-                  </div>
-                </div>
-
-                {/* Notes */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Notes (Optional)</label>
-                  <textarea
-                    value={formData.notes}
-                    onChange={(e) => handleChange('notes', e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50/50 resize-none"
-                    placeholder="Add any additional notes about this payment..."
-                  />
-                </div>
-
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-slate-400 disabled:to-slate-400 text-white rounded-xl font-semibold shadow-lg shadow-indigo-200 disabled:shadow-none transition-all flex items-center justify-center gap-2"
-                >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      Recording Payment...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="w-5 h-5" />
-                      Record Payment & Generate Receipt
-                    </>
+                  {/* ── Clearance preview ── */}
+                  {selectedSemSummary && form.amount > 0 && (
+                    <ClearancePreview summary={selectedSemSummary} newAmount={form.amount} />
                   )}
-                </button>
-              </form>
+
+                  {/* ── Submit ── */}
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-slate-400 disabled:to-slate-400 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-200/50 dark:shadow-indigo-900/30 disabled:shadow-none transition-all flex items-center justify-center gap-2"
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Recording payment...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-4 h-4" />
+                        Record Payment & Generate Receipt
+                      </>
+                    )}
+                  </button>
+
+                  {/* DB note */}
+                  <p className="text-center text-xs text-slate-400 dark:text-slate-600">
+                    Clearance trigger runs automatically · Results unlock at 95% paid
+                  </p>
+                </form>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Empty State */}
-        {!selectedStudent && (
-          <div className="text-center py-16 bg-white rounded-2xl shadow-sm border border-slate-200">
-            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <User className="w-8 h-8 text-slate-400" />
+        {/* ── EMPTY STATE ────────────────────────────────────────────────────── */}
+        {!selectedStudent && !loadingStudent && (
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-16 text-center">
+            <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-4">
+              <User className="w-8 h-8 text-slate-300 dark:text-slate-600" />
             </div>
-            <h3 className="text-lg font-medium text-slate-900 mb-2">No Student Selected</h3>
-            <p className="text-slate-500 max-w-sm mx-auto">Search for a student above to view their fee details, payment history, and record new payments.</p>
+            <h3 className="font-semibold text-slate-700 dark:text-slate-300 mb-1">No Student Selected</h3>
+            <p className="text-sm text-slate-400 dark:text-slate-500 max-w-xs mx-auto">
+              Search for a student above to view their semester balances, payment history and record a new payment.
+            </p>
           </div>
         )}
       </main>
