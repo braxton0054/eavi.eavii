@@ -211,8 +211,35 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </aside>
 
+      {/* Mobile Header */}
+      {isMobile && (
+        <header className="fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 z-40 flex items-center px-4 gap-3">
+          <button
+            onClick={toggleSidebar}
+            className="p-2 -ml-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            aria-label="Toggle menu"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <Link href="/admin/dashboard" className="relative w-8 h-8 flex-shrink-0">
+            <Image
+              src="/logo.webp"
+              alt="EAVI"
+              fill
+              className="object-contain"
+            />
+          </Link>
+          <span className="font-semibold text-gray-900 text-sm">EAVI Admin</span>
+        </header>
+      )}
+
       {/* Main Content */}
-      <main className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? 'ml-14' : 'ml-60'}`}>
+      <main 
+        className={`flex-1 transition-all duration-300 min-h-screen 
+          ${isMobile ? 'ml-0 pt-14' : sidebarCollapsed ? 'ml-14' : 'ml-60'}`}
+      >
         {children}
       </main>
     </div>
