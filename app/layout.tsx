@@ -39,6 +39,7 @@ export default function RootLayout({
       <head>
         <link rel="icon" href="/favicon.ico?v=3" sizes="any" />
         <link rel="shortcut icon" href="/favicon.ico?v=3" />
+        <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400;1,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet" />
       </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
