@@ -95,18 +95,8 @@ export default function AdminLogin() {
           return;
         }
 
-        // First verify the user exists and is an admin
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('id, email')
-          .eq('email', formData.email)
-          .single();
+        // Send reset email — Supabase Auth handles user existence validation
 
-        // User might not exist in our app table, but might exist in auth
-        // Let's check auth directly by attempting a dummy sign in
-        // Actually, let's send the reset email - Supabase will handle validation
-
-        // Send the reset email directly without requiring current password
         const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
           redirectTo: `${window.location.origin}/reset-password`,
         });

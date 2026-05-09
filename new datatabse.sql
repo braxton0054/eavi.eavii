@@ -86,7 +86,6 @@ CREATE TABLE public.applications (
   full_name text NOT NULL,
   phone text NOT NULL,
   email text,
-  gender text CHECK (gender = ANY (ARRAY['male'::text, 'female'::text, 'other'::text])),
   kcse_grade text NOT NULL,
   exam_body text DEFAULT 'internal'::text CHECK (exam_body = ANY (ARRAY['internal'::text, 'JP'::text, 'CDACC'::text, 'KNEC'::text])),
   intake text DEFAULT 'September'::text,
@@ -110,22 +109,6 @@ CREATE TABLE public.applications (
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   class_id uuid,
-  date_of_birth date,
-  national_id text UNIQUE,
-  passport_number text,
-  nationality text DEFAULT 'Kenyan'::text,
-  county text,
-  sub_county text,
-  town text,
-  postal_address text,
-  photo_url text,
-  disability_status boolean DEFAULT false,
-  disability_description text,
-  previous_school text,
-  previous_qualification text,
-  sponsorship_type text DEFAULT 'self'::text CHECK (sponsorship_type = ANY (ARRAY['self'::text, 'government'::text, 'bursary'::text, 'scholarship'::text, 'employer'::text])),
-  sponsor_name text,
-  sponsor_phone text,
   has_spring_file boolean NOT NULL DEFAULT false,
   has_rem_paper boolean NOT NULL DEFAULT false,
   has_kcse_photocopy boolean NOT NULL DEFAULT false,
@@ -141,12 +124,23 @@ CREATE TABLE public.applications (
   previous_level text,
   credit_exemptions ARRAY,
   exemption_reason text,
+  reporting_date date,
+  reported_at timestamp with time zone,
+  admission_completed boolean NOT NULL DEFAULT false,
+  admission_completed_by uuid,
+  admission_completed_at timestamp with time zone,
+  progression_status text NOT NULL DEFAULT 'on_track'::text CHECK (progression_status = ANY (ARRAY['on_track'::text, 'pending_promotion'::text, 'promoted'::text, 'repeated'::text, 'deferred'::text, 'graduated'::text])),
+  application_form_url text,
+  application_form_generated_at timestamp with time zone,
+  application_form_generated_by uuid,
   CONSTRAINT applications_pkey PRIMARY KEY (id),
   CONSTRAINT applications_previous_application_id_fkey FOREIGN KEY (previous_application_id) REFERENCES public.applications(id),
+  CONSTRAINT applications_application_form_generated_by_fkey FOREIGN KEY (application_form_generated_by) REFERENCES auth.users(id),
   CONSTRAINT applications_course_id_fkey FOREIGN KEY (course_id) REFERENCES public.courses(id),
   CONSTRAINT applications_course_type_id_fkey FOREIGN KEY (course_type_id) REFERENCES public.course_types(id),
   CONSTRAINT applications_bridge_group_id_fkey FOREIGN KEY (bridge_group_id) REFERENCES public.bridge_groups(id),
-  CONSTRAINT applications_class_id_fkey FOREIGN KEY (class_id) REFERENCES public.classes(id)
+  CONSTRAINT applications_class_id_fkey FOREIGN KEY (class_id) REFERENCES public.classes(id),
+  CONSTRAINT applications_admission_completed_by_fkey FOREIGN KEY (admission_completed_by) REFERENCES public.ai_user_registry(id)
 );
 CREATE TABLE public.bridge_exam_schedules (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -180,7 +174,13 @@ CREATE TABLE public.bridge_groups (
   merged_date date,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
+  class_id uuid,
+  course_id text,
+  course_type_id uuid,
   CONSTRAINT bridge_groups_pkey PRIMARY KEY (id),
+  CONSTRAINT bridge_groups_class_id_fkey FOREIGN KEY (class_id) REFERENCES public.classes(id),
+  CONSTRAINT bridge_groups_course_id_fkey FOREIGN KEY (course_id) REFERENCES public.courses(id),
+  CONSTRAINT bridge_groups_course_type_id_fkey FOREIGN KEY (course_type_id) REFERENCES public.course_types(id),
   CONSTRAINT bridge_groups_academic_calendar_id_fkey FOREIGN KEY (academic_calendar_id) REFERENCES public.academic_calendar(id)
 );
 CREATE TABLE public.classes (
@@ -200,10 +200,25 @@ CREATE TABLE public.classes (
   merged_into_class_id uuid,
   merged_date date,
   merge_status text DEFAULT 'active'::text CHECK (merge_status = ANY (ARRAY['active'::text, 'merged'::text, 'cancelled'::text])),
+  bridge_group_id uuid,
   CONSTRAINT classes_pkey PRIMARY KEY (id),
+  CONSTRAINT classes_bridge_group_id_fkey FOREIGN KEY (bridge_group_id) REFERENCES public.bridge_groups(id),
   CONSTRAINT classes_course_id_fkey FOREIGN KEY (course_id) REFERENCES public.courses(id),
   CONSTRAINT classes_academic_calendar_id_fkey FOREIGN KEY (academic_calendar_id) REFERENCES public.academic_calendar(id),
   CONSTRAINT classes_merged_into_class_id_fkey FOREIGN KEY (merged_into_class_id) REFERENCES public.classes(id)
+);
+CREATE TABLE public.course_requirements (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  course_id text,
+  group_label text NOT NULL CHECK (group_label = ANY (ARRAY['Documents'::text, 'Uniforms & Clothing'::text, 'Footwear'::text, 'Equipment'::text, 'Other'::text])),
+  item text NOT NULL,
+  applies_to text DEFAULT 'all'::text CHECK (applies_to = ANY (ARRAY['all'::text, 'male'::text, 'female'::text])),
+  sort_order integer DEFAULT 0,
+  is_active boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT course_requirements_pkey PRIMARY KEY (id),
+  CONSTRAINT course_requirements_course_id_fkey FOREIGN KEY (course_id) REFERENCES public.courses(id)
 );
 CREATE TABLE public.course_types (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -250,6 +265,14 @@ CREATE TABLE public.departments (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT departments_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.document_request_attempts (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  phone text NOT NULL,
+  ip_address text,
+  attempted_at timestamp with time zone DEFAULT now(),
+  was_successful boolean DEFAULT false,
+  CONSTRAINT document_request_attempts_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.exam_marks (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -358,6 +381,20 @@ CREATE TABLE public.fee_payments (
   CONSTRAINT fee_payments_semester_id_fkey FOREIGN KEY (semester_id) REFERENCES public.semesters(id),
   CONSTRAINT fee_payments_application_id_fkey FOREIGN KEY (application_id) REFERENCES public.applications(id)
 );
+CREATE TABLE public.generated_documents (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  application_id uuid NOT NULL,
+  document_type text NOT NULL CHECK (document_type = ANY (ARRAY['admission_letter'::text, 'fee_structure'::text, 'bursary_letter'::text, 'full_admission_pack'::text])),
+  fee_snapshot jsonb,
+  triggered_by text NOT NULL CHECK (triggered_by = ANY (ARRAY['admin'::text, 'self_service'::text])),
+  generated_by uuid,
+  requester_phone text,
+  requester_ip text,
+  generated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT generated_documents_pkey PRIMARY KEY (id),
+  CONSTRAINT generated_documents_application_id_fkey FOREIGN KEY (application_id) REFERENCES public.applications(id),
+  CONSTRAINT generated_documents_generated_by_fkey FOREIGN KEY (generated_by) REFERENCES public.ai_user_registry(id)
+);
 CREATE TABLE public.guardians (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   application_id uuid NOT NULL,
@@ -402,6 +439,23 @@ CREATE TABLE public.lecturer_assignment_semesters (
   CONSTRAINT las_assignment_id_fkey FOREIGN KEY (assignment_id) REFERENCES public.lecturer_assignments(id),
   CONSTRAINT las_academic_calendar_id_fkey FOREIGN KEY (academic_calendar_id) REFERENCES public.academic_calendar(id)
 );
+CREATE TABLE public.lecturer_assignment_units (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  assignment_id uuid NOT NULL,
+  unit_code text NOT NULL,
+  course_id text NOT NULL,
+  is_active boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  class_id uuid NOT NULL,
+  CONSTRAINT lecturer_assignment_units_pkey PRIMARY KEY (id),
+  CONSTRAINT lecturer_assignment_units_assignment_id_fkey FOREIGN KEY (assignment_id) REFERENCES public.lecturer_assignments(id),
+  CONSTRAINT lecturer_assignment_units_course_id_unit_code_fkey FOREIGN KEY (unit_code) REFERENCES public.units(course_id),
+  CONSTRAINT lecturer_assignment_units_course_id_unit_code_fkey FOREIGN KEY (course_id) REFERENCES public.units(course_id),
+  CONSTRAINT lecturer_assignment_units_course_id_unit_code_fkey FOREIGN KEY (unit_code) REFERENCES public.units(unit_code),
+  CONSTRAINT lecturer_assignment_units_course_id_unit_code_fkey FOREIGN KEY (course_id) REFERENCES public.units(unit_code),
+  CONSTRAINT lecturer_assignment_units_class_id_fkey FOREIGN KEY (class_id) REFERENCES public.classes(id)
+);
 CREATE TABLE public.lecturer_assignments (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   lecturer_id uuid NOT NULL,
@@ -420,6 +474,28 @@ CREATE TABLE public.lecturer_assignments (
   CONSTRAINT lecturer_assignments_course_id_fkey FOREIGN KEY (course_id) REFERENCES public.courses(id),
   CONSTRAINT lecturer_assignments_class_id_fkey FOREIGN KEY (class_id) REFERENCES public.classes(id)
 );
+CREATE TABLE public.lecturer_transfer_logs (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  transfer_type text NOT NULL CHECK (transfer_type = ANY (ARRAY['full_assignment'::text, 'unit_only'::text])),
+  from_lecturer_id uuid NOT NULL,
+  to_lecturer_id uuid NOT NULL,
+  assignment_id uuid,
+  unit_code text,
+  course_id text,
+  class_id uuid,
+  academic_calendar_id uuid,
+  reason text,
+  transferred_by uuid,
+  transferred_at timestamp with time zone DEFAULT now(),
+  notes text,
+  CONSTRAINT lecturer_transfer_logs_pkey PRIMARY KEY (id),
+  CONSTRAINT lecturer_transfer_logs_from_lecturer_id_fkey FOREIGN KEY (from_lecturer_id) REFERENCES public.lecturers(id),
+  CONSTRAINT lecturer_transfer_logs_to_lecturer_id_fkey FOREIGN KEY (to_lecturer_id) REFERENCES public.lecturers(id),
+  CONSTRAINT lecturer_transfer_logs_assignment_id_fkey FOREIGN KEY (assignment_id) REFERENCES public.lecturer_assignments(id),
+  CONSTRAINT lecturer_transfer_logs_class_id_fkey FOREIGN KEY (class_id) REFERENCES public.classes(id),
+  CONSTRAINT lecturer_transfer_logs_academic_calendar_id_fkey FOREIGN KEY (academic_calendar_id) REFERENCES public.academic_calendar(id),
+  CONSTRAINT lecturer_transfer_logs_transferred_by_fkey FOREIGN KEY (transferred_by) REFERENCES public.ai_user_registry(id)
+);
 CREATE TABLE public.lecturer_unit_assignments (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   lecturer_id uuid NOT NULL,
@@ -434,6 +510,7 @@ CREATE TABLE public.lecturer_unit_assignments (
   intake text,
   module_index integer,
   semester integer,
+  bridge_class_id uuid,
   CONSTRAINT lecturer_unit_assignments_pkey PRIMARY KEY (id),
   CONSTRAINT lecturer_unit_assignments_lecturer_id_fkey FOREIGN KEY (lecturer_id) REFERENCES public.lecturers(id),
   CONSTRAINT lecturer_unit_assignments_course_id_fkey FOREIGN KEY (course_id) REFERENCES public.courses(id),
@@ -442,7 +519,8 @@ CREATE TABLE public.lecturer_unit_assignments (
   CONSTRAINT lecturer_unit_assignments_course_id_unit_code_fkey FOREIGN KEY (course_id) REFERENCES public.units(course_id),
   CONSTRAINT lecturer_unit_assignments_course_id_unit_code_fkey FOREIGN KEY (unit_code) REFERENCES public.units(course_id),
   CONSTRAINT lecturer_unit_assignments_course_id_unit_code_fkey FOREIGN KEY (course_id) REFERENCES public.units(unit_code),
-  CONSTRAINT lecturer_unit_assignments_course_id_unit_code_fkey FOREIGN KEY (unit_code) REFERENCES public.units(unit_code)
+  CONSTRAINT lecturer_unit_assignments_course_id_unit_code_fkey FOREIGN KEY (unit_code) REFERENCES public.units(unit_code),
+  CONSTRAINT lecturer_unit_assignments_bridge_class_id_fkey FOREIGN KEY (bridge_class_id) REFERENCES public.classes(id)
 );
 CREATE TABLE public.lecturers (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -568,7 +646,7 @@ CREATE TABLE public.short_courses (
 CREATE TABLE public.student_documents (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   application_id uuid NOT NULL,
-  document_type text NOT NULL CHECK (document_type = ANY (ARRAY['national_id'::text, 'birth_certificate'::text, 'kcse_certificate'::text, 'kcpe_certificate'::text, 'passport'::text, 'photo'::text, 'transfer_letter'::text, 'sponsor_letter'::text, 'medical_certificate'::text, 'other'::text])),
+  document_type text NOT NULL CHECK (document_type = ANY (ARRAY['application_form'::text, 'kcse_certificate'::text, 'kcse_result_slip'::text, 'kcpe_certificate'::text, 'national_id'::text, 'birth_certificate'::text, 'passport'::text, 'passport_photo'::text, 'recommendation_letter'::text, 'transfer_letter'::text, 'previous_certificate'::text, 'medical_certificate'::text, 'other'::text])),
   file_url text NOT NULL,
   file_name text,
   verified boolean DEFAULT false,
@@ -633,6 +711,50 @@ CREATE TABLE public.student_graduation_records (
   CONSTRAINT student_graduation_records_pkey PRIMARY KEY (id),
   CONSTRAINT student_graduation_records_application_id_fkey FOREIGN KEY (application_id) REFERENCES public.applications(id)
 );
+CREATE TABLE public.student_profiles (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  application_id uuid NOT NULL UNIQUE,
+  gender text CHECK (gender = ANY (ARRAY['male'::text, 'female'::text, 'other'::text])),
+  date_of_birth date,
+  national_id text,
+  passport_number text,
+  nationality text DEFAULT 'Kenyan'::text,
+  county text,
+  sub_county text,
+  town text,
+  postal_address text,
+  photo_url text,
+  disability_status boolean DEFAULT false,
+  disability_description text,
+  previous_school text,
+  previous_qualification text,
+  sponsorship_type text DEFAULT 'self'::text CHECK (sponsorship_type = ANY (ARRAY['self'::text, 'government'::text, 'employer'::text, 'scholarship'::text, 'bursary'::text, 'sponsor'::text])),
+  sponsor_name text,
+  sponsor_phone text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT student_profiles_pkey PRIMARY KEY (id),
+  CONSTRAINT student_profiles_application_id_fkey FOREIGN KEY (application_id) REFERENCES public.applications(id)
+);
+CREATE TABLE public.student_promotion_log (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  application_id uuid NOT NULL,
+  action text NOT NULL CHECK (action = ANY (ARRAY['promoted'::text, 'repeated'::text, 'deferred'::text, 'graduated'::text, 'withdrawn'::text])),
+  from_module integer NOT NULL,
+  from_semester integer NOT NULL,
+  to_module integer,
+  to_semester integer,
+  academic_calendar_id uuid,
+  fee_cleared boolean NOT NULL DEFAULT false,
+  results_passed boolean NOT NULL DEFAULT false,
+  promoted_by uuid,
+  promoted_at timestamp with time zone NOT NULL DEFAULT now(),
+  notes text,
+  CONSTRAINT student_promotion_log_pkey PRIMARY KEY (id),
+  CONSTRAINT student_promotion_log_application_id_fkey FOREIGN KEY (application_id) REFERENCES public.applications(id),
+  CONSTRAINT student_promotion_log_academic_calendar_id_fkey FOREIGN KEY (academic_calendar_id) REFERENCES public.academic_calendar(id),
+  CONSTRAINT student_promotion_log_promoted_by_fkey FOREIGN KEY (promoted_by) REFERENCES public.ai_user_registry(id)
+);
 CREATE TABLE public.system_logs (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   log_type text NOT NULL CHECK (log_type = ANY (ARRAY['error'::text, 'warning'::text, 'info'::text])),
@@ -644,12 +766,26 @@ CREATE TABLE public.system_logs (
   CONSTRAINT system_logs_pkey PRIMARY KEY (id),
   CONSTRAINT system_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.ai_user_registry(id)
 );
+CREATE TABLE public.unit_semesters (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  course_id text NOT NULL,
+  unit_code text NOT NULL,
+  module_index integer NOT NULL,
+  semester_index integer NOT NULL,
+  is_active boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT unit_semesters_pkey PRIMARY KEY (id),
+  CONSTRAINT unit_semesters_course_id_unit_code_fkey FOREIGN KEY (course_id) REFERENCES public.units(course_id),
+  CONSTRAINT unit_semesters_course_id_unit_code_fkey FOREIGN KEY (unit_code) REFERENCES public.units(course_id),
+  CONSTRAINT unit_semesters_course_id_unit_code_fkey FOREIGN KEY (course_id) REFERENCES public.units(unit_code),
+  CONSTRAINT unit_semesters_course_id_unit_code_fkey FOREIGN KEY (unit_code) REFERENCES public.units(unit_code)
+);
 CREATE TABLE public.units (
   course_id text NOT NULL,
   unit_code text NOT NULL,
   name text NOT NULL,
   module_index integer NOT NULL DEFAULT 1,
-  semester_index integer NOT NULL DEFAULT 1,
+  semester_index integer DEFAULT 1,
   unit_type text CHECK (unit_type = ANY (ARRAY['Core'::text, 'Common'::text, 'Basic'::text, 'Elective'::text])),
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),

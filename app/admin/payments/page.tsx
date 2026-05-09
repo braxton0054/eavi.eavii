@@ -7,27 +7,27 @@ import {
   Search, ArrowLeft, User, CreditCard, Calendar, Receipt,
   Wallet, CheckCircle, AlertCircle, Building, GraduationCap,
   FileText, ChevronRight, Loader2, Shield, BookOpen,
-  TrendingUp, Clock, Banknote, Smartphone, X, RefreshCw
+  TrendingUp, Clock, Banknote, Smartphone, X, RefreshCw, Beaker
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
 // ─── CONSTANTS matching exact DB values ──────────────────────────────────────
 const PAYMENT_TYPES = [
-  { id: 'tuition',      label: 'Tuition Fee',      icon: GraduationCap },
-  { id: 'practical',    label: 'Practical Fee',     icon: Building },
-  { id: 'exam',         label: 'Exam Fee',          icon: FileText },
-  { id: 'attachment',   label: 'Attachment Fee',    icon: BookOpen },
-  { id: 'registration', label: 'Registration Fee',  icon: Receipt },
-  { id: 'penalty',      label: 'Penalty / Fine',    icon: AlertCircle },
+  { id: 'tuition',      label: 'Tuition Fee',           icon: GraduationCap },
+  { id: 'practical',    label: 'Practical Fee',          icon: Building },
+  { id: 'exam',         label: 'Exam Fee',               icon: FileText },
+  { id: 'registration', label: 'Registration Fee',       icon: Receipt },
+  { id: 'library',      label: 'Library Fee',            icon: BookOpen },
+  { id: 'lab',          label: 'Lab Fee',                 icon: Beaker },
+  { id: 'other',        label: 'Other / Miscellaneous',   icon: AlertCircle },
 ];
 
 // payment_method values in fee_payments table
 const PAYMENT_METHODS = [
   { value: 'mpesa',         label: 'M-Pesa',        icon: Smartphone,  ref: true  },
   { value: 'bank_transfer', label: 'Bank Transfer',  icon: Banknote,    ref: true  },
-  { value: 'equity_bank',   label: 'Equity Bank',   icon: Banknote,    ref: true  },
-  { value: 'kcb_bank',      label: 'KCB Bank',      icon: Banknote,    ref: true  },
+  { value: 'card',          label: 'Card Payment',   icon: CreditCard,  ref: true  },
   { value: 'cash',          label: 'Cash',           icon: Wallet,      ref: false },
 ];
 
@@ -391,43 +391,62 @@ export default function PaymentsPage() {
     setShowSuccess(false);
     setSelectedSemSummary(null);
 
-    // v_student_profile — full profile with current module/semester fee info
+    // Student profile from applications table directly
     const { data: profile } = await supabase
-      .from('v_student_profile')
-      .select('*')
+      .from('applications')
+      .select('id, full_name, phone, email, course_id, admission_number, campus, current_module, current_semester, total_balance, financial_hold, status, enrollment_type, class_id')
       .eq('admission_number', s.admission_number)
       .single();
 
     setSelectedStudent(profile || null);
 
-    // v_student_fee_summary — all semesters with balances
+    // Fee summary from semesters (using course->module->semester chain)
     const { data: summary } = await supabase
-      .from('v_student_fee_summary')
-      .select('*')
-      .eq('application_id', s.id)
-      .order('module_index', { ascending: true })
+      .from('semesters')
+      .select('id, semester_index, fee, practical_fee, module_id')
       .order('semester_index', { ascending: true });
 
-    setFeeSummary(summary || []);
+    // Map to expected format
+    const feeSumm = (summary || []).map((sem: any) => ({
+      semester_index: sem.semester_index,
+      fee_amount: parseFloat(sem.fee) || 0,
+      practical_fee: parseFloat(sem.practical_fee) || 0,
+      total_due: (parseFloat(sem.fee) || 0) + (parseFloat(sem.practical_fee) || 0),
+    }));
+    setFeeSummary(feeSumm);
 
-    // v_student_payment_history — recent payments
+    // Payment history from fee_payments
     const { data: history } = await supabase
-      .from('v_student_payment_history')
-      .select('*')
+      .from('fee_payments')
+      .select('id, amount, payment_method, transaction_id, payment_date, status, receipt_number, notes')
       .eq('application_id', s.id)
       .order('payment_date', { ascending: false })
       .limit(20);
 
     setPaymentHistory(history || []);
 
-    // v_fee_clearance_status — per-semester clearance
+    // Clearance: check if student has completed payments
     const { data: clearance } = await supabase
-      .from('v_fee_clearance_status')
-      .select('*')
+      .from('applications')
+      .select('id, total_balance, financial_hold, current_module, current_semester')
       .eq('admission_number', s.admission_number)
-      .order('module_index', { ascending: true });
+      .single();
 
-    setClearanceStatus(clearance || []);
+    setClearanceStatus(clearance ? [{
+      admission_number: s.admission_number || '',
+      student_name: profile?.full_name || '',
+      campus: profile?.campus || '',
+      course_name: profile?.course_id || '',
+      module_index: clearance.current_module,
+      semester: clearance.current_semester,
+      semester_id: '',
+      paid_pct: clearance.financial_hold ? 0 : 100,
+      fee_cleared: !clearance.financial_hold,
+      clearance_status: clearance.financial_hold ? 'On Hold' : 'Cleared',
+      total_units: 0,
+      results_released: 0,
+      results_pending: 0,
+    }] : []);
 
     setForm(prev => ({
       ...prev,

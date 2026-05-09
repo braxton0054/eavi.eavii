@@ -5,13 +5,16 @@ import { FeePayment, StudentProfile, SemesterOption, PaymentHistoryItem } from '
 export async function getStudentProfile(admissionNumber: string): Promise<StudentProfile | null> {
   const supabase = await createSupabaseClient()
   const { data, error } = await supabase
-    .from('v_student_profiles')
-    .select('*')
+    .from('applications')
+    .select('id, full_name, phone, email, course_id, admission_number, campus, current_module, current_semester, total_balance, status, enrollment_type')
     .eq('admission_number', admissionNumber)
     .single()
 
   if (error) return null
-  return data as StudentProfile
+  return {
+    ...data,
+    course_name: data.course_id, // Will be resolved client-side
+  } as unknown as StudentProfile
 }
 
 export async function getSemestersForStudent(applicationId: string): Promise<SemesterOption[]> {
@@ -66,14 +69,26 @@ export async function getSemestersForStudent(applicationId: string): Promise<Sem
 
 export async function getRecentPayments(admissionNumber: string): Promise<PaymentHistoryItem[]> {
   const supabase = await createSupabaseClient()
-  const { data } = await supabase
-    .from('v_payment_history')
-    .select('*')
+  // First get the application_id from admission number
+  const { data: app } = await supabase
+    .from('applications')
+    .select('id')
     .eq('admission_number', admissionNumber)
+    .single()
+
+  if (!app) return []
+
+  const { data } = await supabase
+    .from('fee_payments')
+    .select('id, amount, payment_method, transaction_id, payment_date, status, receipt_number')
+    .eq('application_id', (app as any).id)
     .order('payment_date', { ascending: false })
     .limit(5)
 
-  return (data as any[]) ?? []
+  return ((data as any[]) ?? []).map(p => ({
+    ...p,
+    admission_number: admissionNumber,
+  }))
 }
 
 export async function recordPayment(payment: Omit<FeePayment, 'id' | 'created_at' | 'updated_at'>): Promise<{ success: boolean; error?: string }> {

@@ -167,8 +167,13 @@ export default function CoursesPage() {
     if (data) setQualificationLevels(data);
   };
   const loadSubjects = async () => {
-    const { data } = await supabase.from('subjects').select('*').order('name');
-    if (data) setSubjects(data);
+    const { data } = await supabase.from('units').select('name').order('name');
+    if (data) {
+      // Deduplicate by name since multiple courses may have same unit names
+      const seen = new Set();
+      const unique = data.filter((u: { name: string }) => { const d = seen.has(u.name); seen.add(u.name); return !d; });
+      setSubjects(unique);
+    }
   };
 
   const loadCourses = async () => {
@@ -1233,7 +1238,7 @@ export default function CoursesPage() {
                                     <option value="Basic">Basic</option>
                                     <option value="Elective">Elective</option>
                                   </select>
-                                  <datalist id="subjlist">{subjects.map(s => <option key={s.id} value={s.name} />)}</datalist>
+                                  <datalist id="subjlist">{subjects.map((s, i) => <option key={i} value={s.name} />)}</datalist>
                                 </div>
                                 <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}
                                   onClick={() => {

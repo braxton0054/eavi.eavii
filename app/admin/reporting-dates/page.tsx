@@ -76,64 +76,31 @@ export default function ReportingDates() {
 
   const loadReportingDates = async (year: number) => {
     const { data, error } = await supabase
-      .from('reporting_dates')
-      .select('*')
-      .eq('year', year)
-      .order('month', { ascending: true });
+      .from('academic_calendar')
+      .select('id, academic_year, term, term_name, term_start_date, term_end_date, intake_start_date, intake_end_date')
+      .like('academic_year', `%${year}%`)
+      .order('term', { ascending: true });
 
     if (error) {
-      console.error('Error loading reporting dates:', error);
-    } else {
-      setReportingDates(data || []);
+      console.error('Error loading academic calendar:', error);
+    } else if (data) {
+      // Map academic calendar entries to reporting date format
+      const mapped = data.map((cal: any) => ({
+        id: cal.id,
+        month: new Date(cal.term_start_date).getMonth() + 1,
+        year: year,
+        reporting_date: cal.term_start_date,
+        created_at: cal.term_start_date,
+        updated_at: cal.term_end_date,
+      }));
+      setReportingDates(mapped);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    const { data: existing } = await supabase
-      .from('reporting_dates')
-      .select('*')
-      .eq('month', formData.month)
-      .eq('year', formData.year)
-      .single();
-
-    if (existing) {
-      const { error } = await supabase
-        .from('reporting_dates')
-        .update({ 
-          reporting_date: formData.reporting_date,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', existing.id);
-
-      if (error) {
-        console.error('Error updating reporting date:', error);
-        alert('Error updating reporting date');
-      } else {
-        alert('Reporting date updated successfully (This change applies to all campuses)');
-        setShowForm(false);
-        await loadReportingDates(formData.year);
-      }
-    } else {
-      const { error } = await supabase
-        .from('reporting_dates')
-        .insert([{
-          month: formData.month,
-          year: formData.year,
-          reporting_date: formData.reporting_date
-        }]);
-
-      if (error) {
-        console.error('Error creating reporting date:', error);
-        alert('Error creating reporting date');
-      } else {
-        alert('Reporting date created successfully (This change applies to all campuses)');
-        setShowForm(false);
-        resetForm();
-        await loadReportingDates(formData.year);
-      }
-    }
+    alert('Reporting dates are managed via the Academic Calendar. Please update dates there.');
+    setShowForm(false);
   };
 
   const handleEdit = (reportingDate: ReportingDate) => {
@@ -146,20 +113,7 @@ export default function ReportingDates() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this reporting date? This will affect all campuses.')) return;
-
-    const { error } = await supabase
-      .from('reporting_dates')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error deleting reporting date:', error);
-      alert('Error deleting reporting date');
-    } else {
-      alert('Reporting date deleted successfully (This change applies to all campuses)');
-      await loadReportingDates(selectedYear);
-    }
+    alert('Reporting dates are managed via the Academic Calendar. Edit dates there instead.');
   };
 
   const resetForm = () => {

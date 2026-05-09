@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
     styledComponents: true,
     styledJsx: true,
   },
+  allowedDevOrigins: ['5.189.191.35', 'localhost', 'gateway.eavi.shop'],
 };
 
 export default nextConfig;

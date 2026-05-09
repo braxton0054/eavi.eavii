@@ -44,7 +44,7 @@ export default function Home() {
       <nav className="e-nav">
         <div className="e-brand">
           <div className="e-logo relative w-11 h-11 rounded-xl overflow-hidden border border-amber-200/30 flex-shrink-0">
-            <Image src="/logo.webp" alt="EAVI Logo" fill className="object-contain p-1" priority />
+            <Image src="/logo.webp" alt="EAVI Logo" fill sizes="44px" className="object-contain p-1" priority />
           </div>
           <div>
             <div className="e-name">EAVI</div>
@@ -78,7 +78,7 @@ export default function Home() {
       )}
 
       <section className="e-hero">
-        <div className={`e-hleft eavi-reveal ${mounted ? 'eavi-in' : ''}`} style={{transitionDelay:'0.1s'}}>
+        <div className={`e-hleft eavi-reveal eavi-in`} style={{transitionDelay:'0.1s'}}>
           <div className="e-eyebrow">
             <span className="e-rule" />
             Accredited · TVETA/PRIVATE/TVC/0062/2017
@@ -110,7 +110,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className={`e-hright eavi-reveal ${mounted ? 'eavi-in' : ''}`} style={{transitionDelay:'0.3s'}}>
+        <div className={`e-hright eavi-reveal eavi-in`} style={{transitionDelay:'0.3s'}}>
           <div className="e-stack">
             {[(ticker+2)%programs.length,(ticker+1)%programs.length,ticker].map((idx,i) => {
               const p = programs[idx];
@@ -128,7 +128,7 @@ export default function Home() {
         </div>
       </section>
 
-      <div className={`e-mq eavi-reveal ${mounted ? 'eavi-in' : ''}`} style={{transitionDelay:'0.45s'}}>
+      <div className={`e-mq eavi-reveal eavi-in`} style={{transitionDelay:'0.45s'}}>
         <div className="e-mqt">
           {[...Array(2)].flatMap((_,r) =>
             marqueeItems.map((item,i) => (
@@ -142,7 +142,7 @@ export default function Home() {
       </div>
 
       <section className="e-sec">
-        <div className={`eavi-reveal ${mounted ? 'eavi-in' : ''}`} style={{transitionDelay:'0.1s'}}>
+        <div className={`eavi-reveal eavi-in`} style={{transitionDelay:'0.1s'}}>
           <div className="e-eyebrow"><span className="e-rule"/>What we offer</div>
           <h2 className="e-sectitle">Our <em>programmes</em></h2>
           <p className="e-secbody">CDACC and JP accredited courses across healthcare, engineering, and community sciences — built for the real world.</p>
@@ -161,13 +161,13 @@ export default function Home() {
       </section>
 
       <section className="e-sec" style={{paddingTop:0}}>
-        <div className={`eavi-reveal ${mounted ? 'eavi-in' : ''}`} style={{transitionDelay:'0.15s'}}>
+        <div className={`eavi-reveal eavi-in`} style={{transitionDelay:'0.15s'}}>
           <div className="e-eyebrow"><span className="e-rule"/>Where to find us</div>
           <h2 className="e-sectitle">Our <em>campuses</em></h2>
         </div>
 
         <div className="e-cgrid">
-          <div className={`e-ctl eavi-reveal ${mounted ? 'eavi-in' : ''}`} style={{transitionDelay:'0.2s'}}>
+          <div className={`e-ctl eavi-reveal eavi-in`} style={{transitionDelay:'0.2s'}}>
             {campuses.map(c => (
               <div key={c.name} className="e-ci">
                 <div className="e-cdot"/>
@@ -181,7 +181,7 @@ export default function Home() {
             ))}
           </div>
 
-          <div className={`e-cside eavi-reveal ${mounted ? 'eavi-in' : ''}`} style={{transitionDelay:'0.25s'}}>
+          <div className={`e-cside eavi-reveal eavi-in`} style={{transitionDelay:'0.25s'}}>
             <div className="e-bcard">
               <div className="e-blabel">Financial support</div>
               <div className="e-btitle">Bursary available for eligible students</div>
@@ -206,7 +206,7 @@ export default function Home() {
       </section>
 
       <section className="e-sec" style={{paddingTop:0}}>
-        <div className={`eavi-reveal ${mounted ? 'eavi-in' : ''}`} style={{transitionDelay:'0.1s'}}>
+        <div className={`eavi-reveal eavi-in`} style={{transitionDelay:'0.1s'}}>
           <div className="e-eyebrow"><span className="e-rule"/>About EAVI</div>
           <h2 className="e-sectitle">Education that <em>transforms.</em></h2>
           <p className="e-secbody">Registered with the Ministry of Education and TVETA, East Africa Vision Institute equips students with practical, industry-aligned skills across healthcare, beauty, engineering, ICT, fashion, business, and community development.</p>

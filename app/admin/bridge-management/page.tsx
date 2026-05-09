@@ -116,22 +116,26 @@ export default function BridgeManagement() {
   };
 
   const loadBridgeStudents = async () => {
+    // Bridge students are applications with stream_type='bridge'
     const { data } = await supabase
-      .from('bridge_student_status')
-      .select('*')
+      .from('applications')
+      .select('id, full_name, phone, email, course_id, bridge_group_id, bridge_start_date, sync_target_date, acceleration_factor, current_module, current_semester, status')
+      .eq('stream_type', 'bridge')
       .order('created_at', { ascending: false });
     
     setBridgeStudents(data || []);
   };
 
   const loadMergeReadyClasses = async () => {
+    // Classes with merge info now use classes table with merge_status column
     const { data } = await supabase
-      .from('class_merge_status')
-      .select('*')
-      .order('sync_target_date', { ascending: true });
+      .from('classes')
+      .select('id, class_name, course_id, campus, merge_status, merged_into_class_id, merged_date, bridge_group_id')
+      .not('merge_status', 'eq', 'cancelled')
+      .order('created_at', { ascending: false });
     
     setAllBridgeClasses(data || []);
-    setMergeReadyClasses((data || []).filter((c: any) => c.ready_to_merge));
+    setMergeReadyClasses((data || []).filter((c: any) => c.merge_status === 'active' && c.bridge_group_id));
   };
 
   // Auto-suggest intake based on start date

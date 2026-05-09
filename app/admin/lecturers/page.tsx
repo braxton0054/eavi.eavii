@@ -34,7 +34,7 @@ interface UnitAssignment {
   intake: string;
   courses?: { name: string };
   classes?: { class_name: string };
-  units?: { unit_name: string };
+  units?: { name: string };
 }
 
 interface SubmissionRow {
@@ -45,7 +45,7 @@ interface SubmissionRow {
   module_index: number;
   semester: number;
   unit_code: string;
-  unit_name: string;
+  name: string;
   total_records: number;
   submitted: number;
   pending: number;
@@ -147,7 +147,7 @@ export default function LecturersPage() {
         is_active, module_index, semester, intake,
         courses(name),
         classes(class_name),
-        units(unit_name)
+        units(name)
       `)
       .order('module_index');
     setAssignments(data ?? []);
@@ -158,11 +158,28 @@ export default function LecturersPage() {
   const loadSubmissions = useCallback(async () => {
     if (!sb) return;
     setDataLoading(true);
-    const { data } = await sb
-      .from('v_lecturer_submission_status')
-      .select('*')
-      .order('pending', { ascending: false });
-    setSubmissions(data ?? []);
+    // Get active unit assignments as submission proxy
+    const { data: assignments } = await sb
+      .from('lecturer_unit_assignments')
+      .select('id, lecturer_id, unit_code, course_id, campus, is_active, class_id')
+      .eq('is_active', true);
+
+    // Get exam marks to check submission status
+    const { data: marks } = await sb
+      .from('exam_marks')
+      .select('unit_code, count', { count: 'exact' });
+
+    // Map to match expected submission status shape
+    const submissionStatus = (assignments || []).map((a: any) => ({
+      unit_code: a.unit_code,
+      course_name: a.course_id,
+      lecturer_id: a.lecturer_id,
+      campus: a.campus,
+      total_records: 1,
+      pending: a.is_active ? 1 : 0,
+      submitted: 0,
+    }));
+    setSubmissions(submissionStatus);
     setDataLoading(false);
   }, [sb]);
 
@@ -584,7 +601,7 @@ export default function LecturersPage() {
                       <div key={u.id} className="px-4 py-3 flex items-center justify-between gap-2">
                         <div className="min-w-0">
                           <p className="text-xs font-medium text-[#1a1a1a]">
-                            {u.units?.unit_name ?? u.unit_code}
+                            {u.units?.name ?? u.unit_code}
                           </p>
                           <p className="text-[10px] text-[#888] mt-0.5">
                             {u.courses?.name ?? u.course_id} · {u.classes?.class_name ?? u.class_id} · Mod {u.module_index} Sem {u.semester}
@@ -649,7 +666,7 @@ export default function LecturersPage() {
                         <tr key={i} className="hover:bg-[#faf9f6] transition-colors">
                           <td className="px-4 py-3 text-xs font-medium text-[#1a1a1a] whitespace-nowrap">{s.lecturer_name}</td>
                           <td className="px-4 py-3">
-                            <p className="text-xs text-[#1a1a1a] font-medium">{s.unit_name ?? s.unit_code}</p>
+                            <p className="text-xs text-[#1a1a1a] font-medium">{s.name ?? s.unit_code}</p>
                             <p className="text-[10px] text-[#888] font-mono">{s.unit_code}</p>
                           </td>
                           <td className="px-4 py-3 text-xs text-[#666] whitespace-nowrap">{s.class_name}</td>
@@ -677,7 +694,7 @@ export default function LecturersPage() {
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="min-w-0">
                           <p className="text-xs font-semibold text-[#1a1a1a]">{s.lecturer_name}</p>
-                          <p className="text-[10px] text-[#888] mt-0.5">{s.unit_name ?? s.unit_code} · {s.class_name}</p>
+                          <p className="text-[10px] text-[#888] mt-0.5">{s.name ?? s.unit_code} · {s.class_name}</p>
                         </div>
                         <span className={`shrink-0 text-[10px] font-medium px-2 py-0.5 rounded-full border ${statusColor(s.status)}`}>
                           {s.status}

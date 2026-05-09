@@ -135,23 +135,60 @@ export default function StudentPaymentsPage() {
   };
 
   const loadCurrentFees = async (student: any) => {
-    const { data, error } = await supabase
-      .from('fee_structure')
-      .select('*')
-      .eq('course_type_id', student.course_type_id)
-      .eq('exam_body', student.exam_body)
-      .eq('semester', student.current_semester)
-      .eq('module', student.current_module)
-      .eq('campus', student.campus)
+    // Get semester fee info from new schema
+    const { data: semData } = await supabase
+      .from('semesters')
+      .select('fee, practical_fee, id')
+      .eq('semester_index', student.current_semester)
+      .limit(1)
       .single();
 
-    if (error) {
-      console.error('Error loading fees:', error);
-    } else if (data) {
-      setCurrentFees(data);
-      const total = data.tuition_fee + data.practical_fee + data.exam_fee + 
-                  data.registration_fee + data.library_fee + data.lab_fee;
+    if (semData) {
+      // Get additional fees for this semester
+      const { data: addFees } = await supabase
+        .from('semester_additional_fees')
+        .select('fee_name, amount')
+        .eq('semester_id', semData.id);
+
+      const tuitionFee = parseFloat(semData.fee) || 0;
+      const practicalFee = parseFloat(semData.practical_fee) || 0;
+      
+      let examFee = 0, registrationFee = 0, libraryFee = 0, labFee = 0;
+      if (addFees) {
+        addFees.forEach((af: any) => {
+          const name = (af.fee_name || '').toLowerCase();
+          const amt = parseFloat(af.amount) || 0;
+          if (name.includes('exam')) examFee += amt;
+          else if (name.includes('regist')) registrationFee += amt;
+          else if (name.includes('library')) libraryFee += amt;
+          else if (name.includes('lab')) labFee += amt;
+        });
+      }
+
+      const fees = {
+        tuition_fee: tuitionFee,
+        practical_fee: practicalFee,
+        exam_fee: examFee,
+        registration_fee: registrationFee,
+        library_fee: libraryFee,
+        lab_fee: labFee,
+      };
+      setCurrentFees(fees);
+      const total = tuitionFee + practicalFee + examFee + registrationFee + libraryFee + labFee;
       setTotalDue(total);
+    } else {
+      // Fallback: use course fee_per_semester
+      const { data: courseData } = await supabase
+        .from('courses')
+        .select('fee_per_semester')
+        .eq('id', student.course_id)
+        .single();
+      
+      if (courseData) {
+        const fee = parseFloat(courseData.fee_per_semester) || 0;
+        setCurrentFees({ tuition_fee: fee, practical_fee: 0, exam_fee: 0, registration_fee: 0, library_fee: 0, lab_fee: 0 });
+        setTotalDue(fee);
+      }
     }
   };
 

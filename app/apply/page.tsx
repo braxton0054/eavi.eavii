@@ -20,12 +20,7 @@ export default function ApplyPage() {
     fullName: '',
     phone: '',
     email: '',
-    dateOfBirth: '',
-    gender: '',
-    nationalId: '',
-    nationality: 'Kenyan',
-    county: '',
-    town: '',
+
     kcseGrade: '',
     examBody: '',
     intake: `September ${currentYear}`,
@@ -431,25 +426,20 @@ export default function ApplyPage() {
         }
       }
 
-      // Submit to Supabase
+      // Submit application to Supabase
       const { data, error } = await supabase
         .from('applications')
         .insert([{
           full_name: formData.fullName,
           phone: formData.phone,
           email: formData.email || null,
-          date_of_birth: formData.dateOfBirth,
-          gender: formData.gender,
-          national_id: formData.nationalId,
-          nationality: formData.nationality,
-          county: formData.county,
-          town: formData.town,
           kcse_grade: formData.kcseGrade,
           exam_body: formData.examBody,
           intake: formData.intake,
           course_id: formData.course,
           course_type_id: courseTypeId,
           campus: formData.campus,
+          enrollment_type: formData.enrollmentType || 'new',
           admission_number: formData.admissionNumber,
           application_date: currentDate,
           status: 'pending',
@@ -466,18 +456,32 @@ export default function ApplyPage() {
       if (error) {
         console.error('Error submitting application:', error);
         alert('Error submitting application. Please try again.');
-      } else {
-        const selectedCourse = courses.find(c => c.id === formData.course);
-        const enrichedData = {
-          ...data,
-          course_id: data.course_id,
-          course: selectedCourse?.name || formData.course,
-          course_type: formData.courseType
-        };
-        setSubmittedData(enrichedData);
-        setSavedApplicationId(data.id);
-        setCurrentStep('guardian');
+        setSubmitting(false);
+        return;
       }
+
+      // Create empty student profile for the new application
+      const { error: profileError } = await supabase
+        .from('student_profiles')
+        .insert([{
+          application_id: data.id,
+        }]);
+
+      if (profileError) {
+        console.error('Error saving student profile:', profileError);
+        // Non-fatal — application was created, continue
+      }
+
+      const courseInfo = courses.find(c => c.id === formData.course);
+      const enrichedData = {
+        ...data,
+        course_id: data.course_id,
+        course: courseInfo?.name || formData.course,
+        course_type: formData.courseType
+      };
+      setSubmittedData(enrichedData);
+      setSavedApplicationId(data.id);
+      setCurrentStep('guardian');
     } catch (err) {
       console.error('Error submitting application:', err);
       alert('Error submitting application. Please try again.');
@@ -628,113 +632,6 @@ export default function ApplyPage() {
                 onChange={handleChange}
                 className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base"
               />
-            </div>
-
-            {/* Date of Birth */}
-            <div>
-              <label htmlFor="dateOfBirth" className="block text-white font-medium mb-2 text-sm md:text-base">
-                Date of Birth *
-              </label>
-              <input
-                type="date"
-                id="dateOfBirth"
-                name="dateOfBirth"
-                value={formData.dateOfBirth}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base"
-              />
-            </div>
-
-            {/* National ID */}
-            <div>
-              <label htmlFor="nationalId" className="block text-white font-medium mb-2 text-sm md:text-base">
-                National ID Number *
-              </label>
-              <input
-                type="text"
-                id="nationalId"
-                name="nationalId"
-                value={formData.nationalId}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base"
-              />
-            </div>
-
-            {/* Nationality */}
-            <div>
-              <label htmlFor="nationality" className="block text-white font-medium mb-2 text-sm md:text-base">
-                Nationality *
-              </label>
-              <select
-                id="nationality"
-                name="nationality"
-                value={formData.nationality}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base"
-              >
-                <option value="Kenyan" className="text-gray-900">Kenyan</option>
-                <option value="Ugandan" className="text-gray-900">Ugandan</option>
-                <option value="Tanzanian" className="text-gray-900">Tanzanian</option>
-                <option value="Rwandan" className="text-gray-900">Rwandan</option>
-                <option value="Burundian" className="text-gray-900">Burundian</option>
-                <option value="South Sudanese" className="text-gray-900">South Sudanese</option>
-                <option value="Ethiopian" className="text-gray-900">Ethiopian</option>
-                <option value="Other" className="text-gray-900">Other</option>
-              </select>
-            </div>
-
-            {/* County */}
-            <div>
-              <label htmlFor="county" className="block text-white font-medium mb-2 text-sm md:text-base">
-                County *
-              </label>
-              <input
-                type="text"
-                id="county"
-                name="county"
-                value={formData.county}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base"
-              />
-            </div>
-
-            {/* Town */}
-            <div>
-              <label htmlFor="town" className="block text-white font-medium mb-2 text-sm md:text-base">
-                Town/City *
-              </label>
-              <input
-                type="text"
-                id="town"
-                name="town"
-                value={formData.town}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base"
-              />
-            </div>
-
-            {/* Gender */}
-            <div>
-              <label htmlFor="gender" className="block text-white font-medium mb-2 text-sm md:text-base">
-                Gender *
-              </label>
-              <select
-                id="gender"
-                name="gender"
-                value={formData.gender}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base"
-              >
-                <option value="">Select Gender</option>
-                <option value="male" className="text-gray-900">Male</option>
-                <option value="female" className="text-gray-900">Female</option>
-              </select>
             </div>
 
             {/* KCSE Grade */}
