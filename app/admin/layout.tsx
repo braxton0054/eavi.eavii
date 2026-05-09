@@ -103,7 +103,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const sidebarWidth = sidebarCollapsed ? 'w-14' : 'w-60';
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="admin-theme min-h-screen flex">
       {/* Mobile Overlay */}
       {isMobile && sidebarOpen && (
         <div 
@@ -114,10 +114,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Sidebar */}
       <aside 
-        className={`fixed left-0 top-0 h-full bg-white border-r border-gray-200 z-50 transition-all duration-300 ease-in-out ${sidebarWidth} ${isMobile && !sidebarOpen ? '-translate-x-full' : 'translate-x-0'}`}
+        className={`fixed left-0 top-0 h-full admin-sidebar z-50 transition-all duration-300 ease-in-out ${sidebarWidth} ${isMobile && !sidebarOpen ? '-translate-x-full' : 'translate-x-0'}`}
       >
         {/* Brand Logo */}
-        <div className={`h-14 border-b border-gray-200 flex items-center ${sidebarCollapsed ? 'justify-center px-2' : 'px-4 gap-3'}`}>
+        <div className={`h-14 border-b border-[var(--admin-border)] flex items-center ${sidebarCollapsed ? 'justify-center px-2' : 'px-4 gap-3'}`}>
           <Link href="/admin/dashboard" className="relative w-8 h-8 flex-shrink-0">
             <Image
               src="/logo.webp"
@@ -137,7 +137,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <div key={section.title}>
               {!sidebarCollapsed && (
                 <div className="px-3 mb-2">
-                  <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">
+                  <span className="section-title">
                     {section.title}
                   </span>
                 </div>
@@ -178,25 +178,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </nav>
 
         {/* User Profile */}
-        <div className="border-t border-gray-200 p-3">
+        <div className="border-t border-[var(--admin-border)] p-3">
           <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3'}`}>
-            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-full user-avatar flex items-center justify-center flex-shrink-0">
               <span className="text-white text-xs font-medium">
                 {currentUser?.email?.charAt(0).toUpperCase() || 'A'}
               </span>
             </div>
             {!sidebarCollapsed && (
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
+                <p className="text-sm font-medium text-[var(--admin-text)] truncate">
                   {currentUser?.email?.split('@')[0] || 'Admin'}
                 </p>
-                <p className="text-xs text-gray-500">Administrator</p>
+                <p className="text-xs text-[var(--admin-text-muted)]">Administrator</p>
               </div>
             )}
             {!sidebarCollapsed && (
               <button 
                 onClick={handleLogout}
-                className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
+                className="p-1.5 text-[var(--admin-text-dim)] hover:text-[var(--admin-danger)] transition-colors"
                 title="Logout"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -210,10 +210,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Mobile Header */}
       {isMobile && (
-        <header className="fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 z-40 flex items-center px-4 gap-3">
+        <header className="fixed top-0 left-0 right-0 h-14 admin-header z-40 flex items-center px-4 gap-3">
           <button
             onClick={toggleSidebar}
-            className="p-2 -ml-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 -ml-2 text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] hover:bg-[var(--admin-card)] rounded-lg transition-colors"
             aria-label="Toggle menu"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -234,7 +234,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Main Content */}
       <main 
-        className={`flex-1 transition-all duration-300 min-h-screen 
+        className={`admin-main flex-1 transition-all duration-300 
           ${isMobile ? 'ml-0 pt-14' : sidebarCollapsed ? 'ml-14' : 'ml-60'}`}
       >
         {children}
