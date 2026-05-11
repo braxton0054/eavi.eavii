@@ -560,7 +560,7 @@ export default function BridgeManagement() {
                       </thead>
                       <tbody>
                         {filteredStudents.map((student: any) => (
-                          <tr key={student.application_id} className="text-white border-b border-white/5 hover:bg-white/5">
+                          <tr key={student.application_id} className="text-white border-b border-white/5 hover:bg-gray-50/5">
                             <td className="py-3 px-2">
                               <div>
                                 <p className="font-medium">{student.full_name}</p>

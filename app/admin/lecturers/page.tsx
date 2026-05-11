@@ -54,15 +54,12 @@ interface SubmissionRow {
 }
 
 interface FormData {
-  lecturerNumber: string;
   fullName: string;
   phone: string;
   gender: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const genLecturerNumber = () => `LEC${Math.floor(Math.random() * 900000) + 100000}`;
-
 const campusLabel = (c: string | string[]) => {
   if (Array.isArray(c)) return c.map(x => x === 'main' ? 'Main' : x === 'west' ? 'West' : x).join(', ');
   return c === 'main' ? 'Main' : c === 'west' ? 'West' : c;
@@ -99,7 +96,6 @@ export default function LecturersPage() {
 
   // Form
   const [form, setForm] = useState<FormData>({
-    lecturerNumber: genLecturerNumber(),
     fullName: '', phone: '', gender: '',
   });
 
@@ -199,23 +195,24 @@ export default function LecturersPage() {
 
     setSubmitting(true);
     const payload = {
-      lecturer_number: form.lecturerNumber,
-      full_name:       form.fullName,
-      phone:           form.phone,
-      email:           `${form.lecturerNumber.toLowerCase()}@eavicollege.ac.ke`,
-      gender:          form.gender,
-      campus:          ['main', 'west'],
+      full_name: form.fullName,
+      phone:     form.phone,
+      gender:    form.gender,
+      campus:    ['main', 'west'],
     };
+
+    // Set email based on input or auto-generate
+    (payload as any).email = `${form.fullName.toLowerCase().replace(/\s+/g, '.')}@eavicollege.ac.ke`;
 
     const { error } = editId
       ? await sb.from('lecturers').update(payload).eq('id', editId)
-      : await sb.from('lecturers').insert([payload]);
+      : await sb.from('lecturers').insert([payload]).select().single();
 
     if (error) {
       showToast(error.message, false);
     } else {
       showToast(editId ? 'Lecturer updated!' : 'Lecturer added!');
-      setForm({ lecturerNumber: genLecturerNumber(), fullName: '', phone: '', gender: '' });
+      setForm({ fullName: '', phone: '', gender: '' });
       setEditId(null);
       setView('list');
     }
@@ -225,7 +222,7 @@ export default function LecturersPage() {
   // ── Edit ──────────────────────────────────────────────────────────────────
   const startEdit = (l: Lecturer) => {
     setEditId(l.id);
-    setForm({ lecturerNumber: l.lecturer_number, fullName: l.full_name, phone: l.phone, gender: l.gender ?? '' });
+    setForm({ fullName: l.full_name, phone: l.phone, gender: l.gender ?? '' });
     setView('add');
   };
 
@@ -301,7 +298,7 @@ export default function LecturersPage() {
       )}
 
       {/* ── HEADER ────────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 bg-white border-b border-[#e8e7e3] h-14">
+      <header className="sticky top-0 z-30 bg-gray-50 border-b border-[#e8e7e3] h-14">
         <div className="h-full max-w-screen-xl mx-auto px-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/admin/dashboard"
@@ -318,7 +315,7 @@ export default function LecturersPage() {
             </div>
           </div>
           <button
-            onClick={() => { setEditId(null); setForm({ lecturerNumber: genLecturerNumber(), fullName: '', phone: '', gender: '' }); setView('add'); }}
+            onClick={() => { setEditId(null); setForm({ fullName: '', phone: '', gender: '' }); setView('add'); }}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1a1a1a] hover:bg-[#333] text-white text-xs font-medium rounded-lg transition-colors"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -332,13 +329,13 @@ export default function LecturersPage() {
       <main className="max-w-screen-xl mx-auto px-4 py-6">
 
         {/* ── TABS ──────────────────────────────────────────────────────────── */}
-        <div className="flex gap-1 mb-6 bg-white border border-[#e8e7e3] rounded-xl p-1 overflow-x-auto">
+        <div className="flex gap-1 mb-6 bg-gray-50 border border-[#e8e7e3] rounded-xl p-1 overflow-x-auto">
           {tabs.map(t => (
             <button key={t.id}
               onClick={() => setView(t.id)}
               className={`flex-shrink-0 px-4 py-2 rounded-lg text-xs font-medium transition-colors whitespace-nowrap
                 ${view === t.id
-                  ? 'bg-[#1a1a1a] text-white'
+                  ? 'bg-green-600 text-white'
                   : 'text-[#666] hover:text-[#1a1a1a] hover:bg-[#f5f4f0]'
                 }`}
             >
@@ -360,7 +357,7 @@ export default function LecturersPage() {
               <input
                 type="text" placeholder="Search by name or number…"
                 value={search} onChange={e => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 bg-white border border-[#e8e7e3] rounded-xl text-sm text-[#1a1a1a] placeholder-[#bbb] focus:outline-none focus:ring-1 focus:ring-[#1a1a1a]"
+                className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-[#e8e7e3] rounded-xl text-sm text-[#1a1a1a] placeholder-[#bbb] focus:outline-none focus:ring-1 focus:ring-[#1a1a1a]"
               />
             </div>
 
@@ -369,14 +366,14 @@ export default function LecturersPage() {
                 <div className="w-5 h-5 border-2 border-[#2d2d2d] border-t-transparent rounded-full animate-spin" />
               </div>
             ) : filtered.length === 0 ? (
-              <div className="bg-white rounded-xl border border-[#e8e7e3] py-16 text-center">
+              <div className="bg-gray-50 rounded-xl border border-[#e8e7e3] py-16 text-center">
                 <p className="text-sm text-[#aaa]">No lecturers found.</p>
                 <button onClick={() => setView('add')} className="mt-3 text-xs text-[#1a1a1a] underline underline-offset-2">Add the first one</button>
               </div>
             ) : (
               <>
                 {/* Desktop table */}
-                <div className="hidden md:block bg-white rounded-xl border border-[#e8e7e3] overflow-hidden">
+                <div className="hidden md:block bg-gray-50 rounded-xl border border-[#e8e7e3] overflow-hidden">
                   <table className="w-full">
                     <thead className="bg-[#faf9f6]">
                       <tr>
@@ -390,7 +387,7 @@ export default function LecturersPage() {
                         <tr key={l.id} className="hover:bg-[#faf9f6] transition-colors">
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-[#1a1a1a] text-white text-xs font-bold flex items-center justify-center shrink-0">
+                              <div className="w-8 h-8 rounded-full bg-green-600 text-white text-xs font-bold flex items-center justify-center shrink-0">
                                 {l.full_name[0]?.toUpperCase()}
                               </div>
                               <span className="text-sm font-medium text-[#1a1a1a]">{l.full_name}</span>
@@ -406,7 +403,7 @@ export default function LecturersPage() {
                           <td className="px-4 py-3 text-xs text-[#888]">{campusLabel(l.campus)}</td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2 justify-end">
-                              <button onClick={() => navigator.clipboard.writeText(l.lecturer_number).then(() => showToast('Copied!'))}
+                              <button onClick={() => { if (navigator.clipboard) { navigator.clipboard.writeText(l.lecturer_number).then(() => showToast('Copied!')); } else { showToast('Copy not supported'); } }}
                                 className="text-[10px] text-[#888] hover:text-[#1a1a1a] px-2 py-1 rounded-md hover:bg-[#f5f4f0] transition-colors">
                                 Copy #
                               </button>
@@ -429,10 +426,10 @@ export default function LecturersPage() {
                 {/* Mobile cards */}
                 <div className="md:hidden space-y-2">
                   {filtered.map(l => (
-                    <div key={l.id} className="bg-white rounded-xl border border-[#e8e7e3] p-4">
+                    <div key={l.id} className="bg-gray-50 rounded-xl border border-[#e8e7e3] p-4">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-9 h-9 rounded-full bg-[#1a1a1a] text-white text-sm font-bold flex items-center justify-center shrink-0">
+                          <div className="w-9 h-9 rounded-full bg-green-600 text-white text-sm font-bold flex items-center justify-center shrink-0">
                             {l.full_name[0]?.toUpperCase()}
                           </div>
                           <div className="min-w-0">
@@ -465,11 +462,11 @@ export default function LecturersPage() {
         ═══════════════════════════════════════════════════════════════════ */}
         {view === 'add' && (
           <div className="max-w-lg mx-auto">
-            <div className="bg-white rounded-xl border border-[#e8e7e3] overflow-hidden">
+            <div className="bg-gray-50 rounded-xl border border-[#e8e7e3] overflow-hidden">
               <div className="px-6 py-4 border-b border-[#f5f4f0]">
                 <h2 className="text-sm font-semibold text-[#1a1a1a]">{editId ? 'Edit Lecturer' : 'Add New Lecturer'}</h2>
                 {editId && (
-                  <button onClick={() => { setEditId(null); setForm({ lecturerNumber: genLecturerNumber(), fullName: '', phone: '', gender: '' }); }}
+                  <button onClick={() => { setEditId(null); setForm({ fullName: '', phone: '', gender: '' }); }}
                     className="text-[10px] text-[#888] hover:text-[#1a1a1a] mt-0.5">
                     Cancel edit →
                   </button>
@@ -477,19 +474,13 @@ export default function LecturersPage() {
               </div>
 
               <form onSubmit={handleSave} className="p-6 space-y-5">
-                {/* Lecturer Number */}
+                {/* Lecturer Number — auto-generated by DB */}
                 <div>
                   <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-widest mb-1.5">
                     Lecturer Number
                   </label>
-                  <div className="flex gap-2">
-                    <input type="text" value={form.lecturerNumber} disabled
-                      className="flex-1 px-3 py-2.5 bg-[#f5f4f0] border border-[#e8e7e3] rounded-lg text-xs font-mono text-[#666] cursor-not-allowed" />
-                    <button type="button"
-                      onClick={() => setForm(f => ({ ...f, lecturerNumber: genLecturerNumber() }))}
-                      className="px-3 py-2 border border-[#e8e7e3] rounded-lg text-xs text-[#555] hover:bg-[#f5f4f0] transition-colors whitespace-nowrap">
-                      Regenerate
-                    </button>
+                  <div className="px-3 py-2.5 bg-[#f5f4f0] border border-[#e8e7e3] rounded-lg text-xs text-[#666]">
+                    Auto-generated (LECXXXXXX)
                   </div>
                 </div>
 
@@ -500,7 +491,7 @@ export default function LecturersPage() {
                   </label>
                   <input type="text" value={form.fullName} required placeholder="e.g. Jane Wanjiku Mwangi"
                     onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))}
-                    className="w-full px-3 py-2.5 bg-white border border-[#e8e7e3] rounded-lg text-sm text-[#1a1a1a] placeholder-[#ccc] focus:outline-none focus:ring-1 focus:ring-[#1a1a1a]" />
+                    className="w-full px-3 py-2.5 bg-gray-50 border border-[#e8e7e3] rounded-lg text-sm text-[#1a1a1a] placeholder-[#ccc] focus:outline-none focus:ring-1 focus:ring-[#1a1a1a]" />
                 </div>
 
                 {/* Phone */}
@@ -510,7 +501,7 @@ export default function LecturersPage() {
                   </label>
                   <input type="tel" value={form.phone} required placeholder="e.g. 0712 345 678"
                     onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-                    className="w-full px-3 py-2.5 bg-white border border-[#e8e7e3] rounded-lg text-sm text-[#1a1a1a] placeholder-[#ccc] focus:outline-none focus:ring-1 focus:ring-[#1a1a1a]" />
+                    className="w-full px-3 py-2.5 bg-gray-50 border border-[#e8e7e3] rounded-lg text-sm text-[#1a1a1a] placeholder-[#ccc] focus:outline-none focus:ring-1 focus:ring-[#1a1a1a]" />
                 </div>
 
                 {/* Gender */}
@@ -524,8 +515,8 @@ export default function LecturersPage() {
                         onClick={() => setForm(f => ({ ...f, gender: g }))}
                         className={`flex-1 py-2.5 rounded-lg border text-xs font-medium capitalize transition-colors
                           ${form.gender === g
-                            ? 'bg-[#1a1a1a] text-white border-[#1a1a1a]'
-                            : 'bg-white text-[#555] border-[#e8e7e3] hover:border-[#aaa]'
+                            ? 'bg-green-600 text-white border-green-600'
+                            : 'bg-gray-50 text-[#555] border-[#e8e7e3] hover:border-[#aaa]'
                           }`}>
                         {genderIcon(g)} {g}
                       </button>
@@ -559,17 +550,17 @@ export default function LecturersPage() {
                 <div className="w-5 h-5 border-2 border-[#2d2d2d] border-t-transparent rounded-full animate-spin" />
               </div>
             ) : workloadByLecturer.length === 0 ? (
-              <div className="bg-white rounded-xl border border-[#e8e7e3] py-16 text-center">
+              <div className="bg-gray-50 rounded-xl border border-[#e8e7e3] py-16 text-center">
                 <p className="text-sm text-[#aaa]">No unit assignments found.</p>
               </div>
             ) : workloadByLecturer.map(l => (
-              <div key={l.id} className="bg-white rounded-xl border border-[#e8e7e3] overflow-hidden">
+              <div key={l.id} className="bg-gray-50 rounded-xl border border-[#e8e7e3] overflow-hidden">
                 <button
                   onClick={() => setExpandedId(expandedId === l.id ? null : l.id)}
                   className="w-full px-4 py-4 flex items-center justify-between gap-3 hover:bg-[#faf9f6] transition-colors text-left"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-full bg-[#1a1a1a] text-white text-xs font-bold flex items-center justify-center shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-green-600 text-white text-xs font-bold flex items-center justify-center shrink-0">
                       {l.full_name[0]?.toUpperCase()}
                     </div>
                     <div className="min-w-0">
@@ -632,7 +623,7 @@ export default function LecturersPage() {
                 <div className="w-5 h-5 border-2 border-[#2d2d2d] border-t-transparent rounded-full animate-spin" />
               </div>
             ) : submissions.length === 0 ? (
-              <div className="bg-white rounded-xl border border-[#e8e7e3] py-16 text-center">
+              <div className="bg-gray-50 rounded-xl border border-[#e8e7e3] py-16 text-center">
                 <p className="text-sm text-[#aaa]">No submission data found.</p>
               </div>
             ) : (
@@ -644,7 +635,7 @@ export default function LecturersPage() {
                     { label: 'Submitted', value: submissions.filter(s => s.pending === 0 && s.total_records > 0).length },
                     { label: 'Pending', value: submissions.filter(s => s.pending > 0).length },
                   ].map((s, i) => (
-                    <div key={i} className="bg-white rounded-xl border border-[#e8e7e3] px-4 py-3 text-center">
+                    <div key={i} className="bg-gray-50 rounded-xl border border-[#e8e7e3] px-4 py-3 text-center">
                       <p className="text-xl font-semibold text-[#1a1a1a]">{s.value}</p>
                       <p className="text-[10px] text-[#888] uppercase tracking-widest mt-0.5">{s.label}</p>
                     </div>
@@ -652,7 +643,7 @@ export default function LecturersPage() {
                 </div>
 
                 {/* Desktop table */}
-                <div className="hidden md:block bg-white rounded-xl border border-[#e8e7e3] overflow-hidden">
+                <div className="hidden md:block bg-gray-50 rounded-xl border border-[#e8e7e3] overflow-hidden">
                   <table className="w-full">
                     <thead className="bg-[#faf9f6]">
                       <tr>
@@ -690,7 +681,7 @@ export default function LecturersPage() {
                 {/* Mobile cards */}
                 <div className="md:hidden space-y-2">
                   {submissions.map((s, i) => (
-                    <div key={i} className="bg-white rounded-xl border border-[#e8e7e3] p-4">
+                    <div key={i} className="bg-gray-50 rounded-xl border border-[#e8e7e3] p-4">
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="min-w-0">
                           <p className="text-xs font-semibold text-[#1a1a1a]">{s.lecturer_name}</p>
@@ -708,7 +699,7 @@ export default function LecturersPage() {
                       {s.total_records > 0 && (
                         <div className="mt-2">
                           <div className="h-1.5 bg-[#f5f4f0] rounded-full overflow-hidden">
-                            <div className="h-full bg-[#1a1a1a] rounded-full"
+                            <div className="h-full bg-green-500 rounded-full"
                               style={{ width: `${Math.round((s.submitted / s.total_records) * 100)}%` }} />
                           </div>
                         </div>
@@ -726,7 +717,7 @@ export default function LecturersPage() {
         ═══════════════════════════════════════════════════════════════════ */}
         {view === 'migrate' && (
           <div className="max-w-lg mx-auto">
-            <div className="bg-white rounded-xl border border-[#e8e7e3] overflow-hidden">
+            <div className="bg-gray-50 rounded-xl border border-[#e8e7e3] overflow-hidden">
               <div className="px-6 py-4 border-b border-[#f5f4f0]">
                 <h2 className="text-sm font-semibold text-[#1a1a1a]">Migrate Unit Assignments</h2>
                 <p className="text-xs text-[#888] mt-1">Transfer all unit assignments from one lecturer to another. This cannot be undone.</p>
@@ -739,7 +730,7 @@ export default function LecturersPage() {
                     From (Current Lecturer)
                   </label>
                   <select value={migrateFrom} onChange={e => setMigrateFrom(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-white border border-[#e8e7e3] rounded-lg text-sm text-[#1a1a1a] focus:outline-none focus:ring-1 focus:ring-[#1a1a1a]">
+                    className="w-full px-3 py-2.5 bg-gray-50 border border-[#e8e7e3] rounded-lg text-sm text-[#1a1a1a] focus:outline-none focus:ring-1 focus:ring-[#1a1a1a]">
                     <option value="">Select lecturer…</option>
                     {lecturers.map(l => (
                       <option key={l.id} value={l.id}>{l.full_name} ({l.lecturer_number})</option>
@@ -762,7 +753,7 @@ export default function LecturersPage() {
                     To (New Lecturer)
                   </label>
                   <select value={migrateTo} onChange={e => setMigrateTo(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-white border border-[#e8e7e3] rounded-lg text-sm text-[#1a1a1a] focus:outline-none focus:ring-1 focus:ring-[#1a1a1a]">
+                    className="w-full px-3 py-2.5 bg-gray-50 border border-[#e8e7e3] rounded-lg text-sm text-[#1a1a1a] focus:outline-none focus:ring-1 focus:ring-[#1a1a1a]">
                     <option value="">Select lecturer…</option>
                     {lecturers.filter(l => l.id !== migrateFrom).map(l => (
                       <option key={l.id} value={l.id}>{l.full_name} ({l.lecturer_number})</option>

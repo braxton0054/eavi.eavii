@@ -298,7 +298,7 @@ export default function FinancialReportsPage() {
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950">
       <div className="relative z-10 w-full">
-        <div className="bg-white/10 backdrop-blur-md border-b border-white/20">
+        <div className="bg-gray-50/10 backdrop-blur-md border-b border-white/20">
           <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
@@ -319,31 +319,31 @@ export default function FinancialReportsPage() {
           {/* Metrics Cards */}
           {metrics && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+              <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
                 <h3 className="text-purple-200 text-sm mb-2">Revenue Today</h3>
                 <p className="text-white text-3xl font-bold">KES {metrics.totalRevenueToday.toLocaleString()}</p>
               </div>
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+              <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
                 <h3 className="text-purple-200 text-sm mb-2">Revenue This Week</h3>
                 <p className="text-white text-3xl font-bold">KES {metrics.totalRevenueThisWeek.toLocaleString()}</p>
               </div>
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+              <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
                 <h3 className="text-purple-200 text-sm mb-2">Revenue This Month</h3>
                 <p className="text-white text-3xl font-bold">KES {metrics.totalRevenueThisMonth.toLocaleString()}</p>
               </div>
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+              <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
                 <h3 className="text-purple-200 text-sm mb-2">Pending Payments</h3>
                 <p className="text-white text-3xl font-bold">KES {metrics.pendingPayments.toLocaleString()}</p>
               </div>
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+              <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
                 <h3 className="text-purple-200 text-sm mb-2">Overdue Payments</h3>
                 <p className="text-white text-3xl font-bold text-red-300">KES {metrics.overduePayments.toLocaleString()}</p>
               </div>
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+              <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
                 <h3 className="text-purple-200 text-sm mb-2">Success Rate</h3>
                 <p className="text-white text-3xl font-bold">{metrics.paymentSuccessRate.toFixed(1)}%</p>
               </div>
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+              <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
                 <h3 className="text-purple-200 text-sm mb-2">Avg Payment</h3>
                 <p className="text-white text-3xl font-bold">KES {metrics.averagePaymentAmount.toLocaleString()}</p>
               </div>
@@ -352,7 +352,7 @@ export default function FinancialReportsPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Payment Method Breakdown */}
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+            <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
               <h2 className="text-xl font-bold text-white mb-4">Payment Method Breakdown</h2>
               {paymentBreakdown.length === 0 ? (
                 <p className="text-purple-200 text-center py-8">No payment data available</p>
@@ -365,7 +365,7 @@ export default function FinancialReportsPage() {
                           <span className="text-white capitalize">{item.method}</span>
                           <span className="text-purple-200">{item.percentage.toFixed(1)}%</span>
                         </div>
-                        <div className="w-full bg-white/10 rounded-full h-2">
+                        <div className="w-full bg-gray-50/10 rounded-full h-2">
                           <div
                             className="bg-green-600 h-2 rounded-full"
                             style={{ width: `${item.percentage}%` }}
@@ -383,14 +383,14 @@ export default function FinancialReportsPage() {
             </div>
 
             {/* Course Revenue */}
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+            <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
               <h2 className="text-xl font-bold text-white mb-4">Revenue by Course</h2>
               {courseRevenue.length === 0 ? (
                 <p className="text-purple-200 text-center py-8">No course data available</p>
               ) : (
                 <div className="space-y-3">
                   {courseRevenue.slice(0, 5).map((item) => (
-                    <div key={item.courseName} className="flex items-center justify-between bg-white/5 rounded-lg p-3">
+                    <div key={item.courseName} className="flex items-center justify-between bg-gray-50/5 rounded-lg p-3">
                       <div>
                         <p className="text-white font-medium">{item.courseName}</p>
                         <p className="text-purple-200 text-sm">{item.studentCount} students</p>
@@ -403,14 +403,14 @@ export default function FinancialReportsPage() {
             </div>
 
             {/* Exam Body Revenue */}
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+            <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
               <h2 className="text-xl font-bold text-white mb-4">Revenue by Exam Body</h2>
               {examBodyRevenue.length === 0 ? (
                 <p className="text-purple-200 text-center py-8">No exam body data available</p>
               ) : (
                 <div className="space-y-3">
                   {examBodyRevenue.map((item) => (
-                    <div key={item.examBody} className="flex items-center justify-between bg-white/5 rounded-lg p-3">
+                    <div key={item.examBody} className="flex items-center justify-between bg-gray-50/5 rounded-lg p-3">
                       <div>
                         <p className="text-white font-medium uppercase">{item.examBody}</p>
                         <p className="text-purple-200 text-sm">{item.count} students</p>
@@ -423,7 +423,7 @@ export default function FinancialReportsPage() {
             </div>
 
             {/* Summary */}
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+            <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
               <h2 className="text-xl font-bold text-white mb-4">Financial Summary</h2>
               {metrics && (
                 <div className="space-y-4">

@@ -410,7 +410,7 @@ export default function FinanceDashboardPage() {
     <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950">
       <div className="relative z-10 w-full">
         {/* Header */}
-        <div className="bg-white/10 backdrop-blur-md border-b border-white/20">
+        <div className="bg-gray-50/10 backdrop-blur-md border-b border-white/20">
           <div className="max-w-7xl mx-auto px-4 md:px-6 py-4">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div className="flex items-center gap-4">
@@ -437,24 +437,24 @@ export default function FinanceDashboardPage() {
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-8">
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+            <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
               <div className="text-purple-200 text-sm mb-1">Students in Arrears</div>
               <div className="text-3xl font-bold text-white">{studentsInArrears.length}</div>
               <div className="text-red-400 text-xs mt-1">Outstanding balances</div>
             </div>
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+            <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
               <div className="text-purple-200 text-sm mb-1">Results Blocked</div>
               <div className="text-3xl font-bold text-white">{blockedStudents.length}</div>
               <div className="text-orange-400 text-xs mt-1">Below 95% clearance</div>
             </div>
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+            <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
               <div className="text-purple-200 text-sm mb-1">Total Outstanding</div>
               <div className="text-3xl font-bold text-white">
                 KES {studentsInArrears.reduce((sum, s) => sum + (s.total_balance || 0), 0).toLocaleString()}
               </div>
               <div className="text-purple-300 text-xs mt-1">Across all semesters</div>
             </div>
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+            <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
               <div className="text-purple-200 text-sm mb-1">Campus</div>
               <div className="text-lg font-bold text-white">{getCampusName(campus)}</div>
               <div className="text-purple-300 text-xs mt-1">Current view</div>
@@ -475,7 +475,7 @@ export default function FinanceDashboardPage() {
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                   activeTab === tab.id 
                     ? 'bg-purple-600 text-white' 
-                    : 'bg-white/10 text-white hover:bg-white/20'
+                    : 'bg-gray-50/10 text-white hover:bg-gray-50/20'
                 }`}
               >
                 {tab.label}
@@ -490,7 +490,7 @@ export default function FinanceDashboardPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by name, admission number, or course..."
-              className="w-full md:w-96 px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full md:w-96 px-4 py-3 bg-gray-50/10 border border-white/30 rounded-lg text-white placeholder-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
 
@@ -498,13 +498,13 @@ export default function FinanceDashboardPage() {
           {activeTab === 'summary' && (
             <div className="space-y-6">
               {/* Campus Summary */}
-              <div className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden">
+              <div className="bg-gray-50/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden">
                 <div className="px-6 py-4 border-b border-white/20">
                   <h3 className="text-lg font-semibold text-white">Campus Revenue Summary</h3>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-white/5">
+                    <thead className="bg-gray-50/5">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-purple-200 uppercase">Campus</th>
                         <th className="px-6 py-3 text-right text-xs font-medium text-purple-200 uppercase">Total Students</th>
@@ -514,7 +514,7 @@ export default function FinanceDashboardPage() {
                     </thead>
                     <tbody className="divide-y divide-white/10">
                       {campusSummary.map((campus) => (
-                        <tr key={campus.campus} className="hover:bg-white/5">
+                        <tr key={campus.campus} className="hover:bg-gray-50/5">
                           <td className="px-6 py-4 text-white font-medium">{getCampusName(campus.campus)}</td>
                           <td className="px-6 py-4 text-right text-purple-200">{campus.total_students}</td>
                           <td className="px-6 py-4 text-right text-green-400">KES {campus.total_collected?.toLocaleString()}</td>
@@ -527,13 +527,13 @@ export default function FinanceDashboardPage() {
               </div>
 
               {/* Department Summary */}
-              <div className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden">
+              <div className="bg-gray-50/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden">
                 <div className="px-6 py-4 border-b border-white/20">
                   <h3 className="text-lg font-semibold text-white">Department Revenue Summary</h3>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-white/5">
+                    <thead className="bg-gray-50/5">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-purple-200 uppercase">Department</th>
                         <th className="px-6 py-3 text-right text-xs font-medium text-purple-200 uppercase">Students</th>
@@ -543,7 +543,7 @@ export default function FinanceDashboardPage() {
                     </thead>
                     <tbody className="divide-y divide-white/10">
                       {departmentSummary.map((dept) => (
-                        <tr key={dept.department} className="hover:bg-white/5">
+                        <tr key={dept.department} className="hover:bg-gray-50/5">
                           <td className="px-6 py-4 text-white font-medium">{dept.department}</td>
                           <td className="px-6 py-4 text-right text-purple-200">{dept.total_students}</td>
                           <td className="px-6 py-4 text-right text-green-400">KES {dept.total_collected?.toLocaleString()}</td>
@@ -559,14 +559,14 @@ export default function FinanceDashboardPage() {
 
           {/* Students in Arrears Tab */}
           {activeTab === 'arrears' && (
-            <div className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden">
+            <div className="bg-gray-50/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden">
               <div className="px-6 py-4 border-b border-white/20">
                 <h3 className="text-lg font-semibold text-white">Students with Outstanding Balances</h3>
                 <p className="text-purple-200 text-sm mt-1">Students who owe fees across all semesters</p>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-white/5">
+                  <thead className="bg-gray-50/5">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-purple-200 uppercase">Student</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-purple-200 uppercase">Course</th>
@@ -585,7 +585,7 @@ export default function FinanceDashboardPage() {
                       </tr>
                     ) : (
                       filteredArrears.map((student) => (
-                        <tr key={student.admission_number} className="hover:bg-white/5">
+                        <tr key={student.admission_number} className="hover:bg-gray-50/5">
                           <td className="px-6 py-4">
                             <div className="text-white font-medium">{student.full_name}</div>
                             <div className="text-sm text-purple-400 font-mono">{student.admission_number}</div>
@@ -619,7 +619,7 @@ export default function FinanceDashboardPage() {
 
           {/* Results Blocked Tab */}
           {activeTab === 'blocked' && (
-            <div className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden">
+            <div className="bg-gray-50/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden">
               <div className="px-6 py-4 border-b border-white/20">
                 <h3 className="text-lg font-semibold text-white">Students Blocked from Results</h3>
                 <p className="text-orange-300 text-sm mt-1">
@@ -628,7 +628,7 @@ export default function FinanceDashboardPage() {
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-white/5">
+                  <thead className="bg-gray-50/5">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-purple-200 uppercase">Student</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-purple-200 uppercase">Course</th>
@@ -647,7 +647,7 @@ export default function FinanceDashboardPage() {
                       </tr>
                     ) : (
                       filteredBlocked.map((student) => (
-                        <tr key={student.admission_number} className="hover:bg-white/5">
+                        <tr key={student.admission_number} className="hover:bg-gray-50/5">
                           <td className="px-6 py-4">
                             <div className="text-white font-medium">{student.full_name}</div>
                             <div className="text-sm text-purple-400 font-mono">{student.admission_number}</div>
@@ -683,7 +683,7 @@ export default function FinanceDashboardPage() {
 
           {/* Clearance Status Tab */}
           {activeTab === 'clearance' && (
-            <div className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden">
+            <div className="bg-gray-50/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden">
               <div className="px-6 py-4 border-b border-white/20">
                 <h3 className="text-lg font-semibold text-white">Fee Clearance Status</h3>
                 <p className="text-purple-200 text-sm mt-1">
@@ -692,7 +692,7 @@ export default function FinanceDashboardPage() {
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-white/5">
+                  <thead className="bg-gray-50/5">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-purple-200 uppercase">Student</th>
                       <th className="px-6 py-3 text-center text-xs font-medium text-purple-200 uppercase">Semester</th>
@@ -712,7 +712,7 @@ export default function FinanceDashboardPage() {
                       </tr>
                     ) : (
                       filteredClearance.map((student) => (
-                        <tr key={`${student.admission_number}-${student.current_semester}`} className="hover:bg-white/5">
+                        <tr key={`${student.admission_number}-${student.current_semester}`} className="hover:bg-gray-50/5">
                           <td className="px-6 py-4">
                             <div className="text-white font-medium">{student.full_name}</div>
                             <div className="text-sm text-purple-400 font-mono">{student.admission_number}</div>

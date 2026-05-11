@@ -473,7 +473,7 @@ export default function ReportsPage() {
     <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950">
       <div className="relative z-10 w-full">
         {/* Header */}
-        <div className="bg-white/10 backdrop-blur-md border-b border-white/20">
+        <div className="bg-gray-50/10 backdrop-blur-md border-b border-white/20">
           <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link href="/admin/dashboard" className="relative w-10 h-10 md:w-12 md:h-12">
@@ -523,7 +523,7 @@ export default function ReportsPage() {
                 className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 ${
                   activeTab === tab.key
                     ? 'bg-blue-600 text-white'
-                    : 'bg-white/10 text-white hover:bg-white/20'
+                    : 'bg-gray-50/10 text-white hover:bg-gray-50/20'
                 }`}
               >
                 <span>{tab.icon}</span>
@@ -537,30 +537,30 @@ export default function ReportsPage() {
             <div className="space-y-6">
               {/* Enrollment Stats Cards */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
                   <p className="text-purple-200 text-sm">Total Students</p>
                   <p className="text-2xl font-bold text-white">{students.length}</p>
                 </div>
-                <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
                   <p className="text-purple-200 text-sm">Enrolled</p>
                   <p className="text-2xl font-bold text-green-400">
                     {students.filter(s => s.status === 'enrolled').length}
                   </p>
                 </div>
-                <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
                   <p className="text-purple-200 text-sm">Pending</p>
                   <p className="text-2xl font-bold text-yellow-400">
                     {students.filter(s => s.status === 'pending').length}
                   </p>
                 </div>
-                <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
                   <p className="text-purple-200 text-sm">Courses</p>
                   <p className="text-2xl font-bold text-white">{courses.length}</p>
                 </div>
               </div>
 
               {/* Monthly Enrollments */}
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+              <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
                 <h2 className="text-xl font-bold text-white mb-4">Monthly Enrollments</h2>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -589,7 +589,7 @@ export default function ReportsPage() {
               </div>
 
               {/* Gender Breakdown */}
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+              <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
                 <h2 className="text-xl font-bold text-white mb-4">Gender Breakdown by Course</h2>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -620,7 +620,7 @@ export default function ReportsPage() {
               </div>
 
               {/* Student List with Filters */}
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+              <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-bold text-white">Student List</h2>
                   <p className="text-purple-300 text-sm">{filteredStudents.length} students</p>
@@ -631,7 +631,7 @@ export default function ReportsPage() {
                   <select
                     value={filterIntake}
                     onChange={(e) => setFilterIntake(e.target.value)}
-                    className="px-3 py-2 bg-white/20 border border-white/30 rounded-lg text-white text-sm"
+                    className="px-3 py-2 bg-gray-50/20 border border-white/30 rounded-lg text-white text-sm"
                   >
                     <option value="">All Intakes</option>
                     {[...new Set(students.map(s => s.application_date))].sort().map(date => (
@@ -641,7 +641,7 @@ export default function ReportsPage() {
                   <select
                     value={filterCourse}
                     onChange={(e) => setFilterCourse(e.target.value)}
-                    className="px-3 py-2 bg-white/20 border border-white/30 rounded-lg text-white text-sm"
+                    className="px-3 py-2 bg-gray-50/20 border border-white/30 rounded-lg text-white text-sm"
                   >
                     <option value="">All Courses</option>
                     {courses.map(course => (
@@ -651,7 +651,7 @@ export default function ReportsPage() {
                   <select
                     value={filterDepartment}
                     onChange={(e) => setFilterDepartment(e.target.value)}
-                    className="px-3 py-2 bg-white/20 border border-white/30 rounded-lg text-white text-sm"
+                    className="px-3 py-2 bg-gray-50/20 border border-white/30 rounded-lg text-white text-sm"
                   >
                     <option value="">All Departments</option>
                     {departments.map(dept => (
@@ -661,7 +661,7 @@ export default function ReportsPage() {
                   <select
                     value={filterGender}
                     onChange={(e) => setFilterGender(e.target.value)}
-                    className="px-3 py-2 bg-white/20 border border-white/30 rounded-lg text-white text-sm"
+                    className="px-3 py-2 bg-gray-50/20 border border-white/30 rounded-lg text-white text-sm"
                   >
                     <option value="">All Genders</option>
                     <option value="male" className="text-gray-900">Male</option>
@@ -710,19 +710,19 @@ export default function ReportsPage() {
             <div className="space-y-6">
               {/* Revenue Summary */}
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
                   <p className="text-purple-200 text-sm">Total Collected</p>
                   <p className="text-2xl font-bold text-green-400">
                     KES {monthlyRevenue.reduce((sum: number, r: any) => sum + (r.collected || 0), 0).toLocaleString()}
                   </p>
                 </div>
-                <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
                   <p className="text-purple-200 text-sm">Outstanding</p>
                   <p className="text-2xl font-bold text-red-400">
                     KES {outstandingBalances.reduce((sum: number, b: any) => sum + (b.total_outstanding || 0), 0).toLocaleString()}
                   </p>
                 </div>
-                <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
                   <p className="text-purple-200 text-sm">On Financial Hold</p>
                   <p className="text-2xl font-bold text-yellow-400">
                     {outstandingBalances.reduce((sum: number, b: any) => sum + (b.on_hold || 0), 0)}
@@ -731,7 +731,7 @@ export default function ReportsPage() {
               </div>
 
               {/* Monthly Revenue */}
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+              <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
                 <h2 className="text-xl font-bold text-white mb-4">Monthly Revenue</h2>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -756,7 +756,7 @@ export default function ReportsPage() {
               </div>
 
               {/* Revenue by Course */}
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+              <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
                 <h2 className="text-xl font-bold text-white mb-4">Revenue by Course</h2>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -783,7 +783,7 @@ export default function ReportsPage() {
               </div>
 
               {/* Outstanding by Campus */}
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+              <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
                 <h2 className="text-xl font-bold text-white mb-4">Outstanding Balances by Campus</h2>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -819,11 +819,11 @@ export default function ReportsPage() {
           {activeTab === 'exams' && (
             <div className="space-y-6">
               {/* Grade Distribution */}
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+              <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
                 <h2 className="text-xl font-bold text-white mb-4">Grade Distribution</h2>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                   {gradeDistribution.map((grade: any, idx) => (
-                    <div key={idx} className="bg-white/5 rounded-lg p-4 text-center">
+                    <div key={idx} className="bg-gray-50/5 rounded-lg p-4 text-center">
                       <p className="text-purple-300 text-sm">{grade.grade}</p>
                       <p className="text-2xl font-bold text-white">{grade.count}</p>
                       <p className="text-purple-400 text-xs">{grade.pct}%</p>
@@ -833,7 +833,7 @@ export default function ReportsPage() {
               </div>
 
               {/* Class Results Summary */}
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+              <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
                 <h2 className="text-xl font-bold text-white mb-4">Class Performance (Worst First)</h2>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -874,7 +874,7 @@ export default function ReportsPage() {
               </div>
 
               {/* Absent Students */}
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+              <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
                 <h2 className="text-xl font-bold text-white mb-4">Absent Students Report</h2>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -908,7 +908,7 @@ export default function ReportsPage() {
           {activeTab === 'lecturers' && (
             <div className="space-y-6">
               {/* Lecturer Workload */}
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+              <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
                 <h2 className="text-xl font-bold text-white mb-4">Lecturer Workload</h2>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -937,7 +937,7 @@ export default function ReportsPage() {
               </div>
 
               {/* Submission Status */}
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+              <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
                 <h2 className="text-xl font-bold text-white mb-4">Marks Submission Status</h2>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -980,22 +980,22 @@ export default function ReportsPage() {
             <div className="space-y-6">
               {/* Graduation Stats */}
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
                   <p className="text-purple-200 text-sm">Completed</p>
                   <p className="text-2xl font-bold text-green-400">{completedStudents.length}</p>
                 </div>
-                <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
                   <p className="text-purple-200 text-sm">Eligible for Upgrade</p>
                   <p className="text-2xl font-bold text-blue-400">{upgradeEligible.length}</p>
                 </div>
-                <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
                   <p className="text-purple-200 text-sm">Re-enrolled</p>
                   <p className="text-2xl font-bold text-purple-400">{reenrolled.length}</p>
                 </div>
               </div>
 
               {/* Completed Students */}
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+              <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
                 <h2 className="text-xl font-bold text-white mb-4">Recently Completed Students</h2>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -1024,7 +1024,7 @@ export default function ReportsPage() {
               </div>
 
               {/* Re-enrollment Stats */}
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+              <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
                 <h2 className="text-xl font-bold text-white mb-4">Re-enrollment Summary</h2>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">

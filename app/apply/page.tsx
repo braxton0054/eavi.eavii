@@ -55,7 +55,7 @@ export default function ApplyPage() {
   // Generate admission number based on campus selection
   const generateAdmissionNumber = (campus: string) => {
     const currentYear = new Date().getFullYear();
-    const campusCode = campus === 'Main Campus' ? 'M' : campus === 'West Campus' ? 'W' : 'N';
+    const campusCode = campus === 'main' ? 'M' : campus === 'west' ? 'W' : 'N';
     const sequenceNumber = Math.floor(Math.random() * 9000) + 1000; // Random 4-digit number
     return `${campusCode}${currentYear}${sequenceNumber}`;
   };
@@ -235,21 +235,20 @@ export default function ApplyPage() {
       Object.assign(courseTypesObj, courseTypes);
     }
     
+    // min_kcse_grade lives on the course, not course_types
+    const courseMinGrade = course.min_kcse_grade || '';
+    
     Object.entries(courseTypesObj).forEach(([type, data]: [string, any]) => {
       const config = getCourseTypeConfig(courseTypesObj, type);
-      console.log(`Checking ${type}: enabled=${config?.enabled}, minKcseGrade=${config?.minKcseGrade}, studentGrade=${studentGrade}`);
-      // Check if this course type has the selected exam body
+      // Use course-level min_kcse_grade since course_types doesn't have it
+      const minGrade = config?.minKcseGrade || courseMinGrade;
+      
       const modules = data.modules || [];
       const hasExamBody = modules.some((m: any) => m.exam_body === examBody);
-      
-      // Fallback: use course ID prefix if no modules exist
       const matchesByPrefix = !hasExamBody && courseExamBody === examBody;
-      
-      const gradeMatch = compareGrades(studentGrade, config?.minKcseGrade || '');
-      console.log(`  hasExamBody=${hasExamBody}, matchesByPrefix=${matchesByPrefix}, gradeMatch=${gradeMatch}`);
+      const gradeMatch = compareGrades(studentGrade, minGrade);
       
       if (config?.enabled && gradeMatch && (hasExamBody || matchesByPrefix)) {
-        console.log(`  -> Adding ${type} to available types`);
         availableTypes.push(type);
       }
     });
@@ -337,13 +336,24 @@ export default function ApplyPage() {
       // Get course and course_type_id from courses array
       const selectedCourse = courses.find(c => c.id === formData.course);
       
-      // Professionally find the course_type_id regardless of how the nested array is shaped
-      const courseTypeData = selectedCourse?.course_types?.find((ct: any) => 
-        ct.level.toLowerCase() === formData.courseType.toLowerCase()
-      );
-      const courseTypeId = courseTypeData?.id;
+      // Get course_type_id directly from database (more reliable than nested join)
+      let courseTypeId = null;
+      try {
+        const { data: ctData } = await supabase
+          .from('course_types')
+          .select('id')
+          .eq('course_id', formData.course)
+          .eq('level', formData.courseType)
+          .maybeSingle();
+        courseTypeId = ctData?.id || null;
+      } catch (e) {
+        console.warn('course_type query failed, trying nested data', e);
+        const ctData = selectedCourse?.course_types?.find((ct: any) =>
+          ct.level?.toLowerCase() === formData.courseType?.toLowerCase()
+        );
+        courseTypeId = ctData?.id || null;
+      }
 
-      // Add a professional guard clause
       if (!courseTypeId) {
         console.error("Link Failure: Could not resolve course_type_id for:", formData.courseType, "in", selectedCourse);
         alert('System Error: Unable to link your selected course level. Please refresh and try again.');
@@ -427,9 +437,10 @@ export default function ApplyPage() {
       }
 
       // Submit application to Supabase
-      const { data, error } = await supabase
-        .from('applications')
-        .insert([{
+      const apiRes = await fetch('/api/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           full_name: formData.fullName,
           phone: formData.phone,
           email: formData.email || null,
@@ -442,35 +453,25 @@ export default function ApplyPage() {
           enrollment_type: formData.enrollmentType || 'new',
           admission_number: formData.admissionNumber,
           application_date: currentDate,
-          status: 'pending',
           stream_type: streamType,
           bridge_group_id: bridgeGroupId,
           bridge_start_date: bridgeStartDate,
           sync_target_date: syncTargetDate,
           acceleration_factor: accelerationFactor,
-          current_semester: 1
-        }])
-        .select()
-        .single();
+          current_semester: 1,
+        }),
+      });
 
-      if (error) {
-        console.error('Error submitting application:', error);
-        alert('Error submitting application. Please try again.');
+      const apiData = await apiRes.json();
+      if (!apiRes.ok || apiData.error) {
+        console.error('Error submitting application:', apiData);
+        alert('Error: ' + (apiData.error || 'Submission failed'));
         setSubmitting(false);
         return;
       }
+      const data = apiData.data;
 
-      // Create empty student profile for the new application
-      const { error: profileError } = await supabase
-        .from('student_profiles')
-        .insert([{
-          application_id: data.id,
-        }]);
-
-      if (profileError) {
-        console.error('Error saving student profile:', profileError);
-        // Non-fatal — application was created, continue
-      }
+      // Student profile is created server-side in /api/apply
 
       const courseInfo = courses.find(c => c.id === formData.course);
       const enrichedData = {
@@ -481,7 +482,7 @@ export default function ApplyPage() {
       };
       setSubmittedData(enrichedData);
       setSavedApplicationId(data.id);
-      setCurrentStep('guardian');
+      setCurrentStep('confirmation');
     } catch (err) {
       console.error('Error submitting application:', err);
       alert('Error submitting application. Please try again.');
@@ -498,7 +499,7 @@ export default function ApplyPage() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950">
+    <div className="min-h-screen w-full bg-[#f8faff]">
       <div className="relative z-10 w-full max-w-2xl mx-auto px-4 md:px-6 py-8 md:py-12">
          {/* Header */}
          {!submittedData && (
@@ -515,14 +516,14 @@ export default function ApplyPage() {
                 />
               </div>
             </Link>
-            <h1 className="text-2xl md:text-4xl font-bold text-white mb-2">Apply to EAVI College</h1>
-            <p className="text-purple-200 text-sm md:text-base">Fill out the form below to start your application</p>
+            <h1 className="text-2xl md:text-4xl font-bold text-gray-900 mb-2">Apply to EAVI College</h1>
+            <p className="text-gray-500 text-sm md:text-base">Fill out the form below to start your application</p>
           </div>
         )}
 
         {/* Step 3: Confirmation Screen */}
         {currentStep === 'confirmation' && submittedData && (
-          <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 md:p-8 border border-white/20">
+          <div className="bg-white rounded-xl p-6 md:p-8 border border-gray-200 shadow-sm">
             <div className="text-center mb-8">
               <div className="inline-block mb-4">
                 <div className="relative w-24 h-24">
@@ -537,7 +538,7 @@ export default function ApplyPage() {
                 </div>
               </div>
               <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Application Submitted!</h1>
-              <p className="text-purple-200 text-sm md:text-base">Your application has been successfully submitted.</p>
+              <p className="text-gray-500 text-sm md:text-base">Your application has been successfully submitted.</p>
             </div>
 
             <div className="bg-white/5 rounded-lg p-6 mb-6">
@@ -573,7 +574,7 @@ export default function ApplyPage() {
 
         {/* Step 1: Application Form */}
         {currentStep === 'application' && (
-          <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 md:p-8 border border-white/20">
+          <div className="bg-white rounded-xl p-6 md:p-8 border border-gray-200 shadow-sm">
             <form onSubmit={handleSubmit} className="space-y-6">
             {/* Hidden Fields */}
             <input
@@ -589,7 +590,7 @@ export default function ApplyPage() {
 
             {/* Full Name */}
             <div>
-              <label htmlFor="fullName" className="block text-white font-medium mb-2 text-sm md:text-base">
+              <label htmlFor="fullName" className="block text-gray-700 font-medium mb-2 text-sm md:text-base">
                 Full Name *
               </label>
               <input
@@ -599,13 +600,13 @@ export default function ApplyPage() {
                 value={formData.fullName}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base"
+                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm md:text-base"
               />
             </div>
 
             {/* Phone Number */}
             <div>
-              <label htmlFor="phone" className="block text-white font-medium mb-2 text-sm md:text-base">
+              <label htmlFor="phone" className="block text-gray-700 font-medium mb-2 text-sm md:text-base">
                 Phone Number *
               </label>
               <input
@@ -615,13 +616,13 @@ export default function ApplyPage() {
                 value={formData.phone}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base"
+                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm md:text-base"
               />
             </div>
 
             {/* Email Address (Optional) */}
             <div>
-              <label htmlFor="email" className="block text-white font-medium mb-2 text-sm md:text-base">
+              <label htmlFor="email" className="block text-gray-700 font-medium mb-2 text-sm md:text-base">
                 Email Address (Optional)
               </label>
               <input
@@ -630,13 +631,13 @@ export default function ApplyPage() {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base"
+                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm md:text-base"
               />
             </div>
 
             {/* KCSE Grade */}
             <div>
-              <label htmlFor="kcseGrade" className="block text-white font-medium mb-2 text-sm md:text-base">
+              <label htmlFor="kcseGrade" className="block text-gray-700 font-medium mb-2 text-sm md:text-base">
                 KCSE Grade *
               </label>
               <select
@@ -645,7 +646,7 @@ export default function ApplyPage() {
                 value={formData.kcseGrade}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base"
+                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm md:text-base"
               >
                 <option value="">Select Grade</option>
                 {KCSE_GRADES.map(grade => (
@@ -656,7 +657,7 @@ export default function ApplyPage() {
 
             {/* Exam Body Selection */}
             <div>
-              <label htmlFor="examBody" className="block text-white font-medium mb-2 text-sm md:text-base">
+              <label htmlFor="examBody" className="block text-gray-700 font-medium mb-2 text-sm md:text-base">
                 Exam Body *
               </label>
               <select
@@ -665,7 +666,7 @@ export default function ApplyPage() {
                 value={formData.examBody}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base"
+                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm md:text-base"
               >
                 <option value="">Select Exam Body</option>
                 <option value="internal" className="text-gray-900">Internal</option>
@@ -682,13 +683,13 @@ export default function ApplyPage() {
 
             {/* Intake Tiles */}
             <div>
-              <label className="block text-white font-medium mb-2 text-sm md:text-base">
+              <label className="block text-gray-700 font-medium mb-2 text-sm md:text-base">
                 Intake *
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {['January', 'May', 'September'].map(m => (
                   <button type="button" key={m} onClick={() => setFormData(p => ({...p, intake: `${m} ${currentYear}`}))}
-                    className={`p-3 rounded-lg border text-xs text-center transition-all ${formData.intake.includes(m) ? 'border-purple-500 bg-purple-900/50 text-white' : 'border-white/30 bg-white/10 text-purple-200'}`}>
+                    className={`p-3 rounded-lg border text-xs text-center transition-all ${formData.intake.includes(m) ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-300 bg-white text-gray-500'}`}>
                     {m} <br/> {currentYear}
                   </button>
                 ))}
@@ -697,7 +698,7 @@ export default function ApplyPage() {
 
             {/* Course Selection */}
             <div>
-              <label htmlFor="course" className="block text-white font-medium mb-2 text-sm md:text-base">
+              <label htmlFor="course" className="block text-gray-700 font-medium mb-2 text-sm md:text-base">
                 Course *
               </label>
               <select
@@ -707,7 +708,7 @@ export default function ApplyPage() {
                 onChange={handleChange}
                 required
                 disabled={loading || courses.length === 0}
-                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">
                   {loading ? 'Loading courses...' : courses.length === 0 ? 'No courses available' : 'Select Course'}
@@ -747,7 +748,7 @@ export default function ApplyPage() {
             {/* Course Type (Auto-selected based on grade and exam body) */}
             {formData.course && formData.kcseGrade && formData.examBody && (
               <div>
-                <label htmlFor="courseType" className="block text-white font-medium mb-2 text-sm md:text-base">
+                <label htmlFor="courseType" className="block text-gray-700 font-medium mb-2 text-sm md:text-base">
                   Course Type *
                 </label>
                 <select
@@ -757,7 +758,7 @@ export default function ApplyPage() {
                   onChange={handleChange}
                   required
                   disabled={availableCourseTypes.length === 0}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <option value="">
                     {availableCourseTypes.length === 0 ? 'No types available for your grade' : 'Select Type'}
@@ -795,11 +796,11 @@ export default function ApplyPage() {
 
             {/* Campus Radio Pills */}
             <div>
-              <label className="block text-white font-medium mb-2 text-sm md:text-base">Campus *</label>
+              <label className="block text-gray-700 font-medium mb-2 text-sm md:text-base">Campus *</label>
               <div className="grid grid-cols-2 gap-2">
                 {[{id: 'west', label: 'West Campus'}, {id: 'main', label: 'Main Campus'}].map(c => (
-                  <button type="button" key={c.id} onClick={() => setFormData(p => ({...p, campus: c.label}))}
-                    className={`p-3 rounded-lg border capitalize transition-all ${formData.campus === c.label ? 'border-purple-500 bg-purple-900/50 text-white' : 'border-white/30 bg-white/10 text-purple-200'}`}>
+                  <button type="button" key={c.id} onClick={() => setFormData(p => ({...p, campus: c.id}))}
+                    className={`p-3 rounded-lg border capitalize transition-all ${formData.campus === c.id ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-300 bg-white text-gray-500'}`}>
                     {c.label}
                   </button>
                 ))}
@@ -830,7 +831,7 @@ export default function ApplyPage() {
 
         {/* Step 2: Guardian Details */}
         {currentStep === 'guardian' && savedApplicationId && (
-          <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 md:p-8 border border-white/20">
+          <div className="bg-white rounded-xl p-6 md:p-8 border border-gray-200 shadow-sm">
             <div className="text-center mb-6">
               <div className="inline-block mb-4">
                 <div className="relative w-24 h-24">
@@ -845,7 +846,7 @@ export default function ApplyPage() {
                 </div>
               </div>
               <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Guardian Information</h1>
-              <p className="text-purple-200 text-sm md:text-base">Please provide parent or guardian details</p>
+              <p className="text-gray-500 text-sm md:text-base">Please provide parent or guardian details</p>
             </div>
 
             <GuardianManager 

@@ -168,7 +168,7 @@ export default function BridgeGroupsPage() {
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow p-4 mb-6 flex gap-4">
+        <div className="bg-gray-50 rounded-lg shadow p-4 mb-6 flex gap-4">
           <select
             value={filter.campus}
             onChange={(e) => setFilter({ ...filter, campus: e.target.value })}
@@ -200,25 +200,25 @@ export default function BridgeGroupsPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4 mb-6">
-          <div className="bg-white p-4 rounded-lg shadow">
+          <div className="bg-gray-50 p-4 rounded-lg shadow">
             <p className="text-2xl font-bold text-green-600">
               {bridgeGroups.filter(g => g.status === 'active').length}
             </p>
             <p className="text-sm text-gray-600">Active Groups</p>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow">
+          <div className="bg-gray-50 p-4 rounded-lg shadow">
             <p className="text-2xl font-bold text-blue-600">
               {bridgeGroups.filter(g => g.status === 'merged').length}
             </p>
             <p className="text-sm text-gray-600">Merged Groups</p>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow">
+          <div className="bg-gray-50 p-4 rounded-lg shadow">
             <p className="text-2xl font-bold text-purple-600">
               {bridgeGroups.length}
             </p>
             <p className="text-sm text-gray-600">Total Groups</p>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow">
+          <div className="bg-gray-50 p-4 rounded-lg shadow">
             <p className="text-2xl font-bold text-orange-600">
               {bridgeGroups.reduce((acc, g) => acc + (g.acceleration_factor || 1), 0).toFixed(1)}x
             </p>
@@ -227,7 +227,7 @@ export default function BridgeGroupsPage() {
         </div>
 
         {/* Bridge Groups List */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-gray-50 rounded-lg shadow overflow-hidden">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
@@ -306,7 +306,7 @@ export default function BridgeGroupsPage() {
         {/* Create Form Modal */}
         {showForm && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-auto">
-            <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-auto">
+            <div className="bg-gray-50 rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-auto">
               <h2 className="text-xl font-bold mb-4">Create Bridge Group</h2>
               
               <form onSubmit={handleCreate} className="space-y-4">

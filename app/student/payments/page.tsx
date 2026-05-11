@@ -135,24 +135,46 @@ export default function StudentPaymentsPage() {
   };
 
   const loadCurrentFees = async (student: any) => {
-    // Get semester fee info from new schema
+    if (!student.course_id) return;
+
+    // Get course_type for this student's course
+    const { data: courseTypes } = await supabase
+      .from('course_types')
+      .select('id')
+      .eq('course_id', student.course_id)
+      .limit(1);
+
+    if (!courseTypes || courseTypes.length === 0) return;
+
+    // Get modules for this course type
+    const { data: mods } = await supabase
+      .from('modules')
+      .select('id')
+      .eq('course_type_id', courseTypes[0].id)
+      .order('module_index');
+
+    if (!mods || mods.length === 0) return;
+
+    // Get the semester matching the student's current module/semester
+    const moduleIds = mods.map((m: any) => m.id);
     const { data: semData } = await supabase
       .from('semesters')
-      .select('fee, practical_fee, id')
-      .eq('semester_index', student.current_semester)
+      .select('id, fee, practical_fee')
+      .in('module_id', moduleIds)
+      .eq('semester_index', student.current_semester || 1)
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (semData) {
+      const tuitionFee = parseFloat(semData.fee) || 0;
+      const practicalFee = parseFloat(semData.practical_fee) || 0;
+
       // Get additional fees for this semester
       const { data: addFees } = await supabase
         .from('semester_additional_fees')
         .select('fee_name, amount')
         .eq('semester_id', semData.id);
 
-      const tuitionFee = parseFloat(semData.fee) || 0;
-      const practicalFee = parseFloat(semData.practical_fee) || 0;
-      
       let examFee = 0, registrationFee = 0, libraryFee = 0, labFee = 0;
       if (addFees) {
         addFees.forEach((af: any) => {

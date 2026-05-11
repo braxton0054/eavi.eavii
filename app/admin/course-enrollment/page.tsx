@@ -194,7 +194,7 @@ export default function CourseEnrollmentPage() {
       }
 
       const { data: unitsData, error: unitsError } = await supabase
-        .from('v_units_by_module_semester')
+        .from('units')
         .select('*')
         .eq('course_id', courseId);
         
@@ -276,7 +276,7 @@ export default function CourseEnrollmentPage() {
       const coursesWithUnits = await Promise.all(
         (coursesData || []).map(async (course: any) => {
           const { data: unitsData } = await supabase
-            .from('v_units_by_module_semester')
+            .from('units')
             .select('*')
             .eq('course_id', course.id);
 
@@ -477,7 +477,7 @@ export default function CourseEnrollmentPage() {
     <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950">
       <div className="relative z-10 w-full">
         {/* Header */}
-        <div className="bg-white/10 backdrop-blur-md border-b border-white/20">
+        <div className="bg-gray-50/10 backdrop-blur-md border-b border-white/20">
           <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link href="/admin/dashboard" className="relative w-12 h-12">
@@ -494,7 +494,7 @@ export default function CourseEnrollmentPage() {
                 className={`px-3 py-2 md:px-4 md:py-2 rounded-lg transition-colors duration-300 text-xs md:text-sm font-semibold border ${
                   viewMode === 'assign'
                     ? 'bg-green-600 text-white border-green-600'
-                    : 'bg-white/10 hover:bg-white/20 text-white border-white/20'
+                    : 'bg-gray-50/10 hover:bg-gray-50/20 text-white border-white/20'
                 }`}
               >
                 Assign Units
@@ -504,7 +504,7 @@ export default function CourseEnrollmentPage() {
                 className={`px-3 py-2 md:px-4 md:py-2 rounded-lg transition-colors duration-300 text-xs md:text-sm font-semibold border ${
                   viewMode === 'view'
                     ? 'bg-green-600 text-white border-green-600'
-                    : 'bg-white/10 hover:bg-white/20 text-white border-white/20'
+                    : 'bg-gray-50/10 hover:bg-gray-50/20 text-white border-white/20'
                 }`}
               >
                 View All Courses
@@ -512,7 +512,7 @@ export default function CourseEnrollmentPage() {
             </div>
             <Link
               href="/admin/dashboard"
-              className="px-3 py-2 md:px-4 md:py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors duration-300 text-xs md:text-sm font-semibold border border-white/20"
+              className="px-3 py-2 md:px-4 md:py-2 bg-gray-50/10 hover:bg-gray-50/20 text-white rounded-lg transition-colors duration-300 text-xs md:text-sm font-semibold border border-white/20"
             >
               Back to Dashboard
             </Link>
@@ -522,7 +522,7 @@ export default function CourseEnrollmentPage() {
         {/* Main Content */}
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-8">
           {viewMode === 'assign' ? (
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 md:p-8 border border-white/20 shadow-xl">
+            <div className="bg-gray-50/10 backdrop-blur-md rounded-2xl p-6 md:p-8 border border-white/20 shadow-xl">
               <h2 className="text-2xl font-bold text-white mb-6">Assign Units to Course</h2>
 
               {error && (
@@ -543,7 +543,7 @@ export default function CourseEnrollmentPage() {
                 <select
                   value={selectedExamBody}
                   onChange={(e) => setSelectedExamBody(e.target.value as 'KNEC' | 'CDACC' | 'JP' | 'internal' | '')}
-                  className="w-full px-3 py-2 md:px-4 md:py-3 bg-white/5 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all text-sm md:text-base"
+                  className="w-full px-3 py-2 md:px-4 md:py-3 bg-gray-50/5 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all text-sm md:text-base"
                 >
                   <option value="" className="text-gray-900">All Exam Bodies</option>
                   <option value="KNEC" className="text-gray-900">KNEC</option>
@@ -560,12 +560,12 @@ export default function CourseEnrollmentPage() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search courses..."
-                  className="w-full px-3 py-2 md:px-4 md:py-3 bg-white/5 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all mb-2 text-sm md:text-base"
+                  className="w-full px-3 py-2 md:px-4 md:py-3 bg-gray-50/5 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all mb-2 text-sm md:text-base"
                 />
                 <select
                   value={selectedCourseId}
                   onChange={(e) => setSelectedCourseId(e.target.value)}
-                  className="w-full px-3 py-2 md:px-4 md:py-3 bg-white/5 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all text-sm md:text-base"
+                  className="w-full px-3 py-2 md:px-4 md:py-3 bg-gray-50/5 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all text-sm md:text-base"
                 >
                   <option value="" className="text-gray-900">-- Select a Course --</option>
                   {filteredCourses.map(course => (
@@ -582,7 +582,7 @@ export default function CourseEnrollmentPage() {
                   value={selectedLevel}
                   onChange={(e) => setSelectedLevel(e.target.value as LevelKey)}
                   disabled={!selectedCourseId || courseTypes.length === 0}
-                  className="w-full px-3 py-2 md:px-4 md:py-3 bg-white/5 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all disabled:opacity-50 text-sm md:text-base"
+                  className="w-full px-3 py-2 md:px-4 md:py-3 bg-gray-50/5 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all disabled:opacity-50 text-sm md:text-base"
                 >
                   <option value="" className="text-gray-900">-- Select a Level --</option>
                   {courseTypes.map(ct => (
@@ -601,7 +601,7 @@ export default function CourseEnrollmentPage() {
                 </h3>
                 
                 {isShortCourse ? (
-                  <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+                  <div className="bg-gray-50/5 rounded-xl p-6 border border-white/10">
                     <h4 className="text-lg font-semibold text-white mb-4">All Units</h4>
                     
                     <div className="flex flex-col sm:flex-row gap-3 mb-6">
@@ -610,14 +610,14 @@ export default function CourseEnrollmentPage() {
                         value={unitCodeInputs['short'] || ''}
                         onChange={(e) => setUnitCodeInputs({ ...unitCodeInputs, 'short': e.target.value })}
                         placeholder="Unit code (e.g., PEPE-101)"
-                        className="w-32 sm:w-40 px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                        className="w-32 sm:w-40 px-4 py-2.5 bg-gray-50/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
                       />
                       <input
                         type="text"
                         value={unitInputs['short'] || ''}
                         onChange={(e) => setUnitInputs({ ...unitInputs, 'short': e.target.value })}
                         placeholder="Enter unit name..."
-                        className="flex-1 px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        className="flex-1 px-4 py-2.5 bg-gray-50/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                       />
                       <button
                         onClick={() => addUnit(LEVEL_MODULE_INDEX_MAP[selectedLevel], -1, 'short')}
@@ -635,7 +635,7 @@ export default function CourseEnrollmentPage() {
                         units
                           .filter(u => u.module_index === LEVEL_MODULE_INDEX_MAP[selectedLevel] && u.semester_index === -1)
                           .map((unit) => (
-                            <div key={unit.id} className="flex items-center justify-between bg-white/10 px-4 py-3 rounded-lg group hover:bg-white/15 transition-colors">
+                            <div key={unit.id} className="flex items-center justify-between bg-gray-50/10 px-4 py-3 rounded-lg group hover:bg-gray-50/15 transition-colors">
                               {editingUnitId === unit.id ? (
                                 <div className="flex items-center gap-2 flex-1">
                                   <input
@@ -643,13 +643,13 @@ export default function CourseEnrollmentPage() {
                                     value={editUnitCode}
                                     onChange={(e) => setEditUnitCode(e.target.value)}
                                     placeholder="Code"
-                                    className="w-24 px-3 py-1 bg-white/20 border border-white/30 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    className="w-24 px-3 py-1 bg-gray-50/20 border border-white/30 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                                   />
                                   <input
                                     type="text"
                                     value={editUnitName}
                                     onChange={(e) => setEditUnitName(e.target.value)}
-                                    className="flex-1 px-3 py-1 bg-white/20 border border-white/30 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    className="flex-1 px-3 py-1 bg-gray-50/20 border border-white/30 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                                   />
                                   <button
                                     onClick={() => updateUnit(unit.id)}
@@ -713,8 +713,8 @@ export default function CourseEnrollmentPage() {
                     {modules.map((module) => {
                       const modSemesters = semesters.filter(s => s.module_id === module.id);
                       return (
-                        <div key={module.id} className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
-                          <div className="bg-white/10 px-4 py-3 md:px-6 md:py-4 border-b border-white/10">
+                        <div key={module.id} className="bg-gray-50/5 rounded-xl border border-white/10 overflow-hidden">
+                          <div className="bg-gray-50/10 px-4 py-3 md:px-6 md:py-4 border-b border-white/10">
                             <h4 className="text-base md:text-lg font-bold text-white">Module {module.module_index}</h4>
                           </div>
                           <div className="p-4 md:p-6 space-y-4 md:space-y-6">
@@ -753,7 +753,7 @@ export default function CourseEnrollmentPage() {
 202 - BUSINESS ORGANISATION
 203 - BOOK-KEEPING`}
                                         rows={5}
-                                        className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono"
+                                        className="w-full px-3 py-2 bg-gray-50/10 border border-white/20 rounded-lg text-white text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono"
                                       />
                                       <p className="text-purple-300/60 text-xs">
                                         Format: CODE - NAME (one per line)
@@ -777,14 +777,14 @@ export default function CourseEnrollmentPage() {
                                         value={unitCodeInputs[inputKey] || ''}
                                         onChange={(e) => setUnitCodeInputs({ ...unitCodeInputs, [inputKey]: e.target.value })}
                                         placeholder="Unit code"
-                                        className="w-24 sm:w-32 px-3 py-2 md:px-4 md:py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-xs md:text-sm"
+                                        className="w-24 sm:w-32 px-3 py-2 md:px-4 md:py-2 bg-gray-50/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-xs md:text-sm"
                                       />
                                       <input
                                         type="text"
                                         value={unitInputs[inputKey] || ''}
                                         onChange={(e) => setUnitInputs({ ...unitInputs, [inputKey]: e.target.value })}
                                         placeholder="Enter unit name..."
-                                        className="flex-1 px-3 py-2 md:px-4 md:py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-xs md:text-sm"
+                                        className="flex-1 px-3 py-2 md:px-4 md:py-2 bg-gray-50/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-xs md:text-sm"
                                       />
                                       <button
                                         onClick={() => addUnit(module.module_index, semester.semester_index, inputKey)}
@@ -801,7 +801,7 @@ export default function CourseEnrollmentPage() {
                                       <p className="text-purple-300/50 text-xs italic">No units assigned to this semester.</p>
                                     ) : (
                                       semesterUnits.map((unit) => (
-                                        <div key={unit.id} className="flex items-center justify-between bg-white/5 border border-white/10 px-3 py-2 rounded group hover:bg-white/10 transition-colors">
+                                        <div key={unit.id} className="flex items-center justify-between bg-gray-50/5 border border-white/10 px-3 py-2 rounded group hover:bg-gray-50/10 transition-colors">
                                           {editingUnitId === unit.id ? (
                                             <div className="flex items-center gap-2 flex-1">
                                               <input
@@ -809,13 +809,13 @@ export default function CourseEnrollmentPage() {
                                                 value={editUnitCode}
                                                 onChange={(e) => setEditUnitCode(e.target.value)}
                                                 placeholder="Code"
-                                                className="w-20 px-2 py-1 bg-white/20 border border-white/30 rounded text-white text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                                className="w-20 px-2 py-1 bg-gray-50/20 border border-white/30 rounded text-white text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
                                               />
                                               <input
                                                 type="text"
                                                 value={editUnitName}
                                                 onChange={(e) => setEditUnitName(e.target.value)}
-                                                className="flex-1 px-2 py-1 bg-white/20 border border-white/30 rounded text-white text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                                className="flex-1 px-2 py-1 bg-gray-50/20 border border-white/30 rounded text-white text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
                                               />
                                               <button
                                                 onClick={() => updateUnit(unit.id)}
@@ -885,7 +885,7 @@ export default function CourseEnrollmentPage() {
             )}
           </div>
           ) : (
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 md:p-8 border border-white/20 shadow-xl">
+            <div className="bg-gray-50/10 backdrop-blur-md rounded-2xl p-4 md:p-8 border border-white/20 shadow-xl">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 md:mb-6 gap-3">
                 <h2 className="text-xl md:text-2xl font-bold text-white">All Courses with Units</h2>
                 <button
@@ -901,7 +901,7 @@ export default function CourseEnrollmentPage() {
               ) : (
                 <div className="space-y-4 md:space-y-6">
                   {allCoursesData.map((course) => (
-                    <div key={course.id} className="bg-white/5 rounded-lg p-4 md:p-6 border border-white/10">
+                    <div key={course.id} className="bg-gray-50/5 rounded-lg p-4 md:p-6 border border-white/10">
                       <div className="mb-3 md:mb-4">
                         <h3 className="text-base md:text-xl font-bold text-white">{course.name}</h3>
                         <p className="text-purple-200 text-xs md:text-sm">ID: {course.id}</p>

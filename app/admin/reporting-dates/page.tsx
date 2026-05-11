@@ -170,7 +170,7 @@ export default function ReportingDates() {
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950">
       <div className="relative z-10 w-full">
-        <div className="bg-white/10 backdrop-blur-md border-b border-white/20">
+        <div className="bg-gray-50/10 backdrop-blur-md border-b border-white/20">
           <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link href="/admin/dashboard" className="text-purple-200 hover:text-white transition-colors">
@@ -201,7 +201,7 @@ export default function ReportingDates() {
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-              className="px-4 py-2 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="px-4 py-2 bg-gray-50/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
               {Array.from({ length: 55 }, (_, i) => 2026 + i).map(year => (
                 <option key={year} value={year} className="text-gray-900">{year}</option>
@@ -223,7 +223,7 @@ export default function ReportingDates() {
 
           {showForm && (
             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-xl p-6 w-full max-w-md">
+              <div className="bg-gray-50 rounded-xl p-6 w-full max-w-md">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">
                   Set Reporting Date
                 </h2>
@@ -314,7 +314,7 @@ export default function ReportingDates() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {reportingDates.length === 0 ? (
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-8 border border-white/20 text-center col-span-full">
+              <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-8 border border-white/20 text-center col-span-full">
                 <p className="text-purple-200">No reporting dates set for {selectedYear}. Click "Set Reporting Date" to add one.</p>
               </div>
             ) : (
@@ -322,7 +322,7 @@ export default function ReportingDates() {
                 const isInactive = isDateInPast(reportingDate.reporting_date);
                 const isPastMonth = isMonthInPast(reportingDate.month, reportingDate.year);
                 return (
-                  <div key={reportingDate.id} className={`bg-white/10 backdrop-blur-md rounded-xl p-6 border ${isInactive || isPastMonth ? 'border-gray-500 opacity-60' : 'border-white/20'}`}>
+                  <div key={reportingDate.id} className={`bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border ${isInactive || isPastMonth ? 'border-gray-500 opacity-60' : 'border-white/20'}`}>
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <h3 className={`text-xl font-bold ${isInactive || isPastMonth ? 'text-gray-400' : 'text-white'}`}>
@@ -357,7 +357,7 @@ export default function ReportingDates() {
                         </button>
                       </div>
                     </div>
-                    <div className={`bg-white/5 rounded-lg p-4 ${isInactive || isPastMonth ? 'bg-gray-800/30' : ''}`}>
+                    <div className={`bg-gray-50/5 rounded-lg p-4 ${isInactive || isPastMonth ? 'bg-gray-800/30' : ''}`}>
                       <p className={`text-sm mb-1 ${isInactive || isPastMonth ? 'text-gray-500' : 'text-purple-300'}`}>Reporting Date</p>
                       <p className={`font-semibold text-lg ${isInactive || isPastMonth ? 'text-gray-400' : 'text-white'}`}>{formatDate(reportingDate.reporting_date)}</p>
                     </div>

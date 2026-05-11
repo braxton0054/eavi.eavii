@@ -197,19 +197,19 @@ export default function AnnouncementsPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-white p-4 rounded-lg shadow">
+          <div className="bg-gray-50 p-4 rounded-lg shadow">
             <p className="text-2xl font-bold text-blue-600">
               {announcements.filter(a => !isExpired(a.expire_at)).length}
             </p>
             <p className="text-sm text-gray-600">Active</p>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow">
+          <div className="bg-gray-50 p-4 rounded-lg shadow">
             <p className="text-2xl font-bold text-yellow-600">
               {announcements.filter(a => a.is_pinned).length}
             </p>
             <p className="text-sm text-gray-600">Pinned</p>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow">
+          <div className="bg-gray-50 p-4 rounded-lg shadow">
             <p className="text-2xl font-bold text-gray-600">{announcements.length}</p>
             <p className="text-sm text-gray-600">Total</p>
           </div>
@@ -224,7 +224,7 @@ export default function AnnouncementsPage() {
             return (
               <div
                 key={announcement.id}
-                className={`bg-white rounded-lg shadow p-6 ${
+                className={`bg-gray-50 rounded-lg shadow p-6 ${
                   announcement.is_pinned ? 'border-l-4 border-yellow-500' : ''
                 } ${expired ? 'opacity-60' : ''}`}
               >
@@ -271,7 +271,7 @@ export default function AnnouncementsPage() {
           })}
 
           {announcements.length === 0 && (
-            <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+            <div className="bg-gray-50 rounded-lg shadow p-8 text-center text-gray-500">
               No announcements for {userCampus === 'west' ? 'West' : 'Main'} Campus yet.
             </div>
           )}
@@ -280,7 +280,7 @@ export default function AnnouncementsPage() {
         {/* Create Form Modal */}
         {showForm && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-auto">
+            <div className="bg-gray-50 rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-auto">
               <h2 className="text-xl font-bold mb-4">New Announcement</h2>
               
               <form onSubmit={handleSave} className="space-y-4">

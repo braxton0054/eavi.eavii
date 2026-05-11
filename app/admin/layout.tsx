@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/client';
+import { useTheme } from 'next-themes';
 
 interface NavItem {
   href: string;
@@ -57,6 +58,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [mounted, setMounted] = useState(false);
+  const { theme, setTheme } = useTheme();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -76,6 +79,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     const client = createClient();
@@ -103,7 +108,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const sidebarWidth = sidebarCollapsed ? 'w-14' : 'w-60';
 
   return (
-    <div className="admin-theme min-h-screen flex">
+    <div className="min-h-screen bg-gray-50 flex">
       {/* Mobile Overlay */}
       {isMobile && sidebarOpen && (
         <div 
@@ -114,10 +119,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Sidebar */}
       <aside 
-        className={`fixed left-0 top-0 h-full admin-sidebar z-50 transition-all duration-300 ease-in-out ${sidebarWidth} ${isMobile && !sidebarOpen ? '-translate-x-full' : 'translate-x-0'}`}
+        className={`fixed left-0 top-0 h-full bg-white border-r border-gray-200 z-50 transition-all duration-300 ease-in-out ${sidebarWidth} ${isMobile && !sidebarOpen ? '-translate-x-full' : 'translate-x-0'}`}
       >
         {/* Brand Logo */}
-        <div className={`h-14 border-b border-[var(--admin-border)] flex items-center ${sidebarCollapsed ? 'justify-center px-2' : 'px-4 gap-3'}`}>
+        <div className={`h-14 border-b border-gray-200 flex items-center ${sidebarCollapsed ? 'justify-center px-2' : 'px-4 gap-3'}`}>
           <Link href="/admin/dashboard" className="relative w-8 h-8 flex-shrink-0">
             <Image
               src="/logo.webp"
@@ -129,6 +134,52 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {!sidebarCollapsed && (
             <span className="font-semibold text-gray-900 text-sm">EAVI Admin</span>
           )}
+          {mounted && (
+            <button
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="ml-auto p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              aria-label="Toggle theme"
+            >
+              {theme === "dark" ? (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              )}
+            </button>
+          )}
+        </div>
+
+        {/* User Profile */}
+        <div className="border-t border-gray-200 p-3">
+          <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3'}`}>
+            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+              <span className="text-white text-xs font-medium">
+                {currentUser?.email?.charAt(0).toUpperCase() || 'A'}
+              </span>
+            </div>
+            {!sidebarCollapsed && (
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  {currentUser?.email?.split('@')[0] || 'Admin'}
+                </p>
+                <p className="text-xs text-gray-500">Administrator</p>
+              </div>
+            )}
+            <button 
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              title="Sign out"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              <span>Sign Out</span>
+            </button>
+          </div>
         </div>
 
         {/* Navigation */}
@@ -137,7 +188,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <div key={section.title}>
               {!sidebarCollapsed && (
                 <div className="px-3 mb-2">
-                  <span className="section-title">
+                  <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">
                     {section.title}
                   </span>
                 </div>
@@ -177,43 +228,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           ))}
         </nav>
 
-        {/* User Profile */}
-        <div className="border-t border-[var(--admin-border)] p-3">
-          <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3'}`}>
-            <div className="w-8 h-8 rounded-full user-avatar flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-xs font-medium">
-                {currentUser?.email?.charAt(0).toUpperCase() || 'A'}
-              </span>
-            </div>
-            {!sidebarCollapsed && (
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-[var(--admin-text)] truncate">
-                  {currentUser?.email?.split('@')[0] || 'Admin'}
-                </p>
-                <p className="text-xs text-[var(--admin-text-muted)]">Administrator</p>
-              </div>
-            )}
-            {!sidebarCollapsed && (
-              <button 
-                onClick={handleLogout}
-                className="p-1.5 text-[var(--admin-text-dim)] hover:text-[var(--admin-danger)] transition-colors"
-                title="Logout"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-              </button>
-            )}
-          </div>
-        </div>
+        
       </aside>
 
       {/* Mobile Header */}
       {isMobile && (
-        <header className="fixed top-0 left-0 right-0 h-14 admin-header z-40 flex items-center px-4 gap-3">
+        <header className="fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 z-40 flex items-center px-4 gap-3">
           <button
             onClick={toggleSidebar}
-            className="p-2 -ml-2 text-[var(--admin-text-muted)] hover:text-[var(--admin-text)] hover:bg-[var(--admin-card)] rounded-lg transition-colors"
+            className="p-2 -ml-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
             aria-label="Toggle menu"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -229,12 +252,29 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             />
           </Link>
           <span className="font-semibold text-gray-900 text-sm">EAVI Admin</span>
+          {mounted && (
+            <button
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="ml-auto p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              aria-label="Toggle theme"
+            >
+              {theme === "dark" ? (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              )}
+            </button>
+          )}
         </header>
       )}
 
       {/* Main Content */}
       <main 
-        className={`admin-main flex-1 transition-all duration-300 
+        className={`flex-1 transition-all duration-300 min-h-screen 
           ${isMobile ? 'ml-0 pt-14' : sidebarCollapsed ? 'ml-14' : 'ml-60'}`}
       >
         {children}

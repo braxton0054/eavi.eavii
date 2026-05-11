@@ -211,7 +211,7 @@ export default function InstallmentsPage() {
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950">
       <div className="relative z-10 w-full">
-        <div className="bg-white/10 backdrop-blur-md border-b border-white/20">
+        <div className="bg-gray-50/10 backdrop-blur-md border-b border-white/20">
           <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
@@ -249,7 +249,7 @@ export default function InstallmentsPage() {
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-3 py-2 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="px-3 py-2 bg-gray-50/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
               >
                 <option value="all">All Status</option>
                 <option value="pending">Pending</option>
@@ -262,7 +262,7 @@ export default function InstallmentsPage() {
 
           {showForm && (
             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-xl p-6 w-full max-w-2xl">
+              <div className="bg-gray-50 rounded-xl p-6 w-full max-w-2xl">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">Create Installment Plan</h2>
                 <form onSubmit={handleCreatePlan} className="space-y-4">
                   <div>
@@ -337,9 +337,9 @@ export default function InstallmentsPage() {
             </div>
           )}
 
-          <div className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden">
+          <div className="bg-gray-50/10 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden">
             <table className="w-full">
-              <thead className="bg-white/5">
+              <thead className="bg-gray-50/5">
                 <tr className="text-purple-200">
                   <th className="text-left py-3 px-4">Student</th>
                   <th className="text-left py-3 px-4">Installment</th>
@@ -362,7 +362,7 @@ export default function InstallmentsPage() {
                   filteredInstallments.map((installment) => {
                     const total = installment.amount + installment.late_fee;
                     return (
-                      <tr key={installment.id} className="text-white border-t border-white/10 hover:bg-white/5">
+                      <tr key={installment.id} className="text-white border-t border-white/10 hover:bg-gray-50/5">
                         <td className="py-3 px-4">
                           <div>
                             <div className="font-medium">{installment.application?.full_name}</div>

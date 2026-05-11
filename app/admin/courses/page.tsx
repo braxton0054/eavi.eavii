@@ -456,7 +456,7 @@ export default function CoursesPage() {
 
   // ── Loading ────────────────────────────────────────────────────────────────
   if (loading) return (
-    <div className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center">
       <div className="flex flex-col items-center gap-3">
         <div className="w-8 h-8 border-2 border-zinc-200 border-t-zinc-900 rounded-full animate-spin" />
         <span className="text-sm text-zinc-400 font-mono">Loading courses…</span>

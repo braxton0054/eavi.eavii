@@ -241,7 +241,7 @@ export default function AdminDashboard() {
   // ── Loading ───────────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f7f7f5] flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-2 border-[#1a1a1a] border-t-transparent rounded-full animate-spin" />
           <p className="text-sm text-[#666] font-medium tracking-wide">Loading…</p>
@@ -252,10 +252,10 @@ export default function AdminDashboard() {
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#f7f7f5] font-sans text-[#1a1a1a]">
+    <div className="min-h-screen bg-gray-50 font-sans text-[#1a1a1a]">
 
       {/* ── HEADER ─────────────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-40 bg-white border-b border-[#e5e5e2] h-14">
+      <header className="sticky top-0 z-40 bg-gray-50 border-b border-[#e5e5e2] h-14">
         <div className="h-full max-w-screen-xl mx-auto px-4 flex items-center justify-between gap-3">
 
           {/* Logo + campus pill */}
@@ -269,16 +269,18 @@ export default function AdminDashboard() {
           {/* Right controls */}
           <div className="flex items-center gap-2">
 
-            {/* Campus selector */}
-            <select
-              value={campus}
-              onChange={e => handleCampusChange(e.target.value)}
-              className="hidden sm:block text-xs border border-[#ddd] rounded-md px-2 py-1.5 bg-white text-[#333] focus:outline-none focus:ring-1 focus:ring-[#1a1a1a]"
-            >
-              <option value="">All Campuses</option>
-              <option value="main">Main Campus</option>
-              <option value="west">West Campus</option>
-            </select>
+            {/* Campus selector — hidden when user has a single campus assigned */}
+            {!campus && (
+              <select
+                value={campus}
+                onChange={e => handleCampusChange(e.target.value)}
+                className="hidden sm:block text-xs border border-[#ddd] rounded-md px-2 py-1.5 bg-gray-50 text-[#333] focus:outline-none focus:ring-1 focus:ring-[#1a1a1a]"
+              >
+                <option value="">All Campuses</option>
+                <option value="main">Main Campus</option>
+                <option value="west">West Campus</option>
+              </select>
+            )}
 
             {/* Alerts bell */}
             <div className="relative">
@@ -296,7 +298,7 @@ export default function AdminDashboard() {
               </button>
 
               {notifOpen && (
-                <div className="absolute right-0 top-full mt-1 w-72 bg-white rounded-xl shadow-lg border border-[#e5e5e2] overflow-hidden z-50">
+                <div className="absolute right-0 top-full mt-1 w-72 bg-gray-50 rounded-xl shadow-lg border border-[#e5e5e2] overflow-hidden z-50">
                   <div className="px-3 py-2 border-b border-[#f0f0ed]">
                     <p className="text-xs font-semibold text-[#333]">System Alerts</p>
                   </div>
@@ -327,7 +329,7 @@ export default function AdminDashboard() {
               </button>
 
               {actionsOpen && (
-                <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-lg border border-[#e5e5e2] py-1 z-50">
+                <div className="absolute right-0 top-full mt-1 w-48 bg-gray-50 rounded-xl shadow-lg border border-[#e5e5e2] py-1 z-50">
                   {[
                     { href: '/admin/applications', label: 'New Application' },
                     { href: '/admin/payments',     label: 'Record Payment' },
@@ -335,7 +337,7 @@ export default function AdminDashboard() {
                     { href: '/admin/reports',      label: 'Generate Report' },
                   ].map(a => (
                     <Link key={a.href} href={a.href}
-                      className="block px-4 py-2 text-xs text-[#333] hover:bg-[#f7f7f5]"
+                      className="block px-4 py-2 text-xs text-[#333] hover:bg-gray-50"
                       onClick={() => setActionsOpen(false)}
                     >
                       {a.label}
@@ -380,75 +382,78 @@ export default function AdminDashboard() {
             <h1 className="text-lg font-semibold tracking-tight">Dashboard</h1>
             <p className="text-xs text-[#888] mt-0.5">{campusLabel} · {new Date().toLocaleDateString('en-KE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
           </div>
-          {/* Mobile campus selector */}
-          <select
-            value={campus}
-            onChange={e => handleCampusChange(e.target.value)}
-            className="sm:hidden text-xs border border-[#ddd] rounded-md px-2 py-1.5 bg-white text-[#333] focus:outline-none"
-          >
-            <option value="">All</option>
-            <option value="main">Main</option>
-            <option value="west">West</option>
-          </select>
+          {/* Mobile campus selector — hidden when user has a single campus */}
+          {!campus && (
+            <select
+              value={campus}
+              onChange={e => handleCampusChange(e.target.value)}
+              className="sm:hidden text-xs border border-[#ddd] rounded-md px-2 py-1.5 bg-gray-50 text-[#333] focus:outline-none"
+            >
+              <option value="">All</option>
+              <option value="main">Main</option>
+              <option value="west">West</option>
+            </select>
+          )}
         </div>
 
-        {/* ── KPI GRID ──────────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* ── KPI GRID (Material Dashboard style) ────────────────────────────────── */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             {
               label: 'Enrolled Students',
               value: stats.totalStudents.toLocaleString(),
               sub: `${stats.pendingApplications} pending`,
-              icon: (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              ),
-              accent: 'bg-emerald-500',
+              icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
+              color: 'emerald',
             },
             {
               label: 'Revenue (Month)',
               value: fmt(stats.revenueThisMonth),
               sub: 'Completed payments',
-              icon: (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              ),
-              accent: 'bg-sky-500',
+              icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+              color: 'sky',
             },
             {
               label: 'Outstanding',
               value: fmt(stats.totalOutstanding),
               sub: 'Unpaid balances',
-              icon: (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" />
-                </svg>
-              ),
-              accent: 'bg-amber-500',
+              icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z',
+              color: 'amber',
             },
             {
               label: 'Lecturers',
               value: stats.totalLecturers.toLocaleString(),
               sub: `${stats.totalCourses} active courses`,
-              icon: (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
-                </svg>
-              ),
-              accent: 'bg-violet-500',
+              icon: 'M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z',
+              color: 'violet',
             },
-          ].map((kpi, i) => (
-            <div key={i} className="bg-white rounded-xl border border-[#e5e5e2] p-4">
-              <div className="flex items-start justify-between mb-3">
-                <p className="text-[10px] font-medium text-[#888] uppercase tracking-widest leading-tight">{kpi.label}</p>
-                <div className={`${kpi.accent} text-white rounded-lg p-1.5`}>{kpi.icon}</div>
+          ].map((kpi, i) => {
+            const colorMap: Record<string, {bg: string, text: string, shadow: string}> = {
+              emerald: { bg: 'bg-emerald-500', text: 'text-emerald-600', shadow: 'shadow-emerald-500/20' },
+              sky:   { bg: 'bg-sky-500',     text: 'text-sky-600',     shadow: 'shadow-sky-500/20' },
+              amber: { bg: 'bg-amber-500',   text: 'text-amber-600',   shadow: 'shadow-amber-500/20' },
+              violet:{ bg: 'bg-violet-500',  text: 'text-violet-600',  shadow: 'shadow-violet-500/20' },
+            };
+            const c = colorMap[kpi.color] || colorMap.emerald;
+            return (
+              <div key={i} className="bg-gray-50 rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="flex items-start justify-between px-4 pt-3 pb-2">
+                  <div className={"w-12 h-12 -mt-2 rounded-xl flex items-center justify-center shadow-lg " + c.bg + " " + c.shadow}>
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={kpi.icon} />
+                    </svg>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider">{kpi.label}</p>
+                    <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-0.5">{kpi.value}</p>
+                  </div>
+                </div>
+                <div className="border-t border-gray-100 px-4 py-2">
+                  <p className="text-[11px] text-gray-400">{kpi.sub}</p>
+                </div>
               </div>
-              <p className="text-xl sm:text-2xl font-semibold tracking-tight">{kpi.value}</p>
-              <p className="text-[10px] text-[#aaa] mt-1">{kpi.sub}</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* ── SECONDARY STATS ROW ───────────────────────────────────────────────── */}
@@ -459,7 +464,7 @@ export default function AdminDashboard() {
             { label: 'Total Courses',  value: stats.totalCourses,         color: 'text-violet-600' },
             { label: 'Total Enrolled', value: stats.enrolledStudents,     color: 'text-emerald-600' },
           ].map((s, i) => (
-            <div key={i} className="bg-white rounded-xl border border-[#e5e5e2] px-4 py-3 flex items-center justify-between">
+            <div key={i} className="bg-gray-50 rounded-xl border border-[#e5e5e2] px-4 py-3 flex items-center justify-between">
               <p className="text-xs text-[#888]">{s.label}</p>
               <p className={`text-sm font-semibold ${s.color}`}>{s.value.toLocaleString()}</p>
             </div>
@@ -470,7 +475,7 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
           {/* Recent Applications */}
-          <div className="lg:col-span-2 bg-white rounded-xl border border-[#e5e5e2] overflow-hidden">
+          <div className="lg:col-span-2 bg-gray-50 rounded-xl border border-[#e5e5e2] overflow-hidden">
             <div className="px-4 py-3 border-b border-[#f0f0ed] flex items-center justify-between">
               <p className="text-xs font-semibold text-[#333] uppercase tracking-widest">Recent Applications</p>
               <Link href="/admin/applications" className="text-[10px] text-[#888] hover:text-[#1a1a1a] transition-colors">View all →</Link>
@@ -520,7 +525,7 @@ export default function AdminDashboard() {
           </div>
 
           {/* Enrollment by Course */}
-          <div className="bg-white rounded-xl border border-[#e5e5e2] overflow-hidden">
+          <div className="bg-gray-50 rounded-xl border border-[#e5e5e2] overflow-hidden">
             <div className="px-4 py-3 border-b border-[#f0f0ed]">
               <p className="text-xs font-semibold text-[#333] uppercase tracking-widest">Top Courses</p>
             </div>
@@ -535,7 +540,7 @@ export default function AdminDashboard() {
                   </div>
                   <div className="h-1.5 bg-[#f0f0ed] rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-[#1a1a1a] rounded-full"
+                      className="h-full bg-green-500 rounded-full"
                       style={{ width: `${(c.enrolled_students / maxEnrolled) * 100}%` }}
                     />
                   </div>
@@ -549,7 +554,7 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
           {/* Recent Payments */}
-          <div className="bg-white rounded-xl border border-[#e5e5e2] overflow-hidden">
+          <div className="bg-gray-50 rounded-xl border border-[#e5e5e2] overflow-hidden">
             <div className="px-4 py-3 border-b border-[#f0f0ed] flex items-center justify-between">
               <p className="text-xs font-semibold text-[#333] uppercase tracking-widest">Recent Payments</p>
               <Link href="/admin/payments" className="text-[10px] text-[#888] hover:text-[#1a1a1a] transition-colors">View all →</Link>
@@ -570,7 +575,7 @@ export default function AdminDashboard() {
           </div>
 
           {/* Activity Log */}
-          <div className="bg-white rounded-xl border border-[#e5e5e2] overflow-hidden">
+          <div className="bg-gray-50 rounded-xl border border-[#e5e5e2] overflow-hidden">
             <div className="px-4 py-3 border-b border-[#f0f0ed]">
               <p className="text-xs font-semibold text-[#333] uppercase tracking-widest">Activity Log</p>
             </div>
@@ -601,7 +606,7 @@ export default function AdminDashboard() {
             { label: 'Reports',      href: '/admin/reports',      emoji: '📊' },
           ].map(nav => (
             <Link key={nav.href} href={nav.href}
-              className="flex flex-col items-center gap-1.5 bg-white rounded-xl border border-[#e5e5e2] p-4 hover:border-[#1a1a1a] hover:shadow-sm transition-all group"
+              className="flex flex-col items-center gap-1.5 bg-gray-50 rounded-xl border border-[#e5e5e2] p-4 hover:border-[#1a1a1a] hover:shadow-sm transition-all group"
             >
               <span className="text-xl">{nav.emoji}</span>
               <span className="text-[10px] font-medium text-[#666] group-hover:text-[#1a1a1a] uppercase tracking-widest transition-colors">{nav.label}</span>

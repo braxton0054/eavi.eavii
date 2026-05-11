@@ -10,7 +10,7 @@ type LevelKey = 'diploma' | 'certificate' | 'artisan' | 'level6' | 'level5' | 'l
 type ExamBody = 'JP' | 'CDACC' | 'KNEC' | 'internal';
 
 interface Unit {
-  id: string;
+  id?: string;
   course_id: string;
   unit_code: string;
   name: string;
@@ -78,8 +78,8 @@ export default function UnitsPage() {
   const loadUnits = async () => {
     try {
       const { data: unitsData, error: unitsError } = await supabase
-        .from('v_units_by_module_semester')
-        .select('*')
+        .from('units')
+        .select('course_id, unit_code, name, module_index, semester_index, unit_type')
         .order('course_id, module_index, semester_index');
 
       if (unitsError) {
@@ -230,7 +230,7 @@ export default function UnitsPage() {
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+        <div className="bg-gray-50 rounded-lg border border-gray-200 p-6 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Search */}
             <div>
@@ -305,7 +305,7 @@ export default function UnitsPage() {
         </div>
 
         {/* Units Table */}
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -333,7 +333,7 @@ export default function UnitsPage() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-gray-50 divide-y divide-gray-200">
                 {filteredUnits.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
@@ -342,7 +342,7 @@ export default function UnitsPage() {
                   </tr>
                 ) : (
                   filteredUnits.map((unit) => (
-                    <tr key={unit.id} className="hover:bg-gray-50">
+                    <tr key={`${unit.course_id}-${unit.unit_code}`} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {unit.unit_code}
                       </td>

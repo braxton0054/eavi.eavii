@@ -45,7 +45,8 @@ export async function proxy(request: NextRequest) {
     !request.nextUrl.pathname.startsWith('/oauth') &&
     !request.nextUrl.pathname.startsWith('/reset-password') &&
     request.nextUrl.pathname !== '/' &&
-    request.nextUrl.pathname !== '/apply'
+    request.nextUrl.pathname !== '/apply' &&
+    !request.nextUrl.pathname.startsWith('/api/apply')
   ) {
     const url = request.nextUrl.clone()
     // Redirect to appropriate login based on route

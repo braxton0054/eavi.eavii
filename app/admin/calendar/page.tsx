@@ -234,7 +234,7 @@ export default function AcademicCalendar() {
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950">
       <div className="relative z-10 w-full">
-        <div className="bg-white/10 backdrop-blur-md border-b border-white/20">
+        <div className="bg-gray-50/10 backdrop-blur-md border-b border-white/20">
           <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link href="/admin/dashboard" className="text-purple-200 hover:text-white transition-colors">
@@ -273,7 +273,7 @@ export default function AcademicCalendar() {
 
           {showForm && (
             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="bg-gray-50 rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">
                   {editingCalendar ? 'Edit Term' : 'Add New Term'}
                 </h2>
@@ -472,12 +472,12 @@ export default function AcademicCalendar() {
 
           <div className="grid grid-cols-1 gap-6">
             {calendars.length === 0 ? (
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-8 border border-white/20 text-center">
+              <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-8 border border-white/20 text-center">
                 <p className="text-purple-200">No academic calendar entries found. Click "Add New Term" to create one.</p>
               </div>
             ) : (
               calendars.map((calendar) => (
-                <div key={calendar.id} className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+                <div key={calendar.id} className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h3 className="text-xl font-bold text-white">{calendar.academic_year} - {calendar.term_name}</h3>
@@ -503,19 +503,19 @@ export default function AcademicCalendar() {
                     </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div className="bg-white/5 rounded-lg p-4">
+                    <div className="bg-gray-50/5 rounded-lg p-4">
                       <p className="text-purple-300 text-sm mb-1">Term Period</p>
                       <p className="text-white font-semibold">{formatDate(calendar.term_start_date)} - {formatDate(calendar.term_end_date)}</p>
                     </div>
-                    <div className="bg-white/5 rounded-lg p-4">
+                    <div className="bg-gray-50/5 rounded-lg p-4">
                       <p className="text-purple-300 text-sm mb-1">CAT Period</p>
                       <p className="text-white font-semibold">{formatDate(calendar.cat_opening_date)} - {formatDate(calendar.cat_closing_date)}</p>
                     </div>
-                    <div className="bg-white/5 rounded-lg p-4">
+                    <div className="bg-gray-50/5 rounded-lg p-4">
                       <p className="text-purple-300 text-sm mb-1">End Term Exam</p>
                       <p className="text-white font-semibold">{formatDate(calendar.end_term_exam_date)}</p>
                     </div>
-                    <div className="bg-white/5 rounded-lg p-4">
+                    <div className="bg-gray-50/5 rounded-lg p-4">
                       <p className="text-purple-300 text-sm mb-1">Mock Exam</p>
                       <p className="text-white font-semibold">
                         {calendar.mock_exam_available ? `Yes - ${formatDate(calendar.mock_exam_date || '')}` : 'No'}

@@ -506,7 +506,7 @@ export default function ResultsPage() {
           </div>
         )}
 
-        <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 md:p-8 border border-white/20">
+        <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 md:p-8 border border-white/20">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-white">Manage Exam Results</h2>
             <div className="flex gap-3">
@@ -536,7 +536,7 @@ export default function ResultsPage() {
                 id="filterAcademicPeriod"
                 value={filterAcademicPeriod}
                 onChange={(e) => setFilterAcademicPeriod(e.target.value)}
-                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-3 bg-gray-50/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
               >
                 <option value="">Select Academic Period</option>
                 {academicCalendars.map((cal: any) => (
@@ -559,7 +559,7 @@ export default function ResultsPage() {
                   setFilterCourse('');
                 }}
                 disabled={!filterAcademicPeriod}
-                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+                className="w-full px-4 py-3 bg-gray-50/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
               >
                 <option value="">All Departments</option>
                 {DEPARTMENTS.map(dept => (
@@ -577,7 +577,7 @@ export default function ResultsPage() {
                 value={filterCourse}
                 onChange={(e) => setFilterCourse(e.target.value)}
                 disabled={!filterDepartment}
-                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+                className="w-full px-4 py-3 bg-gray-50/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
               >
                 <option value="">All Courses</option>
                 {departmentCourses.map((course: any) => (
@@ -595,7 +595,7 @@ export default function ResultsPage() {
                 value={filterSemester}
                 onChange={(e) => setFilterSemester(e.target.value)}
                 disabled={!filterAcademicPeriod}
-                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+                className="w-full px-4 py-3 bg-gray-50/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
               >
                 <option value="">All Semesters</option>
                 <option value="1" className="text-gray-900">Semester 1</option>
@@ -614,7 +614,7 @@ export default function ResultsPage() {
                 value={filterExamType}
                 onChange={(e) => setFilterExamType(e.target.value)}
                 disabled={!filterAcademicPeriod}
-                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+                className="w-full px-4 py-3 bg-gray-50/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
               >
                 <option value="">All Exam Types</option>
                 <option value="cat" className="text-gray-900">CAT</option>
@@ -683,7 +683,7 @@ export default function ResultsPage() {
                   {uniqueStudents.map(admissionNumber => {
                     const studentMarks = filteredMarks.filter(m => m.admission_number === admissionNumber);
                     return (
-                      <tr key={admissionNumber} className="border-b border-white/10 hover:bg-white/5">
+                      <tr key={admissionNumber} className="border-b border-white/10 hover:bg-gray-50/5">
                         <td className="py-3 px-4">{admissionNumber}</td>
                         <td className="py-3 px-4">{studentNames[admissionNumber] || 'Unknown'}</td>
                         {uniqueUnits.map(unit => {

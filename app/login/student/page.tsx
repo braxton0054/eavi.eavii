@@ -206,9 +206,9 @@ export default function StudentLogin() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950 text-white font-sans">
+    <div className="min-h-screen w-full bg-[#f8faff] font-sans">
       {/* Back Button */}
-      <Link href="/" className="fixed top-6 left-6 z-50 flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-purple-200 hover:bg-white/20 transition-all">
+      <Link href="/" className="fixed top-4 left-4 md:top-6 md:left-6 z-50 flex items-center gap-2 px-3 py-2.5 md:px-4 md:py-2 bg-white border border-gray-300 rounded-full text-gray-700 hover:bg-gray-100 shadow-sm transition-all min-w-[44px] min-h-[44px] justify-center font-medium">
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
         </svg>
@@ -219,28 +219,28 @@ export default function StudentLogin() {
         <div className="w-full">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="inline-block p-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl mb-4">
+            <div className="inline-block p-3 bg-white border border-gray-200 rounded-2xl shadow-sm mb-4">
               <Image src="/logo.webp" alt="EAVI" width={70} height={70} className="object-contain" />
             </div>
-            <h1 className="text-4xl font-serif font-bold text-white mb-2" style={{ fontFamily: 'Playfair Display, serif' }}>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2" style={{ fontFamily: 'Playfair Display, serif' }}>
               {mode === 'login' ? 'Student Portal' : mode === 'register' ? 'Create Account' : 'Reset Password'}
             </h1>
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-xs text-purple-200 tracking-wider uppercase font-semibold">
-              <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span> Secure Portal
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-green-50 border border-green-200 rounded-full text-xs text-green-700 tracking-wider uppercase font-semibold">
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Secure Portal
             </div>
           </div>
 
           {/* Mode Tabs */}
           <div className="flex justify-center mb-6">
-            <div className="bg-white/10 backdrop-blur-md p-1 rounded-xl border border-white/20">
+            <div className="bg-gray-100 p-1 rounded-xl">
               {['login', 'register', 'reset'].map((m) => (
                 <button
                   key={m}
                   onClick={() => setMode(m as any)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                     mode === m
-                      ? 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg shadow-green-600/30'
-                      : 'text-purple-200 hover:text-white hover:bg-white/10'
+                      ? 'bg-green-600 text-white shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-white'
                   }`}
                 >
                   {m.charAt(0).toUpperCase() + m.slice(1)}
@@ -250,7 +250,7 @@ export default function StudentLogin() {
           </div>
 
           {/* Card */}
-          <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20 shadow-2xl shadow-black/30">
+          <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-lg">
             {error && (
               <div className="mb-4 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-sm text-center text-red-300">
                 {error}
@@ -268,45 +268,45 @@ export default function StudentLogin() {
                   {mode === 'register' && (
                     <>
                       <div>
-                        <label className="block text-sm font-medium text-purple-200 mb-2">Full Name</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
                         <input 
                           type="text" 
                           name="username" 
                           value={formData.username} 
                           onChange={handleChange} 
                           required 
-                          className="w-full px-4 py-3.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl focus:border-purple-400 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all text-white placeholder-purple-300"
+                          className="w-full px-4 py-3.5 bg-white border border-gray-300 rounded-xl focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition-all text-gray-900 placeholder-gray-400"
                           placeholder="Enter your full name"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-purple-200 mb-2">Admission Number</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Admission Number</label>
                         <input 
                           type="text" 
                           name="admissionNumber" 
                           value={formData.admissionNumber} 
                           onChange={handleChange} 
                           required 
-                          className="w-full px-4 py-3.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl focus:border-purple-400 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all text-white placeholder-purple-300"
+                          className="w-full px-4 py-3.5 bg-white border border-gray-300 rounded-xl focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition-all text-gray-900 placeholder-gray-400"
                           placeholder="E.g., EAVI/2024/001"
                         />
                       </div>
                     </>
                   )}
                   <div>
-                    <label className="block text-sm font-medium text-purple-200 mb-2">Email Address</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
                     <input 
                       type="email" 
                       name="email" 
                       value={formData.email} 
                       onChange={handleChange} 
                       required 
-                      className="w-full px-4 py-3.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl focus:border-purple-400 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all text-white placeholder-purple-300"
+                      className="w-full px-4 py-3.5 bg-white border border-gray-300 rounded-xl focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition-all text-gray-900 placeholder-gray-400"
                       placeholder="student@eavi.ac.ke"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-purple-200 mb-2">Password</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
                     <div className="relative">
                       <input 
                         type={showPassword ? 'text' : 'password'} 
@@ -314,7 +314,7 @@ export default function StudentLogin() {
                         value={formData.password} 
                         onChange={handleChange} 
                         required 
-                        className="w-full px-4 py-3.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl focus:border-purple-400 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all text-white placeholder-purple-300"
+                        className="w-full px-4 py-3.5 bg-white border border-gray-300 rounded-xl focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition-all text-gray-900 placeholder-gray-400"
                         placeholder="Enter your password"
                       />
                       <button
@@ -413,7 +413,7 @@ export default function StudentLogin() {
                     value={formData.email} 
                     onChange={handleChange} 
                     required 
-                    className="w-full px-4 py-3.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl focus:border-purple-400 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all text-white placeholder-purple-300"
+                    className="w-full px-4 py-3.5 bg-white border border-gray-300 rounded-xl focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none transition-all text-gray-900 placeholder-gray-400"
                     placeholder="Enter your email"
                   />
                   <button 

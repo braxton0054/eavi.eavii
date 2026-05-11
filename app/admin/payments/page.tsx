@@ -198,7 +198,7 @@ function ClearancePreview({
   const total    = summary.tuition_fee + summary.practical_fee + summary.additional_fees;
   const newPaid  = summary.total_paid + newAmount;
   const newPct   = Math.min((newPaid / total) * 100, 100);
-  const oldPct   = Math.min((summary.total_paid / total) * 100, 100);
+  const oldPct   = total > 0 ? Math.min((summary.total_paid / total) * 100, 100) : 0;
   const willClear = newPct >= 95;
 
   return (
@@ -240,7 +240,7 @@ function SemesterCard({
   onClick: () => void;
 }) {
   const total = summary.tuition_fee + summary.practical_fee + summary.additional_fees;
-  const pct   = Math.min(Math.round((summary.total_paid / total) * 100), 100);
+  const pct   = total > 0 ? Math.min(Math.round((summary.total_paid / total) * 100), 100) : 0;
   const cleared = pct >= 95;
 
   return (
@@ -250,7 +250,7 @@ function SemesterCard({
       className={`w-full text-left p-4 rounded-xl border transition-all ${
         selected
           ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 dark:border-indigo-400'
-          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 hover:border-slate-300 dark:hover:border-slate-600'
+          : 'border-slate-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50 hover:border-slate-300 dark:hover:border-slate-600'
       }`}
     >
       <div className="flex items-start justify-between gap-3">
@@ -400,19 +400,76 @@ export default function PaymentsPage() {
 
     setSelectedStudent(profile || null);
 
-    // Fee summary from semesters (using course->module->semester chain)
-    const { data: summary } = await supabase
-      .from('semesters')
-      .select('id, semester_index, fee, practical_fee, module_id')
-      .order('semester_index', { ascending: true });
+    // Fee summary — get semesters for this student's course
+    const { data: courseTypes } = await supabase
+      .from('course_types')
+      .select('id')
+      .eq('course_id', profile?.course_id || '')
+      .limit(1);
 
-    // Map to expected format
-    const feeSumm = (summary || []).map((sem: any) => ({
-      semester_index: sem.semester_index,
-      fee_amount: parseFloat(sem.fee) || 0,
-      practical_fee: parseFloat(sem.practical_fee) || 0,
-      total_due: (parseFloat(sem.fee) || 0) + (parseFloat(sem.practical_fee) || 0),
-    }));
+    let feeSumm: FeeSummary[] = [];
+    if (courseTypes && courseTypes.length > 0) {
+      // Get modules for this course type
+      const { data: mods } = await supabase
+        .from('modules')
+        .select('id, module_index, label')
+        .eq('course_type_id', courseTypes[0].id)
+        .order('module_index');
+
+      if (mods && mods.length > 0) {
+        const moduleIds = mods.map((m: any) => m.id);
+        const { data: sems } = await supabase
+          .from('semesters')
+          .select('id, semester_index, fee, practical_fee, module_id')
+          .in('module_id', moduleIds)
+          .order('semester_index');
+
+        // Get actual payments for this student
+        const { data: payments } = await supabase
+          .from('fee_payments')
+          .select('amount, semester_id')
+          .eq('application_id', s.id)
+          .eq('status', 'completed');
+
+        // Build payment lookup by semester_id
+        const paidBySem: Record<string, number> = {};
+        if (payments) {
+          for (const p of payments) {
+            if (p.semester_id) {
+              paidBySem[p.semester_id] = (paidBySem[p.semester_id] || 0) + parseFloat(p.amount);
+            }
+          }
+        }
+
+        feeSumm = (sems || []).map((sem: any) => {
+          const tuition = parseFloat(sem.fee) || 0;
+          const practical = parseFloat(sem.practical_fee) || 0;
+          const total = tuition + practical;
+          const paid = paidBySem[sem.id] || 0;
+          return {
+            application_id: s.id || '',
+            admission_number: s.admission_number || '',
+            module_id: sem.module_id || '',
+            module_index: mods.find((m: any) => m.id === sem.module_id)?.module_index || 0,
+            module_label: mods.find((m: any) => m.id === sem.module_id)?.label || '',
+            payment_mode: 'per_semester',
+            exam_fee: 0,
+            module_exam_body: '',
+            semester_id: sem.id || '',
+            semester_index: sem.semester_index,
+            tuition_fee: tuition,
+            practical_fee: practical,
+            additional_fees: 0,
+            installment_amount: 0,
+            installment_status: '',
+            total_paid: paid,
+            balance: total - paid,
+            due_date: null,
+            attempt_number: 0,
+          };
+        });
+      }
+    }
     setFeeSummary(feeSumm);
 
     // Payment history from fee_payments
@@ -590,7 +647,7 @@ export default function PaymentsPage() {
     <div className="min-h-screen bg-slate-50 dark:bg-[#0C0C14] transition-colors">
 
       {/* ── HEADER ─────────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-40 bg-white dark:bg-slate-900/95 border-b border-slate-200 dark:border-slate-800 backdrop-blur-sm shadow-sm">
+      <header className="sticky top-0 z-40 bg-gray-50 dark:bg-slate-900/95 border-b border-slate-200 dark:border-slate-800 backdrop-blur-sm shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
@@ -617,7 +674,7 @@ export default function PaymentsPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
         {/* ── STUDENT SEARCH ───────────────────────────────────────────────── */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-visible">
+        <div className="bg-gray-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-visible">
           <div className="p-6">
             {/* Section header */}
             <div className="flex items-center gap-3 mb-6">
@@ -656,7 +713,7 @@ export default function PaymentsPage() {
 
               {/* Dropdown results */}
               {showSearchResults && searchResults.length > 0 && (
-                <div className="absolute z-50 top-full mt-1.5 w-full bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden max-h-72 overflow-y-auto">
+                <div className="absolute z-50 top-full mt-1.5 w-full bg-gray-50 dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden max-h-72 overflow-y-auto">
                   {searchResults.map(s => (
                     <button
                       key={s.id}
@@ -768,7 +825,7 @@ export default function PaymentsPage() {
                             color: 'text-slate-600 dark:text-slate-400',
                           },
                         ].map(m => (
-                          <div key={m.label} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3 shadow-sm">
+                          <div key={m.label} className="bg-gray-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-3 shadow-sm">
                             <p className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wide font-medium mb-1">{m.label}</p>
                             <p className={`text-sm font-bold font-mono ${m.color}`}>{m.value}</p>
                           </div>
@@ -812,7 +869,7 @@ export default function PaymentsPage() {
             <div className="space-y-6">
 
               {/* Fee Summary */}
-              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+              <div className="bg-gray-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                 <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center">
                     <Wallet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -841,7 +898,7 @@ export default function PaymentsPage() {
               </div>
 
               {/* Payment History */}
-              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+              <div className="bg-gray-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
                 <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-950 flex items-center justify-center">
@@ -903,7 +960,7 @@ export default function PaymentsPage() {
             {/* ── RIGHT: PAYMENT FORM ─────────────────────────────────────── */}
             <div
               id="payment-form"
-              className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden self-start sticky top-20"
+              className="bg-gray-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden self-start sticky top-20"
             >
               <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-950 flex items-center justify-center">
@@ -955,7 +1012,7 @@ export default function PaymentsPage() {
                             setField('module_id', sem.module_id);
                           }
                         }}
-                        className={`w-full px-3 py-2.5 text-sm rounded-xl border bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors ${
+                        className={`w-full px-3 py-2.5 text-sm rounded-xl border bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors ${
                           errors.semester_id ? 'border-red-400' : 'border-slate-300 dark:border-slate-700'
                         }`}
                       >
@@ -1005,7 +1062,7 @@ export default function PaymentsPage() {
                           className={`flex flex-col items-center gap-1 py-3 px-1 rounded-xl border text-xs font-semibold transition-all ${
                             form.payment_method === m.value
                               ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300'
-                              : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'
+                              : 'border-slate-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'
                           }`}
                         >
                           <m.icon className="w-4 h-4" />
@@ -1034,7 +1091,7 @@ export default function PaymentsPage() {
                           value={form.amount || ''}
                           onChange={e => setField('amount', parseFloat(e.target.value) || 0)}
                           placeholder="0"
-                          className={`w-full pl-12 pr-3 py-2.5 text-sm rounded-xl border bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors font-mono ${
+                          className={`w-full pl-12 pr-3 py-2.5 text-sm rounded-xl border bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors font-mono ${
                             errors.amount ? 'border-red-400' : 'border-slate-300 dark:border-slate-700'
                           }`}
                         />
@@ -1048,7 +1105,7 @@ export default function PaymentsPage() {
                       <select
                         value={form.payment_type}
                         onChange={e => setField('payment_type', e.target.value)}
-                        className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                        className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
                       >
                         {PAYMENT_TYPES.map(t => (
                           <option key={t.id} value={t.id}>{t.label}</option>
@@ -1079,7 +1136,7 @@ export default function PaymentsPage() {
                         : form.payment_method === 'cash'         ? 'Not required for cash'
                         : 'Reference number'
                       }
-                      className={`w-full px-3 py-2.5 text-sm rounded-xl border bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors font-mono disabled:bg-slate-100 dark:disabled:bg-slate-800/50 disabled:text-slate-400 ${
+                      className={`w-full px-3 py-2.5 text-sm rounded-xl border bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors font-mono disabled:bg-slate-100 dark:disabled:bg-slate-800/50 disabled:text-slate-400 ${
                         errors.transaction_id ? 'border-red-400' : 'border-slate-300 dark:border-slate-700'
                       }`}
                     />
@@ -1100,7 +1157,7 @@ export default function PaymentsPage() {
                           type="date"
                           value={form.payment_date}
                           onChange={e => setField('payment_date', e.target.value)}
-                          className={`w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors ${
+                          className={`w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors ${
                             errors.payment_date ? 'border-red-400' : 'border-slate-300 dark:border-slate-700'
                           }`}
                         />
@@ -1121,7 +1178,7 @@ export default function PaymentsPage() {
                           value={form.receipt_number}
                           onChange={e => setField('receipt_number', e.target.value)}
                           placeholder="RCP-YYYYMMDD-XXX"
-                          className={`w-full pl-9 pr-8 py-2.5 text-sm rounded-xl border bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors font-mono ${
+                          className={`w-full pl-9 pr-8 py-2.5 text-sm rounded-xl border bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors font-mono ${
                             errors.receipt_number ? 'border-red-400' : 'border-slate-300 dark:border-slate-700'
                           }`}
                         />
@@ -1146,7 +1203,7 @@ export default function PaymentsPage() {
                     <select
                       value={form.status}
                       onChange={e => setField('status', e.target.value)}
-                      className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                      className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
                     >
                       {STATUSES.map(s => (
                         <option key={s.value} value={s.value}>{s.label}</option>
@@ -1164,7 +1221,7 @@ export default function PaymentsPage() {
                       onChange={e => setField('notes', e.target.value)}
                       rows={2}
                       placeholder="e.g. Paid via KCB Branch, Nairobi..."
-                      className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors resize-none"
+                      className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors resize-none"
                     />
                   </div>
 
@@ -1204,7 +1261,7 @@ export default function PaymentsPage() {
 
         {/* ── EMPTY STATE ────────────────────────────────────────────────────── */}
         {!selectedStudent && !loadingStudent && (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-16 text-center">
+          <div className="bg-gray-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-16 text-center">
             <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-4">
               <User className="w-8 h-8 text-slate-300 dark:text-slate-600" />
             </div>

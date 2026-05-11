@@ -851,7 +851,7 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-20">
+      <header className="bg-gray-50 border-b border-gray-200 sticky top-0 z-20">
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-4">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-4">
@@ -869,7 +869,7 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
               </button>
               <button
                 onClick={() => setShowBulkImportModal(true)}
-                className="px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg transition-colors text-sm font-medium"
+                className="px-4 py-2 bg-gray-50 border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg transition-colors text-sm font-medium"
               >
                 Bulk Import
               </button>
@@ -880,7 +880,7 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-8">
-          <div className="bg-white rounded-lg border border-gray-200">
+          <div className="bg-gray-50 rounded-lg border border-gray-200">
             <div className="px-6 py-4 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900">All Applications</h2>
             </div>
@@ -892,9 +892,9 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
             ) : (
               <>
                 {/* Mobile Card Layout */}
-                <div className="md:hidden space-y-4 p-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
                   {applications.map((application) => (
-                    <div key={application.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div key={application.id} className="bg-gray-50 rounded-xl p-5 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
                       <div className="flex justify-between items-start mb-3">
                         <div>
                           <h3 className="text-gray-900 font-semibold text-sm">{application.full_name}</h3>
@@ -986,98 +986,7 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                   ))}
                 </div>
 
-                {/* Desktop Table Layout */}
-                <div className="hidden md:block overflow-x-auto p-6">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="text-left py-3 px-4 text-gray-700 font-semibold text-sm">Name</th>
-                        <th className="text-left py-3 px-4 text-gray-700 font-semibold text-sm">Phone</th>
-                        <th className="text-left py-3 px-4 text-gray-700 font-semibold text-sm">Email</th>
-                        <th className="text-left py-3 px-4 text-gray-700 font-semibold text-sm">KCSE Grade</th>
-                        <th className="text-left py-3 px-4 text-gray-700 font-semibold text-sm">Course</th>
-                        <th className="text-left py-3 px-4 text-gray-700 font-semibold text-sm">Type</th>
-                        <th className="text-left py-3 px-4 text-gray-700 font-semibold text-sm">Application Date</th>
-                        <th className="text-left py-3 px-4 text-gray-700 font-semibold text-sm">Status</th>
-                        <th className="text-left py-3 px-4 text-gray-700 font-semibold text-sm">Admission No.</th>
-                        <th className="text-left py-3 px-4 text-gray-700 font-semibold text-sm">Module/Sem</th>
-                        <th className="text-left py-3 px-4 text-gray-700 font-semibold text-sm">Class</th>
-                        <th className="text-left py-3 px-4 text-gray-700 font-semibold text-sm">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {applications.map((application) => (
-                        <tr key={application.id} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="py-4 px-4 text-gray-900 text-sm">{application.full_name}</td>
-                          <td className="py-4 px-4 text-gray-600 text-sm">{application.phone}</td>
-                          <td className="py-4 px-4 text-gray-600 text-sm">{application.email || '-'}</td>
-                          <td className="py-4 px-4 text-gray-600 text-sm">{application.kcse_grade}</td>
-                          <td className="py-4 px-4 text-gray-900 text-sm">{application.course}</td>
-                          <td className="py-4 px-4 text-gray-600 text-sm capitalize">{application.course_type || '-'}</td>
-                          <td className="py-4 px-4 text-gray-600 text-sm">
-                            {new Date(application.application_date).toLocaleDateString()}
-                          </td>
-                          <td className="py-4 px-4">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(application.status)}`}>
-                              {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4 text-gray-600 text-sm font-mono">
-                            {application.admission_number || '-'}
-                          </td>
-                          <td className="py-4 px-4 text-gray-600 text-sm">
-                            {application.current_module && application.current_semester 
-                              ? `M${application.current_module}/S${application.current_semester}`
-                              : '-'}
-                          </td>
-                          <td className="py-4 px-4 text-gray-600 text-sm">
-                            {application.classes?.class_name || '-'}
-                          </td>
-                          <td className="py-4 px-4">
-                            <div className="flex gap-2 flex-wrap">
-                              <Link
-                                href={`/admin/student-details/${application.id}`}
-                                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-300 text-sm font-medium"
-                              >
-                                Details
-                              </Link>
-                              {application.status === 'pending' && (
-                                <>
-                                  <button
-                                    onClick={() => handleEnrollClick(application)}
-                                    className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-300 text-sm font-medium"
-                                  >
-                                    Enroll
-                                  </button>
-                                  <button
-                                    onClick={() => handleReject(application.id)}
-                                    className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors duration-300 text-sm font-medium"
-                                  >
-                                    Reject
-                                  </button>
-                                </>
-                              )}
-                              {application.status === 'enrolled' && (
-                                <>
-                                  <button
-                                    onClick={() => handleUpgradeSemester(application)}
-                                    disabled={!application.current_semester || !application.current_module}
-                                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors duration-300 text-sm font-medium"
-                                  >
-                                    Upgrade
-                                  </button>
-                                </>
-                              )}
-                              {application.status === 'rejected' && (
-                                <span className="text-red-600 text-xs">Rejected</span>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+
               </>
             )}
           </div>
@@ -1086,7 +995,7 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
       {/* Enroll Modal */}
       {showEnrollModal && selectedApplication && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 md:p-8 border border-gray-200 max-w-md w-full shadow-lg">
+          <div className="bg-gray-50 rounded-lg p-6 md:p-8 border border-gray-200 max-w-md w-full shadow-lg">
             <h3 className="text-xl font-bold text-gray-900 mb-4">Enroll Student</h3>
             <div className="mb-4">
               <p className="text-gray-600 text-sm mb-2">
@@ -1116,7 +1025,7 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                 value={newAdmissionNumber}
                 onChange={(e) => setNewAdmissionNumber(e.target.value)}
                 placeholder="e.g., M20260001"
-                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               />
               <p className="text-gray-500 text-xs mt-1">
                 Format: M{new Date().getFullYear()}XXXX (Main) or W{new Date().getFullYear()}XXXX (West)
@@ -1132,7 +1041,7 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                 id="classSelect"
                 value={selectedClassId}
                 onChange={(e) => setSelectedClassId(e.target.value)}
-                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               >
                 <option value="">-- Select a Class --</option>
                 {availableClasses.map((cls) => (
@@ -1202,7 +1111,7 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
               <button
                 onClick={() => setShowEnrollModal(false)}
                 disabled={enrolling}
-                className="flex-1 py-3 bg-white/10 hover:bg-white/20 border border-white/30 text-white rounded-lg transition-colors duration-300 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 py-3 bg-gray-50/10 hover:bg-gray-50/20 border border-white/30 text-white rounded-lg transition-colors duration-300 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
@@ -1214,7 +1123,7 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
       {/* Add Existing Student Modal */}
       {showAddStudentModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 md:p-8 border border-white/20 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 md:p-8 border border-white/20 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-bold text-white mb-4">Add Existing Student</h3>
             <p className="text-purple-200 text-sm mb-6">
               Add a student who was manually admitted before the system was implemented.
@@ -1238,7 +1147,7 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                     value={newStudent.full_name}
                     onChange={(e) => setNewStudent({ ...newStudent, full_name: e.target.value })}
                     placeholder="Enter full name"
-                    className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                    className="w-full px-4 py-3 bg-gray-50/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
                   />
                 </div>
                 <div>
@@ -1251,7 +1160,7 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                     value={newStudent.phone}
                     onChange={(e) => setNewStudent({ ...newStudent, phone: e.target.value })}
                     placeholder="Enter phone number"
-                    className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                    className="w-full px-4 py-3 bg-gray-50/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
                   />
                 </div>
               </div>
@@ -1267,7 +1176,7 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                     value={newStudent.email}
                     onChange={(e) => setNewStudent({ ...newStudent, email: e.target.value })}
                     placeholder="Enter email (optional)"
-                    className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                    className="w-full px-4 py-3 bg-gray-50/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
                   />
                 </div>
                 <div>
@@ -1280,7 +1189,7 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                     value={newStudent.kcse_grade}
                     onChange={(e) => setNewStudent({ ...newStudent, kcse_grade: e.target.value })}
                     placeholder="Enter KCSE grade"
-                    className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                    className="w-full px-4 py-3 bg-gray-50/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
                   />
                 </div>
               </div>
@@ -1297,7 +1206,7 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                       setNewStudent({ ...newStudent, course: e.target.value, course_type: '' });
                     }}
                     required
-                    className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                    className="w-full px-4 py-3 bg-gray-50/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
                   >
                     <option value="">Select course</option>
                     {allCourses.map(course => (
@@ -1315,7 +1224,7 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                     onChange={(e) => setNewStudent({ ...newStudent, course_type: e.target.value })}
                     required
                     disabled={!newStudent.course || availableCourseTypes.length === 0}
-                    className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full px-4 py-3 bg-gray-50/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <option value="">
                       {!newStudent.course ? 'Select course first' : availableCourseTypes.length === 0 ? 'No types available' : 'Select type'}
@@ -1336,7 +1245,7 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                     id="campus"
                     value={newStudent.campus}
                     onChange={(e) => setNewStudent({ ...newStudent, campus: e.target.value })}
-                    className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                    className="w-full px-4 py-3 bg-gray-50/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
                   >
                     <option value="">Select campus</option>
                     <option value="west" className="text-gray-900">West Campus</option>
@@ -1351,7 +1260,7 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                     id="gender"
                     value={newStudent.gender}
                     onChange={(e) => setNewStudent({ ...newStudent, gender: e.target.value })}
-                    className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                    className="w-full px-4 py-3 bg-gray-50/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
                   >
                     <option value="">Select gender</option>
                     <option value="male" className="text-gray-900">Male</option>
@@ -1372,7 +1281,7 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                     value={newStudent.admission_number}
                     onChange={(e) => setNewStudent({ ...newStudent, admission_number: e.target.value })}
                     placeholder="Enter admission number"
-                    className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                    className="w-full px-4 py-3 bg-gray-50/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
                   />
                 </div>
                 <div>
@@ -1383,7 +1292,7 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                     id="currentSemester"
                     value={newStudent.current_semester}
                     onChange={(e) => setNewStudent({ ...newStudent, current_semester: parseInt(e.target.value) })}
-                    className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                    className="w-full px-4 py-3 bg-gray-50/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
                   >
                     <option value="1">Semester 1</option>
                     <option value="2">Semester 2</option>
@@ -1402,7 +1311,7 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                   id="applicationDate"
                   value={newStudent.application_date}
                   onChange={(e) => setNewStudent({ ...newStudent, application_date: e.target.value })}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                  className="w-full px-4 py-3 bg-gray-50/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
                 />
                 <p className="text-purple-300 text-xs mt-1">This will be used to calculate the class name (e.g., January 2026)</p>
               </div>
@@ -1436,7 +1345,7 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                   setError('');
                 }}
                 disabled={enrolling}
-                className="flex-1 py-3 bg-white/10 hover:bg-white/20 border border-white/30 text-white rounded-lg transition-colors duration-300 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 py-3 bg-gray-50/10 hover:bg-gray-50/20 border border-white/30 text-white rounded-lg transition-colors duration-300 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
@@ -1448,7 +1357,7 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
       {/* Bulk Import Modal */}
       {showBulkImportModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 md:p-8 border border-white/20 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 md:p-8 border border-white/20 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-bold text-white mb-4">Bulk Import Students (CSV)</h3>
             <p className="text-purple-200 text-sm mb-6">
               Import multiple existing students from a CSV file.
@@ -1477,7 +1386,7 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                 type="file"
                 accept=".csv"
                 onChange={handleCSVUpload}
-                className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700"
+                className="w-full px-4 py-3 bg-gray-50/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700"
               />
               {csvFile && (
                 <p className="text-green-400 text-sm mt-2">
@@ -1519,11 +1428,11 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
             )}
 
             {importProgress.total > 0 && (
-              <div className="mb-6 p-4 bg-white/5 rounded-lg">
+              <div className="mb-6 p-4 bg-gray-50/5 rounded-lg">
                 <p className="text-white text-sm mb-2">
                   Progress: {importProgress.current} / {importProgress.total}
                 </p>
-                <div className="w-full bg-white/20 rounded-full h-2 mb-2">
+                <div className="w-full bg-gray-50/20 rounded-full h-2 mb-2">
                   <div
                     className="bg-green-500 h-2 rounded-full transition-all"
                     style={{ width: `${(importProgress.current / importProgress.total) * 100}%` }}
@@ -1560,7 +1469,7 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                   setImportProgress({ current: 0, total: 0, success: 0, failed: 0 });
                 }}
                 disabled={enrolling}
-                className="flex-1 py-3 bg-white/10 hover:bg-white/20 border border-white/30 text-white rounded-lg transition-colors duration-300 text-sm font-semibold disabled:opacity-50"
+                className="flex-1 py-3 bg-gray-50/10 hover:bg-gray-50/20 border border-white/30 text-white rounded-lg transition-colors duration-300 text-sm font-semibold disabled:opacity-50"
               >
                 Cancel
               </button>

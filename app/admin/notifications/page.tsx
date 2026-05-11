@@ -175,30 +175,30 @@ export default function NotificationsPage() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-5 gap-4 mb-6">
-          <div className="bg-white p-4 rounded-lg shadow">
+          <div className="bg-gray-50 p-4 rounded-lg shadow">
             <p className="text-2xl font-bold text-gray-800">{stats.total}</p>
             <p className="text-sm text-gray-600">Total</p>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow">
+          <div className="bg-gray-50 p-4 rounded-lg shadow">
             <p className="text-2xl font-bold text-green-600">{stats.delivered}</p>
             <p className="text-sm text-gray-600">Delivered</p>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow">
+          <div className="bg-gray-50 p-4 rounded-lg shadow">
             <p className="text-2xl font-bold text-blue-600">{stats.sent}</p>
             <p className="text-sm text-gray-600">Sent</p>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow">
+          <div className="bg-gray-50 p-4 rounded-lg shadow">
             <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
             <p className="text-sm text-gray-600">Pending</p>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow">
+          <div className="bg-gray-50 p-4 rounded-lg shadow">
             <p className="text-2xl font-bold text-red-600">{stats.failed}</p>
             <p className="text-sm text-gray-600">Failed</p>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow p-4 mb-6 flex flex-wrap gap-4">
+        <div className="bg-gray-50 rounded-lg shadow p-4 mb-6 flex flex-wrap gap-4">
           <select
             value={filter.campus}
             onChange={(e) => setFilter({ ...filter, campus: e.target.value })}
@@ -246,7 +246,7 @@ export default function NotificationsPage() {
         </div>
 
         {/* Notifications Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-gray-50 rounded-lg shadow overflow-hidden">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>

@@ -367,7 +367,7 @@ export default function ClassesPage() {
     <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950">
       {/* Header */}
       <div className="relative z-10 w-full">
-        <div className="bg-white/10 backdrop-blur-md border-b border-white/20">
+        <div className="bg-gray-50/10 backdrop-blur-md border-b border-white/20">
           <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link href="/admin/dashboard" className="relative w-12 h-12">
@@ -445,7 +445,7 @@ export default function ClassesPage() {
               <select
                 value={filterCampus}
                 onChange={(e) => setFilterCampus(e.target.value)}
-                className="px-3 py-2 bg-white/10 border border-white/30 rounded text-white text-sm"
+                className="px-3 py-2 bg-gray-50/10 border border-white/30 rounded text-white text-sm"
               >
                 <option value="all">All Campuses</option>
                 <option value="main">Main Campus</option>
@@ -455,7 +455,7 @@ export default function ClassesPage() {
               <select
                 value={filterIntake}
                 onChange={(e) => setFilterIntake(e.target.value)}
-                className="px-3 py-2 bg-white/10 border border-white/30 rounded text-white text-sm"
+                className="px-3 py-2 bg-gray-50/10 border border-white/30 rounded text-white text-sm"
               >
                 <option value="all">All Intakes</option>
                 {intakeMonths.map(m => (
@@ -466,7 +466,7 @@ export default function ClassesPage() {
               <select
                 value={filterSemester}
                 onChange={(e) => setFilterSemester(e.target.value)}
-                className="px-3 py-2 bg-white/10 border border-white/30 rounded text-white text-sm"
+                className="px-3 py-2 bg-gray-50/10 border border-white/30 rounded text-white text-sm"
               >
                 <option value="all">All Semesters</option>
                 {[1, 2, 3, 4, 5, 6].map(s => (
@@ -477,7 +477,7 @@ export default function ClassesPage() {
               <select
                 value={filterCourse}
                 onChange={(e) => setFilterCourse(e.target.value)}
-                className="px-3 py-2 bg-white/10 border border-white/30 rounded text-white text-sm"
+                className="px-3 py-2 bg-gray-50/10 border border-white/30 rounded text-white text-sm"
               >
                 <option value="all">All Courses</option>
                 {courses.map(c => (
@@ -488,7 +488,7 @@ export default function ClassesPage() {
               <select
                 value={filterActive}
                 onChange={(e) => setFilterActive(e.target.value)}
-                className="px-3 py-2 bg-white/10 border border-white/30 rounded text-white text-sm"
+                className="px-3 py-2 bg-gray-50/10 border border-white/30 rounded text-white text-sm"
               >
                 <option value="all">All Status</option>
                 <option value="true">Active</option>
@@ -519,7 +519,7 @@ export default function ClassesPage() {
                 </thead>
                 <tbody>
                   {filteredClasses.map((cls) => (
-                    <tr key={cls.id} className="border-b border-white/10 hover:bg-white/5">
+                    <tr key={cls.id} className="border-b border-white/10 hover:bg-gray-50/5">
                       <td className="p-4 text-white text-sm font-mono">{cls.class_name}</td>
                       <td className="p-4 text-white text-sm">{cls.courses?.name}</td>
                       <td className="p-4 text-white text-sm">{getCampusName(cls.campus)}</td>
@@ -577,7 +577,7 @@ export default function ClassesPage() {
                   type="text"
                   value={formData.class_name}
                   onChange={(e) => setFormData({ ...formData, class_name: e.target.value })}
-                  className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded text-white"
+                  className="w-full px-3 py-2 bg-gray-50/10 border border-white/30 rounded text-white"
                   required
                 />
               </div>
@@ -588,7 +588,7 @@ export default function ClassesPage() {
                   <select
                     value={formData.course_id}
                     onChange={(e) => setFormData({ ...formData, course_id: e.target.value })}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded text-white"
+                    className="w-full px-3 py-2 bg-gray-50/10 border border-white/30 rounded text-white"
                     required
                   >
                     <option value="">Select Course</option>
@@ -603,7 +603,7 @@ export default function ClassesPage() {
                   <select
                     value={formData.campus}
                     onChange={(e) => setFormData({ ...formData, campus: e.target.value as 'main' | 'west' })}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded text-white"
+                    className="w-full px-3 py-2 bg-gray-50/10 border border-white/30 rounded text-white"
                     required
                   >
                     <option value="main">Main Campus</option>
@@ -618,7 +618,7 @@ export default function ClassesPage() {
                   <select
                     value={formData.semester}
                     onChange={(e) => setFormData({ ...formData, semester: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded text-white"
+                    className="w-full px-3 py-2 bg-gray-50/10 border border-white/30 rounded text-white"
                     required
                   >
                     {[1, 2, 3, 4, 5, 6].map(s => (
@@ -634,7 +634,7 @@ export default function ClassesPage() {
                     min="1"
                     value={formData.module_index}
                     onChange={(e) => setFormData({ ...formData, module_index: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded text-white"
+                    className="w-full px-3 py-2 bg-gray-50/10 border border-white/30 rounded text-white"
                     required
                   />
                 </div>
@@ -646,7 +646,7 @@ export default function ClassesPage() {
                   <select
                     value={formData.intake_month}
                     onChange={(e) => setFormData({ ...formData, intake_month: e.target.value })}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded text-white"
+                    className="w-full px-3 py-2 bg-gray-50/10 border border-white/30 rounded text-white"
                     required
                   >
                     {intakeMonths.map(m => (
@@ -660,7 +660,7 @@ export default function ClassesPage() {
                   <select
                     value={formData.academic_calendar_id}
                     onChange={(e) => setFormData({ ...formData, academic_calendar_id: e.target.value })}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded text-white"
+                    className="w-full px-3 py-2 bg-gray-50/10 border border-white/30 rounded text-white"
                   >
                     <option value="">Select Calendar</option>
                     {calendars.map(c => (
@@ -676,7 +676,7 @@ export default function ClassesPage() {
                   <select
                     value={formData.stream_type}
                     onChange={(e) => setFormData({ ...formData, stream_type: e.target.value as 'main' | 'bridge' })}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded text-white"
+                    className="w-full px-3 py-2 bg-gray-50/10 border border-white/30 rounded text-white"
                   >
                     <option value="main">Main</option>
                     <option value="bridge">Bridge</option>
@@ -728,7 +728,7 @@ export default function ClassesPage() {
                 <select
                   value={assignFormData.lecturer_id}
                   onChange={(e) => setAssignFormData({ ...assignFormData, lecturer_id: e.target.value })}
-                  className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded text-white"
+                  className="w-full px-3 py-2 bg-gray-50/10 border border-white/30 rounded text-white"
                   required
                 >
                   <option value="">Select Lecturer</option>
@@ -745,7 +745,7 @@ export default function ClassesPage() {
                 <select
                   value={assignFormData.class_id}
                   onChange={(e) => setAssignFormData({ ...assignFormData, class_id: e.target.value })}
-                  className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded text-white"
+                  className="w-full px-3 py-2 bg-gray-50/10 border border-white/30 rounded text-white"
                   required
                 >
                   <option value="">Select Class</option>

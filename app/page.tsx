@@ -186,7 +186,7 @@ export default function Home() {
               <div className="e-blabel">Financial support</div>
               <div className="e-btitle">Bursary available for eligible students</div>
               <div className="e-bbody">Don't let finances stop your education. Apply for bursary support and take the first step toward your future.</div>
-              <a href="/api/bursary" download="bursary-form.pdf" className="e-bdl">
+              <a href="https://wgbaadgxtjyhpnntogzf.supabase.co/storage/v1/object/public/documents/bursary-form.pdf" target="_blank" className="e-bdl">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 Download bursary form
               </a>

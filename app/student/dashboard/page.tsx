@@ -183,7 +183,7 @@ export default function StudentDashboard() {
     try {
       const { data, error } = await supabase
         .from('applications')
-        .select('*, courses(name), course_types(level)')
+        .select('*, photo_url, courses(name), course_types(level)')
         .eq('admission_number', admissionNumber)
         .single();
 
@@ -1410,7 +1410,36 @@ export default function StudentDashboard() {
                 </svg>
               </button>
             </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="flex flex-col md:flex-row gap-6 mb-6 items-start">
+            {/* Profile Photo */}
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-white/30 bg-white/10 shrink-0">
+                {studentInfo?.photo_url ? (
+                  <img src={studentInfo.photo_url} alt={studentInfo.full_name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-white text-2xl font-bold">
+                    {studentInfo?.full_name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0,2) || '?'}
+                  </div>
+                )}
+              </div>
+              <label className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white text-xs rounded-lg cursor-pointer transition-colors border border-white/20 text-center w-full">
+                Upload Photo
+                <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file || !studentInfo?.id) return;
+                    const fd = new FormData();
+                    fd.append('file', file);
+                    fd.append('application_id', studentInfo.id);
+                    const { data: { session } } = await createClient().auth.getSession();
+                    if (!session?.access_token) return;
+                    const res = await fetch('/api/upload', { method: 'POST', headers: { Authorization: `Bearer ${session.access_token}` }, body: fd });
+                    if (res.ok) { const d = await res.json(); setStudentInfo((prev: any) => ({ ...prev, photo_url: d.url })); }
+                  }}
+                />
+              </label>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 flex-1">
             <div>
               <p className="text-purple-200 text-sm mb-1">Full Name</p>
               <p className="text-white font-semibold">{studentInfo?.full_name || 'N/A'}</p>
@@ -1455,9 +1484,10 @@ export default function StudentDashboard() {
               <p className="text-purple-200 text-sm mb-1">Class</p>
               <p className="text-white font-semibold">{studentInfo?.class_name || 'N/A'}</p>
             </div>
+              </div>
+            </div>
           </div>
-        </div>
-        )}
+          )}
 
         {/* OVERVIEW TAB */}
         {activeTab === 'overview' && (
