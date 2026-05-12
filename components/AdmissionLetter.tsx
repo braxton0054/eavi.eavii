@@ -98,8 +98,10 @@ export default function AdmissionLetter({ studentData }: AdmissionLetterProps) {
           }
         };
 
-        const header = await fetchImageAsBase64('/header.png');
-        const stamp = await fetchImageAsBase64('/stamp.png');
+        // Try loading from Supabase Storage first, fallback to local public folder
+        const STORAGE_BASE = 'https://wgbaadgxtjyhpnntogzf.supabase.co/storage/v1/object/public/templates';
+        const header = await fetchImageAsBase64(`${STORAGE_BASE}/header.png`).catch(() => fetchImageAsBase64('/header.png'));
+        const stamp = await fetchImageAsBase64(`${STORAGE_BASE}/stamp.png`).catch(() => fetchImageAsBase64('/stamp.png'));
         setHeaderImage(header);
         setStampImage(stamp);
         console.log('Images loaded:', { header: !!header, stamp: !!stamp });

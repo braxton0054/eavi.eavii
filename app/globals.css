@@ -580,21 +580,21 @@ body {
 .dark .shadow-md { box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important; }
 
 /* Section headers */
-.dark .text-\[#333\] { color: #f1f5f9 !important; }
-.dark .text-\[#888\] { color: #94a3b8 !important; }
-.dark .text-\[#555\] { color: #cbd5e1 !important; }
-.dark .text-\[#666\] { color: #94a3b8 !important; }
-.dark .text-\[#444\] { color: #e2e8f0 !important; }
-.dark .text-\[#1a1a1a\] { color: #f1f5f9 !important; }
-.dark .text-\[#aaa\] { color: #64748b !important; }
-.dark .border-\[#e5e5e2\] { border-color: var(--admin-border) !important; }
-.dark .border-\[#f0f0ed\] { border-color: var(--admin-border) !important; }
-.dark .border-\[#ddd\] { border-color: var(--admin-border) !important; }
-.dark .bg-\[#f0f0ed\] { background: var(--admin-card) !important; }
-.dark .bg-\[#fafaf8\] { background: #1a1d28 !important; }
-.dark .bg-\[#f7f7f5\] { background: var(--admin-bg) !important; }
-.dark .hover\:bg-\[#fafaf8\]:hover { background: var(--admin-card-hover) !important; }
-.dark .hover\:bg-\[#f0f0ed\]:hover { background: var(--admin-card-hover) !important; }
+.dark-text-333 { color: #f1f5f9 !important; }
+.dark-text-888 { color: #94a3b8 !important; }
+.dark-text-555 { color: #cbd5e1 !important; }
+.dark-text-666 { color: #94a3b8 !important; }
+.dark-text-444 { color: #e2e8f0 !important; }
+.dark-text-1a1a1a { color: #f1f5f9 !important; }
+.dark-text-aaa { color: #64748b !important; }
+.dark-border-e5e5e2 { border-color: var(--admin-border) !important; }
+.dark-border-f0f0ed { border-color: var(--admin-border) !important; }
+.dark-border-ddd { border-color: var(--admin-border) !important; }
+.dark-bg-f0f0ed { background: var(--admin-card) !important; }
+.dark-bg-fafaf8 { background: #1a1d28 !important; }
+.dark-bg-f7f7f5 { background: var(--admin-bg) !important; }
+.dark-hover-bg-fafaf8 { background: var(--admin-card-hover) !important; }
+.dark-hover-bg-f0f0ed { background: var(--admin-card-hover) !important; }
 
 /* User avatar */
 .dark .user-avatar { background: #333 !important; }
@@ -618,8 +618,8 @@ body {
 }
 
 /* Progress bars */
-.dark .bg-\[#1a1a1a\] { background: #22c55e !important; }
-.dark .bg-\[#f0f0ed\] { background: #1a1d28 !important; }
+.dark-bg-1a1a1a { background: #22c55e !important; }
+.dark-bg-f0f0ed { background: #1a1d28 !important; }
 
 /* Top courses progress bar */
 .dark div[class*="bg-\[#1a1a1a\]"] {

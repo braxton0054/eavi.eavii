@@ -98,6 +98,7 @@ export default function LecturerDashboard() {
   const [courses, setCourses] = useState<any[]>([]);
   const [availableClasses, setAvailableClasses] = useState<Class[]>([]);
   const [courseUnits, setCourseUnits] = useState<any[]>([]);
+  const [filteredUnits, setFilteredUnits] = useState<any[]>([]);
   const [setupForm, setSetupForm] = useState({
     course_id: '',
     class_id: '',
@@ -1265,6 +1266,7 @@ export default function LecturerDashboard() {
                   onChange={(e) => {
                     const courseId = e.target.value;
                     setSetupForm({ ...setupForm, course_id: courseId, class_id: '', selected_units: [] });
+                    setFilteredUnits([]);
                     loadClassesForCourse(courseId);
                     loadUnitsForCourse(courseId);
                   }}
@@ -1286,7 +1288,19 @@ export default function LecturerDashboard() {
                 ) : (
                   <select
                     value={setupForm.class_id}
-                    onChange={(e) => setSetupForm({ ...setupForm, class_id: e.target.value })}
+                    onChange={(e) => {
+                      const clsId = e.target.value;
+                      const cls = availableClasses.find(c => c.id === clsId);
+                      if (cls) {
+                        // Filter units to match this class's module & semester
+                        const filtered = courseUnits.filter(u => u.module_index === cls.module_index && u.semester_index === cls.semester);
+                        setFilteredUnits(filtered);
+                        setSetupForm({ ...setupForm, class_id: clsId, selected_units: [] });
+                      } else {
+                        setFilteredUnits(courseUnits);
+                        setSetupForm({ ...setupForm, class_id: clsId, selected_units: [] });
+                      }
+                    }}
                     className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white"
                     required
                     disabled={!setupForm.course_id}
@@ -1306,9 +1320,11 @@ export default function LecturerDashboard() {
                 <label className="block text-purple-200 text-sm mb-2">Select Units You Teach *</label>
                 {setupForm.course_id && courseUnits.length === 0 ? (
                   <p className="text-orange-300 text-sm">No units found for this course.</p>
+                ) : !setupForm.class_id ? (
+                  <p className="text-purple-300 text-sm">Select a class above to see relevant units.</p>
                 ) : (
                   <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {courseUnits.map((unit) => (
+                    {(filteredUnits.length > 0 ? filteredUnits : courseUnits).map((unit) => (
                       <label key={unit.unit_code} className="flex items-center gap-3 p-2 hover:bg-white/5 rounded cursor-pointer">
                         <input
                           type="checkbox"
@@ -1338,7 +1354,7 @@ export default function LecturerDashboard() {
                   </div>
                 )}
                 <p className="text-purple-300 text-xs mt-2">
-                  Selected: {setupForm.selected_units.length} units
+                  Selected: {setupForm.selected_units.length} of {filteredUnits.length || courseUnits.length} units
                 </p>
               </div>
 

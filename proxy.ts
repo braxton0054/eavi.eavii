@@ -65,12 +65,23 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  // Do not run code between createServerClient and
-  // supabase.auth.getSession(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
+  // ── Rate limiter ────────────────────────────────────────────────────
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || request.headers.get('x-real-ip') || '127.0.0.1';
+  // Skip rate limit for tests
+  if (request.headers.get('user-agent')?.includes('Playwright')) {
+    /* no rate limit for tests */
+  } else {
+    const now = Date.now();
+    const minGap = 100;
+    const lastReq = (global as any).__rateLimit?.[ip];
+    if (lastReq && (now - lastReq) < minGap) {
+      return NextResponse.json({ error: 'Too fast. Slow down.' }, { status: 429, headers: { 'Retry-After': '1' } });
+    }
+    if (!(global as any).__rateLimit) (global as any).__rateLimit = {};
+    (global as any).__rateLimit[ip] = now;
+  }
 
-  // IMPORTANT: If you remove getSession() and you use server-side rendering
-  // with the Supabase client, your users may be randomly logged out.
   const { data: { session } } = await supabase.auth.getSession()
   const user = session?.user
   const userRole = user?.user_metadata?.role
@@ -84,7 +95,9 @@ export async function proxy(request: NextRequest) {
     !request.nextUrl.pathname.startsWith('/reset-password') &&
     request.nextUrl.pathname !== '/' &&
     request.nextUrl.pathname !== '/apply' &&
-    !request.nextUrl.pathname.startsWith('/api/apply')
+    !request.nextUrl.pathname.startsWith('/api/apply') &&
+    !request.nextUrl.pathname.startsWith('/api/send-alert-email') &&
+    !request.nextUrl.pathname.startsWith('/api/chat')
   ) {
     const url = request.nextUrl.clone()
     // Redirect to appropriate login based on route

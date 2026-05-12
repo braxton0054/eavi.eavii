@@ -469,8 +469,18 @@ export default function StudentFeesPage() {
             )}
           </div>
 
+          {/* Download Statement */}
+          <div className="mt-6">
+            <button
+              onClick={() => window.print()}
+              className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-semibold transition-colors"
+            >
+              📄 Print / Download Fee Statement
+            </button>
+          </div>
+
           {/* Help Text */}
-          <div className="mt-8 p-4 bg-white/5 rounded-xl border border-white/10">
+          <div className="mt-4 p-4 bg-white/5 rounded-xl border border-white/10">
             <h4 className="text-white font-medium mb-2">Need Help?</h4>
             <p className="text-purple-300 text-sm">
               If you have questions about your fees, payments, or need a receipt, 

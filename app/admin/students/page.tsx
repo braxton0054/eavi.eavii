@@ -21,7 +21,7 @@ interface Student {
   campus: string;
   kcse_grade: string;
   application_date: string;
-  status: 'enrolled' | 'pending' | 'rejected';
+  status: 'enrolled' | 'pending' | 'rejected' | 'completed';
   current_semester?: number;
   current_module?: number;
   class_name?: string;
@@ -143,6 +143,7 @@ export default function StudentsPage() {
       let query = supabase
         .from('applications')
         .select('*, courses(name, departments(name)), course_types(level))')
+        .is('archived_at', null)
         .order('application_date', { ascending: false });
 
       // Filter by campus to show only this campus's students
@@ -364,6 +365,24 @@ export default function StudentsPage() {
       await loadStudents(campus);
     } catch (err: any) {
       setError('Failed to issue certificate: ' + err.message);
+    }
+  };
+
+  // Part 4b: Archive student
+  const archiveStudent = async (studentId: string, studentName: string) => {
+    if (!confirm(`Archive ${studentName}? They will lose access to the active system.`)) return;
+    try {
+      const { error } = await supabase
+        .from('applications')
+        .update({ archived_at: new Date().toISOString() })
+        .eq('id', studentId);
+      
+      if (error) throw error;
+      setSuccess('Student archived successfully!');
+      setShowStudentDetail(false);
+      await loadStudents(campus);
+    } catch (err: any) {
+      setError('Failed to archive student: ' + err.message);
     }
   };
 
@@ -708,43 +727,83 @@ export default function StudentsPage() {
                   {/* Academic Progress */}
                   <div className="bg-gray-50 rounded-lg p-4">
                     <h3 className="text-sm font-semibold text-gray-900 mb-4">Academic Progress</h3>
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <p className="text-gray-500 text-xs uppercase mb-1">Current Module</p>
-                        <select
-                          value={selectedStudent.current_module || 1}
-                          onChange={(e) => updateStudentProgress(selectedStudent.id, selectedStudent.current_semester || 1, parseInt(e.target.value))}
-                          className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 text-sm"
-                        >
-                          {[1, 2, 3].map(m => <option key={m} value={m}>Module {m}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <p className="text-gray-500 text-xs uppercase mb-1">Current Semester</p>
-                        <select
-                          value={selectedStudent.current_semester || 1}
-                          onChange={(e) => updateStudentProgress(selectedStudent.id, parseInt(e.target.value), selectedStudent.current_module || 1)}
-                          className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 text-sm"
-                        >
-                          {[1, 2, 3, 4, 5, 6].map(s => <option key={s} value={s}>Semester {s}</option>)}
-                        </select>
-                      </div>
+                    <div className="mb-3 text-sm">
+                      <p><span className="text-gray-500">Module:</span> <strong>{selectedStudent.current_module || 1}</strong>  |  <span className="text-gray-500"> Semester:</span> <strong>{selectedStudent.current_semester || 1}</strong></p>
                     </div>
+                    {selectedStudent.status !== 'completed' && (
+                      <div className="space-y-2">
+                        <button
+                          onClick={async () => {
+                            try {
+                              const { data, error } = await supabase.rpc('promote_student', {
+                                p_application_id: selectedStudent.id,
+                                p_force: false,
+                                p_academic_calendar_id: null,
+                                p_promoted_by: campus || 'admin',
+                                p_notes: ''
+                              });
+                              if (error) { setError(error.message); return; }
+                              if (data?.action === 'graduated') {
+                                setSuccess('🎓 Student graduated!');
+                              } else {
+                                setSuccess('✅ Promoted to Module ' + data.to_module + ', Semester ' + data.to_semester);
+                              }
+                              await loadStudents(campus);
+                              loadStudentDetails(selectedStudent);
+                            } catch (err: any) {
+                              setError(err.message);
+                            }
+                          }}
+                          className="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors"
+                        >
+                          Promote to Next Stage
+                        </button>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const { data, error } = await supabase.rpc('enroll_student_repeat', {
+                                p_application_id: selectedStudent.id
+                              });
+                              if (error) { setError(error.message); return; }
+                              setSuccess('🔄 Student set to repeat current semester');
+                              await loadStudents(campus);
+                              loadStudentDetails(selectedStudent);
+                            } catch (err: any) {
+                              setError(err.message);
+                            }
+                          }}
+                          className="w-full px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium transition-colors"
+                        >
+                          🔄 Repeat Current Semester
+                        </button>
+                      </div>
+                    )}
+                    {selectedStudent.status === 'completed' && (
+                      <p className="text-green-600 text-sm font-semibold">✓ Student has completed their course</p>
+                    )}
                   </div>
 
                   {/* Certificate Section (for graduated students) */}
                   <div className="bg-gray-50 rounded-lg p-4">
                     <h3 className="text-sm font-semibold text-gray-900 mb-4">Certificate & Graduation</h3>
                     {selectedStudent.certificate_number ? (
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-gray-500 text-xs uppercase">Certificate Number</p>
-                          <p className="text-green-600 font-semibold">{selectedStudent.certificate_number}</p>
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-gray-500 text-xs uppercase">Certificate Number</p>
+                            <p className="text-green-600 font-semibold">{selectedStudent.certificate_number}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500 text-xs uppercase">Graduation Date</p>
+                            <p className="text-gray-900">{selectedStudent.graduation_date ? new Date(selectedStudent.graduation_date).toLocaleDateString() : '-'}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-gray-500 text-xs uppercase">Graduation Date</p>
-                          <p className="text-gray-900">{selectedStudent.graduation_date ? new Date(selectedStudent.graduation_date).toLocaleDateString() : '-'}</p>
-                        </div>
+                        <button
+                          onClick={() => archiveStudent(selectedStudent.id, selectedStudent.full_name)}
+                          className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-medium w-full"
+                        >
+                          📦 Archive Student
+                        </button>
                       </div>
                     ) : (
                       <div className="flex items-center gap-4">

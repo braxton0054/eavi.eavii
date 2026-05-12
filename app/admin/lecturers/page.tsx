@@ -54,7 +54,9 @@ interface SubmissionRow {
 }
 
 interface FormData {
-  fullName: string;
+  firstName: string;
+  middleName: string;
+  lastName: string;
   phone: string;
   gender: string;
 }
@@ -96,7 +98,7 @@ export default function LecturersPage() {
 
   // Form
   const [form, setForm] = useState<FormData>({
-    fullName: '', phone: '', gender: '',
+    firstName: '', middleName: '', lastName: '', phone: '', gender: '',
   });
 
   // Migrate
@@ -189,19 +191,22 @@ export default function LecturersPage() {
   // ── Save lecturer ─────────────────────────────────────────────────────────
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.fullName.trim()) { showToast('Full name is required', false); return; }
+    if (!form.firstName.trim() || !form.lastName.trim()) { showToast('First and last name are required', false); return; }
     if (!form.phone.trim())    { showToast('Phone number is required', false); return; }
 
     setSubmitting(true);
     const payload = {
-      full_name: form.fullName,
+      full_name: [form.firstName, form.middleName, form.lastName].filter(Boolean).join(' ').trim(),
+      first_name: form.firstName,
+      middle_name: form.middleName || null,
+      last_name: form.lastName,
       phone:     form.phone,
       gender:    form.gender,
       campus:    ['main', 'west'],
     };
 
     // Set email based on input or auto-generate
-    (payload as any).email = `${form.fullName.toLowerCase().replace(/\s+/g, '.')}@eavicollege.ac.ke`;
+    (payload as any).email = `${(form.firstName + '.' + form.lastName).toLowerCase().replace(/\s+/g, '.')}@eavicollege.ac.ke`;
 
     const { error } = editId
       ? await sb.from('lecturers').update(payload).eq('id', editId)
@@ -211,7 +216,7 @@ export default function LecturersPage() {
       showToast(error.message, false);
     } else {
       showToast(editId ? 'Lecturer updated!' : 'Lecturer added!');
-      setForm({ fullName: '', phone: '', gender: '' });
+      setForm({ firstName: '', middleName: '', lastName: '', phone: '', gender: '' });
       setEditId(null);
       setView('list');
     }
@@ -221,7 +226,8 @@ export default function LecturersPage() {
   // ── Edit ──────────────────────────────────────────────────────────────────
   const startEdit = (l: Lecturer) => {
     setEditId(l.id);
-    setForm({ fullName: l.full_name, phone: l.phone, gender: l.gender ?? '' });
+    const parts = (l.full_name || '').split(' ');
+    setForm({ firstName: parts[0] || '', middleName: parts.length > 2 ? parts.slice(1, -1).join(' ') : '', lastName: parts.length > 1 ? parts[parts.length-1] : '', phone: l.phone, gender: l.gender ?? '' });
     setView('add');
   };
 
@@ -314,7 +320,7 @@ export default function LecturersPage() {
             </div>
           </div>
           <button
-            onClick={() => { setEditId(null); setForm({ fullName: '', phone: '', gender: '' }); setView('add'); }}
+            onClick={() => { setEditId(null); setForm({ firstName: '', middleName: '', lastName: '', phone: '', gender: '' }); setView('add'); }}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1a1a1a] hover:bg-[#333] text-white text-xs font-medium rounded-lg transition-colors"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -465,7 +471,7 @@ export default function LecturersPage() {
               <div className="px-6 py-4 border-b border-[#f5f4f0]">
                 <h2 className="text-sm font-semibold text-[#1a1a1a]">{editId ? 'Edit Lecturer' : 'Add New Lecturer'}</h2>
                 {editId && (
-                  <button onClick={() => { setEditId(null); setForm({ fullName: '', phone: '', gender: '' }); }}
+                  <button onClick={() => { setEditId(null); setForm({ firstName: '', middleName: '', lastName: '', phone: '', gender: '' }); }}
                     className="text-[10px] text-[#888] hover:text-[#1a1a1a] mt-0.5">
                     Cancel edit →
                   </button>
@@ -483,14 +489,32 @@ export default function LecturersPage() {
                   </div>
                 </div>
 
-                {/* Full Name */}
-                <div>
-                  <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-widest mb-1.5">
-                    Full Name <span className="text-red-400">*</span>
-                  </label>
-                  <input type="text" value={form.fullName} required placeholder="e.g. Jane Wanjiku Mwangi"
-                    onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))}
-                    className="w-full px-3 py-2.5 bg-gray-50 border border-[#e8e7e3] rounded-lg text-sm text-[#1a1a1a] placeholder-[#ccc] focus:outline-none focus:ring-1 focus:ring-[#1a1a1a]" />
+                {/* Name fields */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-widest mb-1.5">
+                      First <span className="text-red-400">*</span>
+                    </label>
+                    <input type="text" value={form.firstName} required placeholder="Jane"
+                      onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))}
+                      className="w-full px-3 py-2.5 bg-gray-50 border border-[#e8e7e3] rounded-lg text-sm text-[#1a1a1a] placeholder-[#ccc] focus:outline-none focus:ring-1 focus:ring-[#1a1a1a]" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-widest mb-1.5">
+                      Middle
+                    </label>
+                    <input type="text" value={form.middleName} placeholder="Wanjiku"
+                      onChange={e => setForm(f => ({ ...f, middleName: e.target.value }))}
+                      className="w-full px-3 py-2.5 bg-gray-50 border border-[#e8e7e3] rounded-lg text-sm text-[#1a1a1a] placeholder-[#ccc] focus:outline-none focus:ring-1 focus:ring-[#1a1a1a]" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-widest mb-1.5">
+                      Last <span className="text-red-400">*</span>
+                    </label>
+                    <input type="text" value={form.lastName} required placeholder="Mwangi"
+                      onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))}
+                      className="w-full px-3 py-2.5 bg-gray-50 border border-[#e8e7e3] rounded-lg text-sm text-[#1a1a1a] placeholder-[#ccc] focus:outline-none focus:ring-1 focus:ring-[#1a1a1a]" />
+                  </div>
                 </div>
 
                 {/* Phone */}

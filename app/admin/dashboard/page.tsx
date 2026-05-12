@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/client';
-import Chatbot from '@/components/Chatbot';
 
 export const dynamic = 'force-dynamic';
 
@@ -616,14 +615,6 @@ export default function AdminDashboard() {
 
       </main>
 
-      {/* ── CHATBOT ──────────────────────────────────────────────────────────────── */}
-      <Chatbot
-        userId={user?.id}
-        campus={campus}
-        userEmail={user?.email}
-        userRole={user?.user_metadata?.role}
-        userName={user?.user_metadata?.full_name ?? user?.email}
-      />
     </div>
   );
 }

@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+test-results/
+test-report/
+*.bak
+*.bak2
+tests/functionality.py
+tests/functionality.sh
