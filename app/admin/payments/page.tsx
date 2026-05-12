@@ -234,14 +234,33 @@ function SemesterCard({
   summary,
   selected,
   onClick,
+  locked,
 }: {
   summary: FeeSummary;
   selected: boolean;
   onClick: () => void;
+  locked?: boolean;
 }) {
   const total = summary.tuition_fee + summary.practical_fee + summary.additional_fees;
   const pct   = total > 0 ? Math.min(Math.round((summary.total_paid / total) * 100), 100) : 0;
   const cleared = pct >= 95;
+
+  if (locked && !cleared) {
+    return (
+      <div className="w-full text-left p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-gray-100 dark:bg-slate-900/30 opacity-50 cursor-not-allowed">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-semibold text-slate-500 dark:text-slate-500 text-sm">
+              {summary.module_label}
+              <span className="mx-1.5 text-slate-400">·</span>
+              <span className="text-slate-400">Semester {summary.semester_index}</span>
+            </p>
+            <p className="text-xs text-slate-400 mt-1">🔒 Pay previous semester first</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <button
@@ -250,6 +269,8 @@ function SemesterCard({
       className={`w-full text-left p-4 rounded-xl border transition-all ${
         selected
           ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 dark:border-indigo-400'
+          : cleared
+          ? 'border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-800'
           : 'border-slate-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50 hover:border-slate-300 dark:hover:border-slate-600'
       }`}
     >
@@ -885,14 +906,26 @@ export default function PaymentsPage() {
                       No fee summary available
                     </div>
                   ) : (
-                    feeSummary.map(s => (
-                      <SemesterCard
-                        key={s.semester_id}
-                        summary={s}
-                        selected={selectedSemSummary?.semester_id === s.semester_id}
-                        onClick={() => handleSemesterClick(s)}
-                      />
-                    ))
+                    (() => {
+                      // Find first unpaid semester — only allow paying that one + cleared past semesters
+                      const firstUnpaid = feeSummary.find(s => (s.total_paid || 0) < (s.tuition_fee + s.practical_fee + s.additional_fees) * 0.95);
+                      return feeSummary.map(s => {
+                        const total = s.tuition_fee + s.practical_fee + s.additional_fees;
+                        const pct = total > 0 ? Math.min(Math.round(((s.total_paid || 0) / total) * 100), 100) : 0;
+                        const cleared = pct >= 95;
+                        // Lock semesters after the first unpaid one
+                        const isLocked = firstUnpaid && s.semester_index > firstUnpaid.semester_index && !cleared;
+                        return (
+                          <SemesterCard
+                            key={s.semester_id}
+                            summary={s}
+                            selected={selectedSemSummary?.semester_id === s.semester_id}
+                            onClick={() => !isLocked && handleSemesterClick(s)}
+                            locked={isLocked}
+                          />
+                        );
+                      });
+                    })()
                   )}
                 </div>
               </div>
@@ -1017,7 +1050,11 @@ export default function PaymentsPage() {
                         }`}
                       >
                         <option value="">Select semester...</option>
-                        {feeSummary.map(s => (
+                        {feeSummary.filter(s => {
+                          const total = s.tuition_fee + s.practical_fee + s.additional_fees;
+                          const pct = total > 0 ? Math.min(Math.round(((s.total_paid || 0) / total) * 100), 100) : 0;
+                          return pct < 95; // Only show unpaid semesters
+                        }).slice(0, 1).map(s => (
                           <option key={s.semester_id} value={s.semester_id}>
                             {s.module_label} · Semester {s.semester_index} — {fmt(s.balance)} outstanding
                           </option>
