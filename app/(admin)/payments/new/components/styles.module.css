@@ -1,12 +1,3 @@
-:root {
-  --clr-success-bg: rgba(0,200,150,0.10);
-  --clr-success-border: rgba(0,200,150,0.25);
-  --clr-warning-bg: rgba(245,166,35,0.10);
-  --clr-warning-border: rgba(245,166,35,0.25);
-  --clr-danger-bg: rgba(255,76,106,0.10);
-  --clr-danger-border: rgba(255,76,106,0.25);
-}
-
 .card {
   background: var(--surface);
   border: 1px solid var(--border);

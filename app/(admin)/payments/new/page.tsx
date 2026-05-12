@@ -2,8 +2,9 @@ import React from 'react'
 import FeePaymentForm from './components/FeePaymentForm'
 import { getStudentProfile, getSemestersForStudent, getRecentPayments } from './actions'
 
-export default async function Page({ searchParams }:{ searchParams?: { student?: string } }){
-  const adm = searchParams?.student
+export default async function Page({ searchParams }:{ searchParams?: Promise<{ student?: string }> }){
+  const params = await searchParams;
+  const adm = params?.student
   if (!adm) {
     return (
       <div style={{ padding:24 }}>

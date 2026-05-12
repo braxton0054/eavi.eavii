@@ -350,7 +350,6 @@ export default function ApplicationsPage() {
   };
 
   const handleEnroll = async () => {
-    }
     
     if (!selectedClassId && availableClasses.length > 0) {
       setError('Please select a class for the student');
