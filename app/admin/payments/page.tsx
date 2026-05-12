@@ -251,9 +251,7 @@ function SemesterCard({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="font-semibold text-slate-500 dark:text-slate-500 text-sm">
-              {summary.module_label}
-              <span className="mx-1.5 text-slate-400">·</span>
-              <span className="text-slate-400">Semester {summary.semester_index}</span>
+              Semester {summary.semester_index}
             </p>
             <p className="text-xs text-slate-400 mt-1">🔒 Pay previous semester first</p>
           </div>
@@ -277,9 +275,7 @@ function SemesterCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-semibold text-slate-900 dark:text-white text-sm">
-            {summary.module_label}
-            <span className="mx-1.5 text-slate-400">·</span>
-            <span className="text-slate-500 dark:text-slate-400">Semester {summary.semester_index}</span>
+            Semester {summary.semester_index}
           </p>
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 font-mono">
             Tuition {fmt(summary.tuition_fee)}
@@ -857,8 +853,6 @@ export default function PaymentsPage() {
                       <div className="mt-3 flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
                         <span className="flex items-center gap-1">
                           <BookOpen className="w-3.5 h-3.5" />
-                          {selectedStudent.module_label || `Module ${selectedStudent.current_module}`}
-                          <ChevronRight className="w-3 h-3" />
                           Semester {selectedStudent.current_semester}
                         </span>
                         {selectedStudent.sponsorship_type && selectedStudent.sponsorship_type !== 'self' && (
@@ -959,7 +953,7 @@ export default function PaymentsPage() {
                           <div className="flex-1 min-w-0">
                             <p className="font-semibold text-sm text-slate-900 dark:text-white">{fmt(p.amount)}</p>
                             <p className="text-xs text-slate-400 dark:text-slate-500 truncate">
-                              {p.module_label} · Sem {p.semester_number}
+                              Sem {p.semester_number}
                               {p.transaction_id && ` · ${p.transaction_id}`}
                             </p>
                           </div>
@@ -1003,7 +997,7 @@ export default function PaymentsPage() {
                   <h2 className="font-semibold text-sm text-slate-900 dark:text-white">Record Payment</h2>
                   <p className="text-xs text-slate-400 dark:text-slate-500">
                     {selectedSemSummary
-                      ? `${selectedSemSummary.module_label} · Semester ${selectedSemSummary.semester_index}`
+                      ? `Semester ${selectedSemSummary.semester_index}`
                       : 'Fill all required fields'}
                   </p>
                 </div>
@@ -1056,7 +1050,7 @@ export default function PaymentsPage() {
                           return pct < 95; // Only show unpaid semesters
                         }).slice(0, 1).map(s => (
                           <option key={s.semester_id} value={s.semester_id}>
-                            {s.module_label} · Semester {s.semester_index} — {fmt(s.balance)} outstanding
+                            Semester {s.semester_index} — {fmt(s.balance)} outstanding
                           </option>
                         ))}
                       </select>
@@ -1069,7 +1063,7 @@ export default function PaymentsPage() {
                     <div className="flex items-center justify-between p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800">
                       <div>
                         <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">
-                          {selectedSemSummary.module_label} · Semester {selectedSemSummary.semester_index}
+                          Semester {selectedSemSummary.semester_index}
                         </p>
                         <p className="text-xs text-indigo-500 dark:text-indigo-400 font-mono mt-0.5">
                           Outstanding: {fmt(selectedSemSummary.balance)}
