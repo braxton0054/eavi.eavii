@@ -22,6 +22,8 @@ interface Application {
   campus: string;
   application_date: string;
   admission_number: string;
+  course_id?: string;
+  courses?: { name: string };
   status: 'pending' | 'enrolled' | 'rejected';
   current_module?: number;
   current_semester?: number;
@@ -236,7 +238,7 @@ export default function ApplicationsPage() {
         const { data: classesData, error: classesError } = await supabase
           .from('classes')
           .select('id, class_name, semester, module_index, intake_month, is_active')
-          .eq('course_id', application.course)
+          .eq('course_id', application.course_id || application.course)
           .eq('campus', normalizedCampus)
           .eq('is_active', true)
           .order('class_name');
@@ -369,8 +371,8 @@ export default function ApplicationsPage() {
       const year = date.getFullYear();
       
       // Fetch course details from database
-      const courseId = selectedApplication?.course;
-      let courseName = 'Unknown';
+      const courseId = selectedApplication?.course_id || selectedApplication?.course;
+      let courseName = selectedApplication?.courses?.name || 'Unknown';
       let courseLevel = 'General';
       let validCourseId = courseId;
       let courseTypeData: { id: string; level: string } | null = null;
