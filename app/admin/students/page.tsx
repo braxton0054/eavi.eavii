@@ -28,6 +28,7 @@ interface Student {
   class_id?: string;
   photo_url?: string;
   financial_hold?: boolean;
+  total_balance?: number;
   total_fee_due?: number;
   fee_paid?: number;
   certificate_number?: string;
@@ -264,12 +265,24 @@ export default function StudentsPage() {
       // Load exam marks
       const { data: marks } = await supabase
         .from('exam_marks')
-        .select('*, units(name)')
+        .select('*')
         .eq('application_id', student.id)
         .order('created_at', { ascending: false });
+      // Load unit names separately since exam_marks has unit_code (not FK to units.id)
+      let unitNames: Record<string, string> = {};
+      if (marks && marks.length > 0) {
+        const unitCodes = [...new Set(marks.map((m: any) => m.unit_code))];
+        const { data: units } = await supabase
+          .from('units')
+          .select('unit_code, name')
+          .in('unit_code', unitCodes);
+        if (units) {
+          units.forEach((u: any) => { unitNames[u.unit_code] = u.name; });
+        }
+      }
       const enrichedMarks = marks?.map((m: any) => ({
         ...m,
-        unit_name: m.units?.name
+        unit_name: unitNames[m.unit_code] || m.unit_code
       })) || [];
       setStudentMarks(enrichedMarks);
     } catch (err) {
@@ -671,19 +684,17 @@ export default function StudentsPage() {
                         {selectedStudent.financial_hold ? 'Remove Hold' : 'Place Hold'}
                       </button>
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <p className="text-gray-500 text-xs">Total Due</p>
-                        <p className="text-gray-900 font-semibold">KES {(selectedStudent.total_fee_due || 0).toLocaleString()}</p>
+                        <p className="text-gray-500 text-xs">Total Balance</p>
+                        <p className={`font-semibold ${(selectedStudent.total_balance || 0) > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                          KES {(selectedStudent.total_balance || 0).toLocaleString()}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-gray-500 text-xs">Paid</p>
-                        <p className="text-green-600 font-semibold">KES {(selectedStudent.fee_paid || 0).toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500 text-xs">Balance</p>
-                        <p className={`font-semibold ${((selectedStudent.total_fee_due || 0) - (selectedStudent.fee_paid || 0)) > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                          KES {((selectedStudent.total_fee_due || 0) - (selectedStudent.fee_paid || 0)).toLocaleString()}
+                        <p className="text-gray-500 text-xs">Financial Hold</p>
+                        <p className={`font-semibold ${selectedStudent.financial_hold ? 'text-red-600' : 'text-green-600'}`}>
+                          {selectedStudent.financial_hold ? 'Yes' : 'No'}
                         </p>
                       </div>
                     </div>

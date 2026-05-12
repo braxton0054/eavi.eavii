@@ -1,7 +1,45 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+// ── Rate limiter (in-memory) ────────────────────────────────────────────────
+interface RateLimitEntry { count: number; resetAt: number }
+const rateStore = new Map<string, RateLimitEntry>()
+const WINDOW_MS = 60_000
+const MAX_REQUESTS = 60
+
+function checkRateLimit(ip: string): { allowed: boolean; remaining: number; resetAt: number } {
+  const now = Date.now()
+  const entry = rateStore.get(ip)
+  if (!entry || entry.resetAt <= now) {
+    rateStore.set(ip, { count: 1, resetAt: now + WINDOW_MS })
+    return { allowed: true, remaining: MAX_REQUESTS - 1, resetAt: now + WINDOW_MS }
+  }
+  entry.count++
+  if (entry.count > MAX_REQUESTS)
+    return { allowed: false, remaining: 0, resetAt: entry.resetAt }
+  return { allowed: true, remaining: MAX_REQUESTS - entry.count, resetAt: entry.resetAt }
+}
+
+// Cleanup every 5 min
+setInterval(() => {
+  const now = Date.now()
+  for (const [k, v] of rateStore) { if (v.resetAt <= now) rateStore.delete(k) }
+}, 300_000)
+
 export async function proxy(request: NextRequest) {
+  // ── Rate limit API routes ─────────────────────────────────────────────────
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      || request.headers.get('x-real-ip')
+      || '127.0.0.1'
+    const result = checkRateLimit(ip)
+    if (!result.allowed) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        { status: 429, headers: { 'Retry-After': '60' } }
+      )
+    }
+  }
   let supabaseResponse = NextResponse.next({
     request,
   })

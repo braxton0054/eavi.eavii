@@ -142,8 +142,7 @@ export default function LecturersPage() {
         id, lecturer_id, course_id, unit_code, campus, class_id,
         is_active, module_index, semester, intake,
         courses(name),
-        classes(class_name),
-        units(name)
+        classes(class_name)
       `)
       .order('module_index');
     setAssignments(data ?? []);

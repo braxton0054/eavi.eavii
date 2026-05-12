@@ -94,7 +94,7 @@ export default function StudentFeesPage() {
         // Get all payments for this student directly from fee_payments table
         const { data: payments, error: paymentsError } = await client
           .from('fee_payments')
-          .select('id, amount, payment_method, transaction_id, receipt_number, payment_date, payment_type, status, semester')
+          .select('id, amount, payment_method, transaction_id, receipt_number, payment_date, payment_type, status, semester_id, semesters(semester_index)')
           .eq('application_id', student.id)
           .eq('status', 'completed')
           .order('payment_date', { ascending: false });
@@ -118,7 +118,7 @@ export default function StudentFeesPage() {
         const semestersMap = new Map<number, { amountPaid: number; semester: number }>();
         
         for (const payment of (payments || [])) {
-          const sem = payment.semester || 1;
+          const sem = payment.semesters?.semester_index || 1;
           const existing = semestersMap.get(sem);
           if (existing) {
             existing.amountPaid += (payment.amount || 0);

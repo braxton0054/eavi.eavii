@@ -98,7 +98,7 @@ export default function ReportsPage() {
       // Load students
       let query = supabase
         .from('applications')
-        .select('*, courses(id, name, department)')
+        .select('*, courses!inner(id, name, departments!inner(name))')
         .order('application_date', { ascending: false });
 
       if (campusCode && campusCode !== 'all') {
@@ -111,13 +111,13 @@ export default function ReportsPage() {
       // Load courses
       const { data: coursesData } = await supabase
         .from('courses')
-        .select('id, name, department')
+        .select('id, name, departments!inner(name)')
         .order('name');
       setCourses(coursesData || []);
 
       // Load departments
       if (coursesData) {
-        const uniqueDepts = [...new Set(coursesData.map((c: any) => c.department))] as string[];
+        const uniqueDepts = [...new Set(coursesData.map((c: any) => c.departments?.name || 'Unknown'))] as string[];
         setDepartments(uniqueDepts);
       }
 
@@ -139,15 +139,15 @@ export default function ReportsPage() {
       // Calculate gender breakdown per course
       const genderData = (studentsData || []).reduce((acc: any, student: any) => {
         const courseName = student.courses?.name || 'Unknown';
-        const courseLevel = student.course_type || 'Unknown';
+        const courseLevel = student.course_types?.level || 'Unknown';
         const key = `${courseName}|${courseLevel}`;
         if (!acc[key]) {
           acc[key] = { course_name: courseName, course_level: courseLevel, male: 0, female: 0, other: 0, total: 0 };
         }
         acc[key].total++;
-        const gender = student.gender || 'other';
-        if (gender === 'male') acc[key].male++;
-        else if (gender === 'female') acc[key].female++;
+        const sv = student.student_profiles?.gender || 'other';
+        if (sv === 'male') acc[key].male++;
+        else if (sv === 'female') acc[key].female++;
         else acc[key].other++;
         return acc;
       }, {});
@@ -164,7 +164,7 @@ export default function ReportsPage() {
       // Get payments
       let paymentsQuery = supabase
         .from('fee_payments')
-        .select('amount, payment_date, status, applications!inner(course_id, course_type, campus)')
+        .select('amount, payment_date, status, applications!inner(course_id, course_type_id, campus)')
         .eq('status', 'completed')
         .order('payment_date', { ascending: false });
       
@@ -189,7 +189,7 @@ export default function ReportsPage() {
       // Revenue by course
       const courseRevenue = (paymentsData || []).reduce((acc: any, payment: any) => {
         const courseId = payment.applications?.course_id;
-        const courseType = payment.applications?.course_type || 'Unknown';
+        const courseType = payment.applications?.course_type_id || 'Unknown';
         const courseName = courses.find((c: any) => c.id === courseId)?.name || 'Unknown';
         const key = `${courseName}|${courseType}`;
         if (!acc[key]) {
@@ -203,7 +203,7 @@ export default function ReportsPage() {
       // Outstanding balances per campus
       let balanceQuery = supabase
         .from('applications')
-        .select('campus, total_fee_due, fee_paid, financial_hold')
+        .select('campus, total_balance, financial_hold')
         .eq('status', 'enrolled');
       
       if (campusCode && campusCode !== 'all') {
@@ -217,9 +217,8 @@ export default function ReportsPage() {
         if (!acc[campusName]) {
           acc[campusName] = { campus: campusName, total_outstanding: 0, total_collected: 0, on_hold: 0 };
         }
-        const outstanding = (student.total_fee_due || 0) - (student.fee_paid || 0);
+        const outstanding = student.total_balance || 0;
         acc[campusName].total_outstanding += outstanding;
-        acc[campusName].total_collected += student.fee_paid || 0;
         if (student.financial_hold) acc[campusName].on_hold++;
         return acc;
       }, {});
@@ -239,8 +238,7 @@ export default function ReportsPage() {
         .select(`
           *,
           applications!inner(course_id, campus),
-          classes(class_name, intake_month),
-          units(name)
+          classes(class_name, intake_month)
         `)
         .eq('is_submitted', true);
       
@@ -253,7 +251,7 @@ export default function ReportsPage() {
       // Class results summary (simplified - calculating pass rates per unit)
       const unitResults = (marksData || []).reduce((acc: any, mark: any) => {
         const unitCode = mark.unit_code || 'Unknown';
-        const unitName = mark.units?.name || 'Unknown';
+        const unitName = mark.unit_code || 'Unknown';
         const className = mark.classes?.class_name || 'Unknown';
         const intake = mark.classes?.intake_month || 'Unknown';
         const key = `${unitCode}|${className}|${intake}`;
@@ -289,8 +287,7 @@ export default function ReportsPage() {
         .select(`
           *,
           applications!inner(course_id, campus),
-          classes(class_name, intake_month),
-          units(name)
+          classes(class_name, intake_month)
         `)
         .eq('is_absent', true);
       
@@ -397,7 +394,7 @@ export default function ReportsPage() {
       const monthlyCompletions = (completedData || []).reduce((acc: any, student: any) => {
         const month = student.updated_at?.substring(0, 7) || 'Unknown';
         const courseName = student.courses?.name || 'Unknown';
-        const courseLevel = student.course_type || 'Unknown';
+        const courseLevel = student.course_types?.level || 'Unknown';
         const key = `${month}|${courseName}|${courseLevel}`;
         if (!acc[key]) {
           acc[key] = { month, course_name: courseName, course_level: courseLevel, graduated: 0 };
@@ -449,8 +446,8 @@ export default function ReportsPage() {
     return students.filter(student => {
       if (filterIntake && student.application_date !== filterIntake) return false;
       if (filterCourse && student.course_id !== filterCourse) return false;
-      if (filterDepartment && student.courses?.department !== filterDepartment) return false;
-      if (filterGender && student.gender !== filterGender) return false;
+      if (filterDepartment && student.courses?.departments?.name !== filterDepartment) return false;
+      if (filterGender && student.student_profiles?.gender !== filterGender) return false;
       return true;
     });
   };

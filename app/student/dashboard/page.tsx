@@ -213,10 +213,19 @@ export default function StudentDashboard() {
 
   const loadExamMarks = async (admissionNumber: string) => {
     try {
+      // First get the application_id from admission_number
+      const { data: application } = await supabase
+        .from('applications')
+        .select('id')
+        .eq('admission_number', admissionNumber)
+        .single();
+
+      if (!application) return;
+
       const { data, error } = await supabase
         .from('exam_marks')
         .select('*')
-        .eq('admission_number', admissionNumber)
+        .eq('application_id', application.id)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -481,7 +490,7 @@ export default function StudentDashboard() {
     try {
       const { data: student } = await supabase
         .from('applications')
-        .select('id, current_module, current_semester, total_fee_due, fee_paid')
+        .select('id, current_module, current_semester, total_balance')
         .eq('admission_number', admissionNumber)
         .single();
       
@@ -494,18 +503,20 @@ export default function StudentDashboard() {
         .eq('application_id', student.id)
         .eq('status', 'completed');
       
-      // Calculate clearance per semester (simplified)
-      const totalDue = student.total_fee_due || 0;
-      const totalPaid = student.fee_paid || 0;
-      const paidPct = totalDue > 0 ? Math.round((totalPaid / totalDue) * 100) : 0;
+      // Calculate clearance using total balance
+      const totalBalance = student.total_balance || 0;
+      // Get total payments from database
+      const totalPaidAmount = payments?.reduce((sum: number, p: any) => sum + (p.amount || 0), 0) || 0;
+      const totalDue = totalBalance + totalPaidAmount;
+      const paidPct = totalDue > 0 ? Math.round((totalPaidAmount / totalDue) * 100) : 0;
       
       setFeeClearance({
         paid_pct: paidPct,
         clearance_status: paidPct >= 95 ? 'Cleared' : paidPct >= 50 ? 'Partial' : 'Low',
         total_due: totalDue,
-        total_paid: totalPaid,
-        balance: totalDue - totalPaid,
-        needed_for_95: Math.max(0, totalDue * 0.95 - totalPaid)
+        total_paid: totalPaidAmount,
+        balance: totalBalance,
+        needed_for_95: Math.max(0, totalDue * 0.95 - totalPaidAmount)
       });
     } catch (err) {
       console.error('Error loading fee clearance:', err);
@@ -1021,7 +1032,7 @@ export default function StudentDashboard() {
             ],
             [
               { text: 'Department:', fontSize: 11, bold: true, border: [false, false, false, false] },
-              { text: courseData.department, fontSize: 11, border: [false, false, false, false] }
+              { text: courseData?.departments?.name || '', fontSize: 11, border: [false, false, false, false] }
             ],
             [
               { text: 'Course Type:', fontSize: 11, bold: true, border: [false, false, false, false] },
@@ -1567,7 +1578,7 @@ export default function StudentDashboard() {
                     </div>
                     <div>
                       <p className="text-purple-200 text-sm mb-1">Department</p>
-                      <p className="text-white font-semibold">{courseData.department}</p>
+                      <p className="text-white font-semibold">{courseData?.departments?.name || ''}</p>
                     </div>
                     <div>
                       <p className="text-purple-200 text-sm mb-1">Course Type</p>

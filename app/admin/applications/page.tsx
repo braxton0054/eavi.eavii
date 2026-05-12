@@ -292,7 +292,7 @@ export default function ApplicationsPage() {
       }
 
       // Insert student directly as enrolled
-      const { error: insertError } = await supabase
+      const { data: insertedApp, error: insertError } = await supabase
         .from('applications')
         .insert([{
           full_name: newStudent.full_name,
@@ -302,13 +302,19 @@ export default function ApplicationsPage() {
           course_id: newStudent.course,
           course_type_id: courseTypeId,
           campus: newStudent.campus,
-          gender: newStudent.gender,
           admission_number: newStudent.admission_number,
           application_date: newStudent.application_date,
           status: 'enrolled',
-          current_semester: newStudent.current_semester,
-          class_name: className
-        }]);
+          current_semester: newStudent.current_semester
+        }])
+        .select()
+        .single();
+
+      if (!insertError && insertedApp && newStudent.gender) {
+        await supabase
+          .from('student_profiles')
+          .insert([{ application_id: insertedApp.id, gender: newStudent.gender }]);
+      }
 
       if (insertError) {
         setError('Failed to add student: ' + insertError.message);
@@ -780,7 +786,7 @@ export default function ApplicationsPage() {
         const className = generateClassNameFromDate(row.application_date);
 
         // Insert student
-        const { error: insertError } = await supabase
+        const { data: csvInserted, error: insertError } = await supabase
           .from('applications')
           .insert([{
             full_name: row.full_name,
@@ -790,19 +796,25 @@ export default function ApplicationsPage() {
             course_id: course.id,
             course_type_id: courseTypeData.id,
             campus: row.campus.toLowerCase(),
-            gender: row.gender.toLowerCase(),
             admission_number: row.admission_number,
             application_date: row.application_date,
             status: 'enrolled',
-            current_semester: parseInt(row.current_semester) || 1,
-            class_name: className
-          }]);
+            current_semester: parseInt(row.current_semester) || 1
+          }])
+          .select()
+          .single();
 
         if (insertError) {
           errors.push(`Row ${i + 1}: ${insertError.message}`);
           failedCount++;
         } else {
           successCount++;
+          // Create student profile with gender if provided
+          if (csvInserted && row.gender) {
+            await supabase
+              .from('student_profiles')
+              .insert([{ application_id: csvInserted.id, gender: row.gender.toLowerCase() }]);
+          }
         }
       } catch (err) {
         errors.push(`Row ${i + 1}: Failed to import`);

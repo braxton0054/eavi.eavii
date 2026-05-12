@@ -75,7 +75,7 @@ export default function ResultsPage() {
   const loadCourses = async () => {
     const { data, error } = await supabase
       .from('courses')
-      .select('*');
+      .select('*, departments!inner(name)');
     
     if (data && !error) {
       setCourses(data);
@@ -122,13 +122,13 @@ export default function ResultsPage() {
   };
 
   // Get courses for selected department
-  const departmentCourses = courses.filter(c => c.department === filterDepartment);
+  const departmentCourses = courses.filter(c => c.departments?.name === filterDepartment);
 
   // Filter marks by department, course, semester, exam type, and academic period
   const filteredMarks = examMarks.filter(mark => {
     if (filterDepartment) {
       const courseData = courses.find(c => c.name === mark.course);
-      if (!courseData || courseData.department !== filterDepartment) return false;
+      if (!courseData || courseData.departments?.name !== filterDepartment) return false;
     }
     if (filterCourse && mark.course !== filterCourse) return false;
     if (filterSemester && mark.semester !== parseInt(filterSemester)) return false;
@@ -178,8 +178,7 @@ export default function ResultsPage() {
         .select(`
           *,
           applications(full_name, admission_number, class_id, financial_hold),
-          classes(class_name),
-          units(name)
+          classes(class_name)
         `)
         .eq('campus', campus)
         .order('created_at', { ascending: false });
@@ -252,7 +251,7 @@ export default function ResultsPage() {
     if (filterDepartment) {
       filtered = filtered.filter((mark: any) => {
         const courseData = courses.find((c: any) => c.name === mark.course);
-        return courseData?.department === filterDepartment;
+        return courseData?.departments?.name === filterDepartment;
       });
     }
     if (filterCourse) filtered = filtered.filter((m: any) => m.course === filterCourse);

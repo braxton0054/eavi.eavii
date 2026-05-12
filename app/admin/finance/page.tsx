@@ -267,7 +267,7 @@ export default function FinanceDashboardPage() {
       // Get all enrolled students with course info
       const { data: students, error: studentsError } = await client
         .from('applications')
-        .select('id, total_balance, course_id, courses(department)')
+        .select('id, total_balance, course_id, courses(departments(name))')
         .eq('status', 'enrolled');
       
       if (studentsError) throw studentsError;
@@ -284,7 +284,7 @@ export default function FinanceDashboardPage() {
       const summary: Record<string, DepartmentSummary> = {};
       
       for (const student of (students || [])) {
-        const dept = student.courses?.department || 'General';
+        const dept = student.courses?.departments?.name || 'General';
         
         if (!summary[dept]) {
           summary[dept] = {
@@ -303,7 +303,7 @@ export default function FinanceDashboardPage() {
       for (const payment of (payments || [])) {
         const student = (students || []).find((s: any) => s.id === payment.application_id);
         if (student) {
-          const dept = student.courses?.department || 'General';
+          const dept = student.courses?.departments?.name || 'General';
           if (summary[dept]) {
             summary[dept].total_collected += (payment.amount || 0);
           }
