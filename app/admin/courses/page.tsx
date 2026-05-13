@@ -160,7 +160,7 @@ export default function CoursesPage() {
   useEffect(() => {
     if (supabase && kcseGrades.length === 0) {
       supabase.from('kcse_grades').select('grade').order('sort_order').then((res: any) => {
-        if (res.data) setKcseGrades(['ID/Birth Certificate', ...res.data.map((r: any) => r.grade)]);
+        if (res.data) setKcseGrades(res.data.map((r: any) => r.grade));
       });
     }
   }, [supabase]);
