@@ -253,11 +253,14 @@ function SemesterCard({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="font-semibold text-slate-500 dark:text-slate-500 text-sm">
-              {summary.module_label && summary.module_label !== `Module ${summary.module_index}`
-                ? `${summary.module_label} – `
+              {summary.payment_mode === 'per_module'
+                ? (summary.module_label || `Stage ${summary.module_index}`)
+                : summary.module_label && summary.module_label !== `Module ${summary.module_index}`
+                ? `${summary.module_label} – Semester ${summary.semester_index}`
                 : summary.module_index > 0
-                ? `Module ${summary.module_index} – `
-                : ''}Semester {summary.semester_index}
+                ? `Module ${summary.module_index} – Semester ${summary.semester_index}`
+                : `Semester ${summary.semester_index}`
+              }
             </p>
             <p className="text-xs text-slate-400 mt-1">🔒 Pay previous semester first</p>
           </div>
@@ -281,11 +284,14 @@ function SemesterCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-semibold text-slate-900 dark:text-white text-sm">
-            {summary.module_label && summary.module_label !== `Module ${summary.module_index}`
-              ? `${summary.module_label} – `
+            {summary.payment_mode === 'per_module'
+              ? (summary.module_label || `Stage ${summary.module_index}`)
+              : summary.module_label && summary.module_label !== `Module ${summary.module_index}`
+              ? `${summary.module_label} – Semester ${summary.semester_index}`
               : summary.module_index > 0
-              ? `Module ${summary.module_index} – `
-              : ''}Semester {summary.semester_index}
+              ? `Module ${summary.module_index} – Semester ${summary.semester_index}`
+              : `Semester ${summary.semester_index}`
+            }
           </p>
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 font-mono">
             Tuition {fmt(summary.tuition_fee)}
@@ -444,11 +450,15 @@ export default function PaymentsPage() {
       // Get modules for this course type
       const { data: mods } = await supabase
         .from('modules')
-        .select('id, module_index, label')
+        .select('id, module_index, label, payment_mode, fee')
         .eq('course_type_id', courseTypes[0].id)
         .order('module_index');
 
       if (mods && mods.length > 0) {
+        // Module lookup by id
+        const modById: Record<string, any> = {};
+        for (const m of mods) modById[m.id] = m;
+
         const moduleIds = mods.map((m: any) => m.id);
         const { data: sems } = await supabase
           .from('semesters')
@@ -473,40 +483,70 @@ export default function PaymentsPage() {
           }
         }
 
-        // Get all modules for this course type (used for label context)
-        const allCourseMods = mods || [];
+        // Find current module
+        const currentMod = mods.find((m: any) => m.module_index === (s.current_module || 1));
+        const currentModuleId = currentMod?.id;
+        const isPerModule = currentMod?.payment_mode === 'per_module';
 
-        // Filter semesters to only show the student's current module
-        const currentModuleId = allCourseMods.find((m: any) => m.module_index === (s.current_module || 1))?.id;
-        feeSumm = (sems || [])
-          .filter((sem: any) => !currentModuleId || sem.module_id === currentModuleId)
-          .map((sem: any) => {
-          const tuition = parseFloat(sem.fee) || 0;
-          const practical = parseFloat(sem.practical_fee) || 0;
-          const total = tuition + practical;
-          const paid = paidBySem[sem.id] || 0;
-          return {
+        // For per_module: group all semesters in this module into one line
+        if (isPerModule) {
+          const moduleSems = (sems || []).filter((sem: any) => !currentModuleId || sem.module_id === currentModuleId);
+          const totalTuition = moduleSems.reduce((sum: number, sem: any) => sum + (parseFloat(sem.fee) || 0), 0);
+          const totalPractical = moduleSems.reduce((sum: number, sem: any) => sum + (parseFloat(sem.practical_fee) || 0), 0);
+          const totalPaid = moduleSems.reduce((sum: number, sem: any) => sum + (paidBySem[sem.id] || 0), 0);
+          const grandTotal = totalTuition + totalPractical;
+          feeSumm = [{
             application_id: s.id || '',
             admission_number: s.admission_number || '',
-            module_id: sem.module_id || '',
-            module_index: mods.find((m: any) => m.id === sem.module_id)?.module_index || 0,
-            module_label: mods.find((m: any) => m.id === sem.module_id)?.label || '',
-            payment_mode: 'per_semester',
+            module_id: currentMod?.id || '',
+            module_index: currentMod?.module_index || 1,
+            module_label: currentMod?.label || '',
+            payment_mode: 'per_module',
             exam_fee: 0,
             module_exam_body: '',
-            semester_id: sem.id || '',
-            semester_index: sem.semester_index,
-            tuition_fee: tuition,
-            practical_fee: practical,
+            semester_id: moduleSems[0]?.id || '',
+            semester_index: 1,
+            tuition_fee: totalTuition,
+            practical_fee: totalPractical,
             additional_fees: 0,
             installment_amount: 0,
             installment_status: '',
-            total_paid: paid,
-            balance: total - paid,
+            total_paid: totalPaid,
+            balance: grandTotal - totalPaid,
             due_date: null,
             attempt_number: 0,
-          };
-        });
+          }];
+        } else {
+          // per_semester: one line per semester
+          const filteredSems = (sems || []).filter((sem: any) => !currentModuleId || sem.module_id === currentModuleId);
+          feeSumm = filteredSems.map((sem: any) => {
+            const tuition = parseFloat(sem.fee) || 0;
+            const practical = parseFloat(sem.practical_fee) || 0;
+            const total = tuition + practical;
+            const paid = paidBySem[sem.id] || 0;
+            return {
+              application_id: s.id || '',
+              admission_number: s.admission_number || '',
+              module_id: sem.module_id || '',
+              module_index: modById[sem.module_id]?.module_index || 0,
+              module_label: modById[sem.module_id]?.label || '',
+              payment_mode: 'per_semester',
+              exam_fee: 0,
+              module_exam_body: '',
+              semester_id: sem.id || '',
+              semester_index: sem.semester_index,
+              tuition_fee: tuition,
+              practical_fee: practical,
+              additional_fees: 0,
+              installment_amount: 0,
+              installment_status: '',
+              total_paid: paid,
+              balance: total - paid,
+              due_date: null,
+              attempt_number: 0,
+            };
+          });
+        }
       }
     }
     setFeeSummary(feeSumm);
@@ -931,8 +971,8 @@ export default function PaymentsPage() {
                     <Wallet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div>
-                    <h2 className="font-semibold text-sm text-slate-900 dark:text-white">Semester Balances</h2>
-                    <p className="text-xs text-slate-400 dark:text-slate-500">Click a semester to fill the payment form</p>
+                    <h2 className="font-semibold text-sm text-slate-900 dark:text-white">Fee Summary</h2>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">Click a line to fill the payment form</p>
                   </div>
                 </div>
                 <div className="p-5 space-y-3">
@@ -1069,7 +1109,9 @@ export default function PaymentsPage() {
                     <div className="flex items-center justify-between p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800">
                       <div>
                         <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">
-                          Semester {selectedSemSummary.semester_index}
+                          {selectedSemSummary.payment_mode === 'per_module'
+                            ? (selectedSemSummary.module_label || `Stage ${selectedSemSummary.module_index}`)
+                            : `Semester ${selectedSemSummary.semester_index}`}
                         </p>
                         <p className="text-xs text-indigo-500 dark:text-indigo-400 font-mono mt-0.5">
                           Outstanding: {fmt(selectedSemSummary.balance)}
