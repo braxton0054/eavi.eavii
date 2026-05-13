@@ -385,12 +385,7 @@ export default function ClassesPage() {
               >
                 Assign Lecturer
               </button>
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold"
-              >
-                + Create Class
-              </button>
+
               <Link
                 href="/admin/dashboard"
                 className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-semibold"
@@ -501,7 +496,7 @@ export default function ClassesPage() {
           <div className="glass-neu overflow-x-auto">
             {filteredClasses.length === 0 ? (
               <div className="p-8 text-center text-purple-200">
-                No classes found. Create a new class to get started.
+                No classes yet. Classes are auto-created when students are enrolled.
               </div>
             ) : (
               <table className="w-full">
@@ -564,157 +559,7 @@ export default function ClassesPage() {
         </div>
       </div>
 
-      {/* Create Class Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="glass-neu p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold text-white mb-4">Create New Class</h2>
-            
-            <form onSubmit={handleCreateClass} className="space-y-4">
-              <div>
-                <label className="block text-purple-200 text-sm mb-1">Class Name (Auto-generated)</label>
-                <input
-                  type="text"
-                  value={formData.class_name}
-                  onChange={(e) => setFormData({ ...formData, class_name: e.target.value })}
-                  className="w-full px-3 py-2 bg-gray-50/10 border border-white/30 rounded text-white"
-                  required
-                />
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-purple-200 text-sm mb-1">Course *</label>
-                  <select
-                    value={formData.course_id}
-                    onChange={(e) => setFormData({ ...formData, course_id: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-50/10 border border-white/30 rounded text-white"
-                    required
-                  >
-                    <option value="">Select Course</option>
-                    {courses.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-purple-200 text-sm mb-1">Campus *</label>
-                  <select
-                    value={formData.campus}
-                    onChange={(e) => setFormData({ ...formData, campus: e.target.value as 'main' | 'west' })}
-                    className="w-full px-3 py-2 bg-gray-50/10 border border-white/30 rounded text-white"
-                    required
-                  >
-                    <option value="main">Main Campus</option>
-                    <option value="west">West Campus</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-purple-200 text-sm mb-1">Semester (1-6) *</label>
-                  <select
-                    value={formData.semester}
-                    onChange={(e) => setFormData({ ...formData, semester: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 bg-gray-50/10 border border-white/30 rounded text-white"
-                    required
-                  >
-                    {[1, 2, 3, 4, 5, 6].map(s => (
-                      <option key={s} value={s}>Semester {s}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-purple-200 text-sm mb-1">Module Index *</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={formData.module_index}
-                    onChange={(e) => setFormData({ ...formData, module_index: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 bg-gray-50/10 border border-white/30 rounded text-white"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-purple-200 text-sm mb-1">Intake Month *</label>
-                  <select
-                    value={formData.intake_month}
-                    onChange={(e) => setFormData({ ...formData, intake_month: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-50/10 border border-white/30 rounded text-white"
-                    required
-                  >
-                    {intakeMonths.map(m => (
-                      <option key={m} value={m}>{m}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-purple-200 text-sm mb-1">Academic Calendar</label>
-                  <select
-                    value={formData.academic_calendar_id}
-                    onChange={(e) => setFormData({ ...formData, academic_calendar_id: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-50/10 border border-white/30 rounded text-white"
-                  >
-                    <option value="">Select Calendar</option>
-                    {calendars.map(c => (
-                      <option key={c.id} value={c.id}>{c.term_name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-purple-200 text-sm mb-1">Stream Type</label>
-                  <select
-                    value={formData.stream_type}
-                    onChange={(e) => setFormData({ ...formData, stream_type: e.target.value as 'main' | 'bridge' })}
-                    className="w-full px-3 py-2 bg-gray-50/10 border border-white/30 rounded text-white"
-                  >
-                    <option value="main">Main</option>
-                    <option value="bridge">Bridge</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center">
-                  <label className="flex items-center text-purple-200 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={formData.is_active}
-                      onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                      className="mr-2"
-                    />
-                    Active
-                  </label>
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded"
-                >
-                  Create Class
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Assign Lecturer Modal */}
       {showAssignModal && (
