@@ -155,6 +155,14 @@ export default function PaymentsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate() || !student || !selectedFee || !supabase) return;
+
+    // Block payment if course has no fees configured
+    if (selectedFee.total_expected <= 0) {
+      alert('This course has no fees configured. Set the fees in course setup first.');
+      setSubmitting(false);
+      return;
+    }
+
     setSubmitting(true);
 
     const isPerModule = selectedFee.payment_mode === 'per_module';
@@ -400,6 +408,13 @@ export default function PaymentsPage() {
 
                 {selectedFee && (
                   <>
+                    {/* Warning if no fees configured */}
+                    {selectedFee.total_expected <= 0 && (
+                      <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
+                        ⚠ No fees configured for this course. Go to <strong>Courses</strong> to set module/semester fees first.
+                      </div>
+                    )}
+
                     {/* Type + Amount */}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
