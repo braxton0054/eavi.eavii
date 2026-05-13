@@ -114,13 +114,24 @@ export default function AnnouncementsPage() {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      
+
+      // Resolve created_by from ai_user_registry (not auth.users)
+      let createdById: string | null = null;
+      if (session?.user?.id) {
+        const { data: registry } = await supabase
+          .from('ai_user_registry')
+          .select('id')
+          .eq('auth_user_id', session.user.id)
+          .maybeSingle();
+        if (registry) createdById = registry.id;
+      }
+
       const { error } = await supabase
         .from('announcements')
         .insert({
           ...formData,
-          campus: userCampus, // Force user's campus
-          created_by: session?.user?.id,
+          campus: userCampus,
+          created_by: createdById,
           expire_at: formData.expire_at || null,
         });
 
@@ -130,7 +141,7 @@ export default function AnnouncementsPage() {
       resetForm();
       fetchAnnouncements(userCampus);
     } catch (err) {
-      alert('Failed to create announcement');
+      alert('Failed to create announcement: ' + (err instanceof Error ? err.message : 'Unknown error'));
     } finally {
       setSaving(false);
     }
