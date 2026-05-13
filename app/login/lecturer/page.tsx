@@ -136,13 +136,38 @@ export default function LecturerLogin() {
         });
 
         if (error) {
-          setError(error.message);
+          // If email already registered but unconfirmed, resend confirmation
+          if (error.message?.toLowerCase().includes('already registered') || error.message?.toLowerCase().includes('already exists')) {
+            const { error: resendError } = await supabase.auth.resend({
+              type: 'signup',
+              email: formData.email,
+              options: { emailRedirectTo: window.location.origin + '/login/lecturer' },
+            });
+            if (resendError) {
+              setError('Email already in use. Try resetting your password or contact admin.');
+            } else {
+              setSuccess('A new confirmation email has been sent. Please check your inbox.');
+              setMode('login');
+            }
+          } else {
+            setError(error.message);
+          }
           return;
         }
 
-        // Check if user was created but no confirmation email was sent (email already exists)
+        // Handle case where user exists but without identities (email-only, unconfirmed)
         if (data.user && data.user.identities && data.user.identities.length === 0) {
-          setError('This email is already registered. Please use the "Forgot Password" option or log in with your existing account.');
+          const { error: resendError } = await supabase.auth.resend({
+            type: 'signup',
+            email: formData.email,
+            options: { emailRedirectTo: window.location.origin + '/login/lecturer' },
+          });
+          if (resendError) {
+            setError('Email already in use. Try resetting your password or contact admin.');
+          } else {
+            setSuccess('A new confirmation email has been sent. Please check your inbox.');
+            setMode('login');
+          }
           return;
         }
 
