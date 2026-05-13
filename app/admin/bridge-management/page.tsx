@@ -276,14 +276,14 @@ export default function BridgeManagement() {
 
   if (loading) {
     return (
-      <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950 flex items-center justify-center">
+      <div className="min-h-screen w-full bg-slate-50 flex items-center justify-center">
         <div className="text-white text-xl">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950">
+    <div className="min-h-screen w-full bg-slate-50">
       <div className="relative z-10 w-full">
         {/* Header */}
         <div className="glass-neu-inset border-b border-white/10 rounded-none">

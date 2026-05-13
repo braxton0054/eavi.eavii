@@ -125,7 +125,7 @@ export default function ResetPassword() {
 
   if (success) {
     return (
-      <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950">
+      <div className="min-h-screen w-full bg-slate-50">
         <div className="relative z-10 w-full max-w-md mx-auto px-4 md:px-6 py-8 md:py-12 flex items-center justify-center min-h-screen">
           <div className="w-full">
             <div className="text-center mb-8">
@@ -160,7 +160,7 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950">
+    <div className="min-h-screen w-full bg-slate-50">
       <div className="relative z-10 w-full max-w-md mx-auto px-4 md:px-6 py-8 md:py-12 flex items-center justify-center min-h-screen">
         <div className="w-full">
           <div className="text-center mb-8">

@@ -125,7 +125,7 @@ export default function OAuthConsent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950 flex items-center justify-center">
+      <div className="min-h-screen w-full bg-slate-50 flex items-center justify-center">
         <div className="text-white text-xl">Loading...</div>
       </div>
     );
@@ -133,7 +133,7 @@ export default function OAuthConsent() {
 
   if (error) {
     return (
-      <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950 flex items-center justify-center p-4">
+      <div className="min-h-screen w-full bg-slate-50 flex items-center justify-center p-4">
         <div className="bg-white/10 backdrop-blur-md rounded-xl p-8 border border-white/20 max-w-md w-full">
           <div className="text-center mb-6">
             <div className="relative w-24 h-24 mx-auto mb-4">
@@ -161,7 +161,7 @@ export default function OAuthConsent() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-purple-950 via-purple-900 to-indigo-950">
+    <div className="min-h-screen w-full bg-slate-50">
       <div className="relative z-10 w-full max-w-md mx-auto px-4 md:px-6 py-8 md:py-12 flex items-center justify-center min-h-screen">
         <div className="w-full">
           <div className="text-center mb-8">
