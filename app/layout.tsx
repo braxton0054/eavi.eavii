@@ -19,7 +19,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "EAVI College Management System",
+  title: "EAVI",
   description: "East Africa Vision Institute - Student Management System",
   icons: {
     icon: "/favicon.ico?v=2",
