@@ -223,7 +223,6 @@ export default function ApplyPage() {
       internal: {
         diploma: 'Internal Diploma',
         certificate: 'Internal Certificate',
-        short_course: 'Short Course',
       },
     };
     return labels[examBody]?.[level] || `${examBody} ${level}`;
@@ -236,8 +235,8 @@ export default function ApplyPage() {
     const availableTypes: string[] = [];
     const courseTypes = course.course_types || [];
     
-    // Get exam body from course ID prefix as fallback
-    const courseExamBody = getExamBodyFromCourseId(course.id);
+    // Use course.exam_body column first, fallback to ID prefix
+    const courseExamBody = course.exam_body || getExamBodyFromCourseId(course.id);
     
     // Convert array from relational database to object keyed by level
     const courseTypesObj: any = {};
@@ -763,31 +762,18 @@ export default function ApplyPage() {
                 </option>
                 {courses
                   .filter(course => {
-                    if (!formData.examBody) return true; // Show all courses for debugging
-                    // Check if course has any course type with the selected exam body
-                    const courseTypes = course.course_types || [];
-                    const hasExamBodyInModules = courseTypes.some((ct: any) => {
-                      const modules = ct.modules || [];
-                      return modules.some((m: any) => m.exam_body === formData.examBody);
-                    });
-                    // Fallback: use course ID prefix
-                    const courseExamBody = getExamBodyFromCourseId(course.id);
-                    const matchesByPrefix = courseExamBody === formData.examBody;
-                    return hasExamBodyInModules || matchesByPrefix;
+                    if (!formData.examBody) return true;
+                    // Use course.exam_body column first, fallback to ID prefix
+                    const courseExamBody = course.exam_body || getExamBodyFromCourseId(course.id);
+                    return courseExamBody === formData.examBody;
                   })
                   .map(course => (
                     <option key={course.id} value={course.id} className="text-gray-900">{course.name}</option>
                   ))}
               </select>
               {formData.examBody && courses.filter(course => {
-                const courseTypes = course.course_types || [];
-                const hasExamBodyInModules = courseTypes.some((ct: any) => {
-                  const modules = ct.modules || [];
-                  return modules.some((m: any) => m.exam_body === formData.examBody);
-                });
-                const courseExamBody = getExamBodyFromCourseId(course.id);
-                const matchesByPrefix = courseExamBody === formData.examBody;
-                return hasExamBodyInModules || matchesByPrefix;
+                const courseExamBody = course.exam_body || getExamBodyFromCourseId(course.id);
+                return courseExamBody === formData.examBody;
               }).length === 0 && (
                 <p className="mt-2 text-red-300 text-sm">No courses available for this exam body.</p>
               )}
