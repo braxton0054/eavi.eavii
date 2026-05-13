@@ -7,8 +7,7 @@ import {
   Search, ArrowLeft, User, CreditCard, Calendar, Receipt,
   Wallet, CheckCircle, AlertCircle, Building, GraduationCap,
   FileText, ChevronRight, Loader2, Shield, BookOpen,
-  TrendingUp, Clock, Banknote, Smartphone, X, RefreshCw, Beaker,
-  Plus, Lock, Unlock, DollarSign
+  TrendingUp, Clock, Banknote, Smartphone, X, RefreshCw, Beaker
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -78,7 +77,6 @@ interface StudentProfile {
   practical_fee:    number;
   total_expected:   number;
   total_paid:       number;
-  transcript_unlocked: boolean;
   is_final_period:  boolean;
 }
 
@@ -179,6 +177,9 @@ const genReceipt = () => {
   const d = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   return `RCP-${d}-${Math.floor(Math.random() * 900 + 100)}`;
 };
+const cleanLabel = (mode: string, modIdx: number) =>
+  mode === 'per_module' ? `Stage ${modIdx}` : `Module ${modIdx}`;
+
 const pctColor = (pct: number) =>
   pct >= 95 ? 'text-emerald-600' : pct >= 50 ? 'text-amber-500' : 'text-red-500';
 const pctBg = (pct: number) =>
@@ -236,38 +237,14 @@ function SemesterCard({
   summary,
   selected,
   onClick,
-  locked,
 }: {
   summary: FeeSummary;
   selected: boolean;
   onClick: () => void;
-  locked?: boolean;
 }) {
   const total = summary.tuition_fee + summary.practical_fee + summary.additional_fees;
   const pct   = total > 0 ? Math.min(Math.round((summary.total_paid / total) * 100), 100) : 0;
   const cleared = pct >= 95;
-
-  if (locked && !cleared) {
-    return (
-      <div className="w-full text-left p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-gray-100 dark:bg-slate-900/30 opacity-50 cursor-not-allowed">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="font-semibold text-slate-500 dark:text-slate-500 text-sm">
-              {summary.payment_mode === 'per_module'
-                ? (summary.module_label || `Stage ${summary.module_index}`)
-                : summary.module_label && summary.module_label !== `Module ${summary.module_index}`
-                ? `${summary.module_label} – Semester ${summary.semester_index}`
-                : summary.module_index > 0
-                ? `Module ${summary.module_index} – Semester ${summary.semester_index}`
-                : `Semester ${summary.semester_index}`
-              }
-            </p>
-            <p className="text-xs text-slate-400 mt-1">🔒 Pay previous semester first</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <button
@@ -276,8 +253,6 @@ function SemesterCard({
       className={`w-full text-left p-4 rounded-xl border transition-all ${
         selected
           ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 dark:border-indigo-400'
-          : cleared
-          ? 'border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-800'
           : 'border-slate-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50 hover:border-slate-300 dark:hover:border-slate-600'
       }`}
     >
@@ -285,12 +260,8 @@ function SemesterCard({
         <div className="min-w-0">
           <p className="font-semibold text-slate-900 dark:text-white text-sm">
             {summary.payment_mode === 'per_module'
-              ? (summary.module_label || `Stage ${summary.module_index}`)
-              : summary.module_label && summary.module_label !== `Module ${summary.module_index}`
-              ? `${summary.module_label} – Semester ${summary.semester_index}`
-              : summary.module_index > 0
-              ? `Module ${summary.module_index} – Semester ${summary.semester_index}`
-              : `Semester ${summary.semester_index}`
+              ? `Stage ${summary.module_index}`
+              : `${summary.module_label || `Module ${summary.module_index}`} · Semester ${summary.semester_index}`
             }
           </p>
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 font-mono">
@@ -345,11 +316,6 @@ export default function PaymentsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [lastReceipt, setLastReceipt] = useState('');
-  const [showFeeAdjustModal, setShowFeeAdjustModal] = useState(false);
-  const [adjustSemesterId, setAdjustSemesterId] = useState('');
-  const [adjustNewAmount, setAdjustNewAmount] = useState(0);
-  const [adjustReason, setAdjustReason] = useState('');
-  const [adjustSubmitting, setAdjustSubmitting] = useState(false);
 
   const [form, setForm] = useState<PaymentFormData>({
     application_id: '',
@@ -432,122 +398,41 @@ export default function PaymentsPage() {
     // Student profile from applications table directly
     const { data: profile } = await supabase
       .from('applications')
-      .select('id, full_name, phone, email, course_id, admission_number, campus, current_module, current_semester, total_balance, credit_balance, financial_hold, transcript_unlocked, status, enrollment_type, class_id')
+      .select('id, full_name, phone, email, course_id, admission_number, campus, current_module, current_semester, total_balance, financial_hold, status, enrollment_type, class_id')
       .eq('admission_number', s.admission_number)
       .single();
 
     setSelectedStudent(profile || null);
 
-    // Fee summary — get semesters for this student's course
-    const { data: courseTypes } = await supabase
-      .from('course_types')
-      .select('id')
-      .eq('course_id', profile?.course_id || '')
-      .limit(1);
+    // Fee summary from v_student_fee_summary — backend handles all calculations
+    const { data: feeView } = await supabase
+      .from('v_student_fee_summary')
+      .select('*')
+      .eq('application_id', s.id);
 
     let feeSumm: FeeSummary[] = [];
-    if (courseTypes && courseTypes.length > 0) {
-      // Get modules for this course type
-      const { data: mods } = await supabase
-        .from('modules')
-        .select('id, module_index, label, payment_mode, fee')
-        .eq('course_type_id', courseTypes[0].id)
-        .order('module_index');
-
-      if (mods && mods.length > 0) {
-        // Module lookup by id
-        const modById: Record<string, any> = {};
-        for (const m of mods) modById[m.id] = m;
-
-        const moduleIds = mods.map((m: any) => m.id);
-        const { data: sems } = await supabase
-          .from('semesters')
-          .select('id, semester_index, fee, practical_fee, module_id')
-          .in('module_id', moduleIds)
-          .order('semester_index');
-
-        // Get actual payments for this student
-        const { data: payments } = await supabase
-          .from('fee_payments')
-          .select('amount, semester_id')
-          .eq('application_id', s.id)
-          .eq('status', 'completed');
-
-        // Build payment lookup by semester_id
-        const paidBySem: Record<string, number> = {};
-        if (payments) {
-          for (const p of payments) {
-            if (p.semester_id) {
-              paidBySem[p.semester_id] = (paidBySem[p.semester_id] || 0) + parseFloat(p.amount);
-            }
-          }
-        }
-
-        // Find current module
-        const currentMod = mods.find((m: any) => m.module_index === (s.current_module || 1));
-        const currentModuleId = currentMod?.id;
-        const isPerModule = currentMod?.payment_mode === 'per_module';
-
-        // For per_module: group all semesters in this module into one line
-        if (isPerModule) {
-          const moduleSems = (sems || []).filter((sem: any) => !currentModuleId || sem.module_id === currentModuleId);
-          const totalTuition = moduleSems.reduce((sum: number, sem: any) => sum + (parseFloat(sem.fee) || 0), 0);
-          const totalPractical = moduleSems.reduce((sum: number, sem: any) => sum + (parseFloat(sem.practical_fee) || 0), 0);
-          const totalPaid = moduleSems.reduce((sum: number, sem: any) => sum + (paidBySem[sem.id] || 0), 0);
-          const grandTotal = totalTuition + totalPractical;
-          feeSumm = [{
-            application_id: s.id || '',
-            admission_number: s.admission_number || '',
-            module_id: currentMod?.id || '',
-            module_index: currentMod?.module_index || 1,
-            module_label: currentMod?.label || '',
-            payment_mode: 'per_module',
-            exam_fee: 0,
-            module_exam_body: '',
-            semester_id: moduleSems[0]?.id || '',
-            semester_index: 1,
-            tuition_fee: totalTuition,
-            practical_fee: totalPractical,
-            additional_fees: 0,
-            installment_amount: 0,
-            installment_status: '',
-            total_paid: totalPaid,
-            balance: grandTotal - totalPaid,
-            due_date: null,
-            attempt_number: 0,
-          }];
-        } else {
-          // per_semester: one line per semester
-          const filteredSems = (sems || []).filter((sem: any) => !currentModuleId || sem.module_id === currentModuleId);
-          feeSumm = filteredSems.map((sem: any) => {
-            const tuition = parseFloat(sem.fee) || 0;
-            const practical = parseFloat(sem.practical_fee) || 0;
-            const total = tuition + practical;
-            const paid = paidBySem[sem.id] || 0;
-            return {
-              application_id: s.id || '',
-              admission_number: s.admission_number || '',
-              module_id: sem.module_id || '',
-              module_index: modById[sem.module_id]?.module_index || 0,
-              module_label: modById[sem.module_id]?.label || '',
-              payment_mode: 'per_semester',
-              exam_fee: 0,
-              module_exam_body: '',
-              semester_id: sem.id || '',
-              semester_index: sem.semester_index,
-              tuition_fee: tuition,
-              practical_fee: practical,
-              additional_fees: 0,
-              installment_amount: 0,
-              installment_status: '',
-              total_paid: paid,
-              balance: total - paid,
-              due_date: null,
-              attempt_number: 0,
-            };
-          });
-        }
-      }
+    if (feeView && feeView.length > 0) {
+      feeSumm = feeView.map((fv: any) => ({
+        application_id:   fv.application_id,
+        admission_number: fv.admission_number,
+        module_id:        fv.module_id,
+        module_index:     fv.module_index,
+        module_label:     fv.payment_mode === 'per_module' ? '' : (fv.module_label || ''),
+        payment_mode:     fv.payment_mode,
+        exam_fee:         Number(fv.exam_fee ?? 0),
+        module_exam_body: fv.module_exam_body || '',
+        semester_id:      fv.semester_id || '',
+        semester_index:   fv.semester_index || 0,
+        tuition_fee:      Number(fv.tuition_fee ?? 0),
+        practical_fee:    Number(fv.practical_fee ?? 0),
+        additional_fees:  Number(fv.additional_fees ?? 0),
+        installment_amount: Number(fv.installment_amount ?? 0),
+        installment_status: fv.installment_status || '',
+        total_paid:       Number(fv.total_paid ?? 0),
+        balance:          Number(fv.balance ?? 0),
+        due_date:         fv.due_date || null,
+        attempt_number:   fv.attempt_number || 0,
+      }));
     }
     setFeeSummary(feeSumm);
 
@@ -633,9 +518,24 @@ export default function PaymentsPage() {
     if (!validate() || !supabase) return;
     setSubmitting(true);
 
-    // Receipt number is auto-generated with timestamp+random — collisions are effectively impossible
+    // Check receipt uniqueness
+    const { data: exists } = await supabase
+      .from('fee_payments')
+      .select('id')
+      .eq('receipt_number', form.receipt_number)
+      .maybeSingle();
 
-    // Insert — fee_payments exact columns
+    if (exists) {
+      setErrors(prev => ({ ...prev, receipt_number: 'Receipt number already used' }));
+      setSubmitting(false);
+      return;
+    }
+
+    // per_module: null semester_id so v_student_fee_summary matches correctly
+    const selectedFee = feeSummary.find(f => f.semester_id === form.semester_id || f.module_id === form.module_id);
+    const actualSemesterId = selectedFee?.payment_mode === 'per_module' ? null : (form.semester_id || null);
+    const actualModuleId   = selectedFee?.payment_mode === 'per_module' ? form.module_id || null : form.module_id || null;
+
     const { error } = await supabase.from('fee_payments').insert([{
       application_id: form.application_id,
       payment_type:   form.payment_type,
@@ -646,8 +546,8 @@ export default function PaymentsPage() {
       status:         form.status,
       receipt_number: form.receipt_number,
       notes:          form.notes || null,
-      semester_id:    form.semester_id || null,
-      module_id:      form.module_id   || null,
+      semester_id:    actualSemesterId,
+      module_id:      actualModuleId,
     }]);
 
     if (error) {
@@ -866,7 +766,7 @@ export default function PaymentsPage() {
                       </div>
 
                       {/* Metrics */}
-                      <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 mt-5">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
                         {[
                           {
                             label: 'Total Expected',
@@ -884,13 +784,6 @@ export default function PaymentsPage() {
                             color: selectedStudent.total_balance > 0
                               ? 'text-red-600 dark:text-red-400'
                               : 'text-emerald-600 dark:text-emerald-400',
-                          },
-                          {
-                            label: 'Credit Balance',
-                            value: fmt(selectedStudent.credit_balance || 0),
-                            color: (selectedStudent.credit_balance || 0) > 0
-                              ? 'text-indigo-600 dark:text-indigo-400'
-                              : 'text-slate-400',
                           },
                           {
                             label: 'Last Payment',
@@ -911,6 +804,11 @@ export default function PaymentsPage() {
                       <div className="mt-3 flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
                         <span className="flex items-center gap-1">
                           <BookOpen className="w-3.5 h-3.5" />
+                          {cleanLabel(
+                            (feeSummary.length > 0 ? feeSummary[0].payment_mode : 'per_semester'),
+                            selectedStudent.current_module
+                          )}
+                          <ChevronRight className="w-3 h-3" />
                           Semester {selectedStudent.current_semester}
                         </span>
                         {selectedStudent.sponsorship_type && selectedStudent.sponsorship_type !== 'self' && (
@@ -925,29 +823,6 @@ export default function PaymentsPage() {
                             {Number(currentClearance.paid_pct).toFixed(0)}% cleared this semester
                           </span>
                         )}
-                      </div>
-
-                      {/* ── Fee Action Buttons ── */}
-                      <div className="mt-4 flex items-center gap-3 flex-wrap">
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            if (!confirm('Are you sure you want to unlock this student\'s transcript? This is gated by full payment. Wait... the transcript is already unlocked by the system when balance is zero.')) return;
-                            alert('Transcript unlock is automatic when all fees are cleared (balance = 0).');
-                          }}
-                          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/60 transition-colors"
-                        >
-                          {selectedStudent.transcript_unlocked ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
-                          {selectedStudent.transcript_unlocked ? 'Transcript Unlocked' : 'Locked Transcript'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowFeeAdjustModal(true)}
-                          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-950/60 transition-colors"
-                        >
-                          <Plus className="w-3 h-3" />
-                          Fee Adjustment
-                        </button>
                       </div>
                     </div>
                   </div>
@@ -971,8 +846,8 @@ export default function PaymentsPage() {
                     <Wallet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div>
-                    <h2 className="font-semibold text-sm text-slate-900 dark:text-white">Fee Summary</h2>
-                    <p className="text-xs text-slate-400 dark:text-slate-500">Click a line to fill the payment form</p>
+                    <h2 className="font-semibold text-sm text-slate-900 dark:text-white">Semester Balances</h2>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">Click a semester to fill the payment form</p>
                   </div>
                 </div>
                 <div className="p-5 space-y-3">
@@ -981,26 +856,14 @@ export default function PaymentsPage() {
                       No fee summary available
                     </div>
                   ) : (
-                    (() => {
-                      // Find first unpaid semester — only allow paying that one + cleared past semesters
-                      const firstUnpaid = feeSummary.find(s => (s.total_paid || 0) < (s.tuition_fee + s.practical_fee + s.additional_fees) * 0.95);
-                      return feeSummary.map(s => {
-                        const total = s.tuition_fee + s.practical_fee + s.additional_fees;
-                        const pct = total > 0 ? Math.min(Math.round(((s.total_paid || 0) / total) * 100), 100) : 0;
-                        const cleared = pct >= 95;
-                        // Lock semesters after the first unpaid one
-                        const isLocked = firstUnpaid && s.semester_index > firstUnpaid.semester_index && !cleared;
-                        return (
-                          <SemesterCard
-                            key={s.semester_id}
-                            summary={s}
-                            selected={selectedSemSummary?.semester_id === s.semester_id}
-                            onClick={() => !isLocked && handleSemesterClick(s)}
-                            locked={isLocked}
-                          />
-                        );
-                      });
-                    })()
+                    feeSummary.map(s => (
+                      <SemesterCard
+                        key={s.semester_id}
+                        summary={s}
+                        selected={selectedSemSummary?.semester_id === s.semester_id}
+                        onClick={() => handleSemesterClick(s)}
+                      />
+                    ))
                   )}
                 </div>
               </div>
@@ -1034,7 +897,7 @@ export default function PaymentsPage() {
                           <div className="flex-1 min-w-0">
                             <p className="font-semibold text-sm text-slate-900 dark:text-white">{fmt(p.amount)}</p>
                             <p className="text-xs text-slate-400 dark:text-slate-500 truncate">
-                              Sem {p.semester_number}
+                              {p.module_label}{p.semester_number ? ` · Sem ${p.semester_number}` : ''}
                               {p.transaction_id && ` · ${p.transaction_id}`}
                             </p>
                           </div>
@@ -1078,7 +941,9 @@ export default function PaymentsPage() {
                   <h2 className="font-semibold text-sm text-slate-900 dark:text-white">Record Payment</h2>
                   <p className="text-xs text-slate-400 dark:text-slate-500">
                     {selectedSemSummary
-                      ? `Semester ${selectedSemSummary.semester_index}`
+                      ? selectedSemSummary.payment_mode === 'per_module'
+                        ? `Stage ${selectedSemSummary.module_index}`
+                        : `${selectedSemSummary.module_label || `Module ${selectedSemSummary.module_index}`} · Semester ${selectedSemSummary.semester_index}`
                       : 'Fill all required fields'}
                   </p>
                 </div>
@@ -1104,14 +969,49 @@ export default function PaymentsPage() {
 
                 <form onSubmit={handleSubmit} className="space-y-5">
 
-                  {/* Selected semester reminder — click a semester card to select */}
-                  {selectedSemSummary ? (
+                  {/* ── Semester selector (if not clicked from summary) ── */}
+                  {!selectedSemSummary && (
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">
+                        Semester <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={form.semester_id}
+                        onChange={e => {
+                          const sem = feeSummary.find(s => s.semester_id === e.target.value);
+                          if (sem) {
+                            setSelectedSemSummary(sem);
+                            setField('semester_id', sem.semester_id);
+                            setField('module_id', sem.module_id);
+                          }
+                        }}
+                        className={`w-full px-3 py-2.5 text-sm rounded-xl border bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors ${
+                          errors.semester_id ? 'border-red-400' : 'border-slate-300 dark:border-slate-700'
+                        }`}
+                      >
+                        <option value="">Select semester...</option>
+                        {feeSummary.map(s => (
+                          <option key={s.semester_id} value={s.semester_id}>
+                            {s.payment_mode === 'per_module'
+                              ? `Stage ${s.module_index} — ${fmt(s.balance)} ${s.balance > 0 ? 'outstanding' : 'paid in full'}`
+                              : `${s.module_label || `Module ${s.module_index}`} · Semester ${s.semester_index} — ${fmt(s.balance)} outstanding`
+                            }
+                          </option>
+                        ))}
+                      </select>
+                      {errors.semester_id && <p className="mt-1.5 text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.semester_id}</p>}
+                    </div>
+                  )}
+
+                  {/* Selected semester reminder */}
+                  {selectedSemSummary && (
                     <div className="flex items-center justify-between p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800">
                       <div>
                         <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">
                           {selectedSemSummary.payment_mode === 'per_module'
-                            ? (selectedSemSummary.module_label || `Stage ${selectedSemSummary.module_index}`)
-                            : `Semester ${selectedSemSummary.semester_index}`}
+                            ? `Stage ${selectedSemSummary.module_index}`
+                            : `${selectedSemSummary.module_label || `Module ${selectedSemSummary.module_index}`} · Semester ${selectedSemSummary.semester_index}`
+                          }
                         </p>
                         <p className="text-xs text-indigo-500 dark:text-indigo-400 font-mono mt-0.5">
                           Outstanding: {fmt(selectedSemSummary.balance)}
@@ -1124,12 +1024,6 @@ export default function PaymentsPage() {
                       >
                         <X className="w-4 h-4" />
                       </button>
-                    </div>
-                  ) : (
-                    <div className="p-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/30 text-center">
-                      <p className="text-xs text-slate-400 dark:text-slate-500">
-                        Select a fee line above to start the payment form
-                      </p>
                     </div>
                   )}
 
@@ -1261,9 +1155,11 @@ export default function PaymentsPage() {
                         <input
                           type="text"
                           value={form.receipt_number}
-                          readOnly
+                          onChange={e => setField('receipt_number', e.target.value)}
                           placeholder="RCP-YYYYMMDD-XXX"
-                          className="w-full pl-9 pr-8 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 font-mono cursor-not-allowed"
+                          className={`w-full pl-9 pr-8 py-2.5 text-sm rounded-xl border bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors font-mono ${
+                            errors.receipt_number ? 'border-red-400' : 'border-slate-300 dark:border-slate-700'
+                          }`}
                         />
                         <button
                           type="button"
@@ -1337,105 +1233,6 @@ export default function PaymentsPage() {
                     Clearance trigger runs automatically · Results unlock at 95% paid
                   </p>
                 </form>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── FEE ADJUSTMENT MODAL ── */}
-        {showFeeAdjustModal && selectedStudent && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div className="bg-gray-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl max-w-md w-full p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-sm text-slate-900 dark:text-white">Fee Adjustment</h3>
-                <button onClick={() => { setShowFeeAdjustModal(false); setAdjustSemesterId(''); setAdjustNewAmount(0); setAdjustReason(''); }} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Record a fee adjustment for <strong>{selectedStudent.full_name}</strong>. This will be logged in <code>fee_adjustments</code> with the reason provided.
-              </p>
-              <select
-                value={adjustSemesterId}
-                onChange={e => setAdjustSemesterId(e.target.value)}
-                className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-white"
-              >
-                <option value="">Select semester...</option>
-                {feeSummary.map(s => {
-                  const cur = s.tuition_fee + s.practical_fee;
-                  return (
-                    <option key={s.semester_id} value={s.semester_id}>
-                      Semester {s.semester_index} — Current: KES {cur.toLocaleString()}
-                    </option>
-                  );
-                })}
-              </select>
-              {adjustSemesterId && (() => {
-                const sem = feeSummary.find(s => s.semester_id === adjustSemesterId);
-                const cur = sem ? sem.tuition_fee + sem.practical_fee : 0;
-                return (
-                  <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-3 text-xs text-slate-500 dark:text-slate-400">
-                    Current fee: <strong className="font-mono">KES {cur.toLocaleString()}</strong>
-                  </div>
-                );
-              })()}
-              <input
-                type="number"
-                min="0"
-                value={adjustNewAmount || ''}
-                onChange={e => setAdjustNewAmount(parseFloat(e.target.value) || 0)}
-                placeholder="New total amount (KES)"
-                className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-white"
-              />
-              <textarea
-                value={adjustReason}
-                onChange={e => setAdjustReason(e.target.value)}
-                placeholder="Reason for adjustment (required)"
-                rows={2}
-                className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-white"
-              ></textarea>
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => { setShowFeeAdjustModal(false); setAdjustSemesterId(''); setAdjustNewAmount(0); setAdjustReason(''); }}
-                  className="flex-1 px-4 py-2.5 text-sm font-semibold rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 bg-gray-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={adjustSubmitting || !adjustSemesterId || !adjustReason || adjustNewAmount <= 0}
-                  onClick={async () => {
-                    if (!supabase) return;
-                    setAdjustSubmitting(true);
-                    const sem = feeSummary.find(s => s.semester_id === adjustSemesterId);
-                    const oldAmount = sem ? sem.tuition_fee + sem.practical_fee : 0;
-                    const { error } = await supabase.from('fee_adjustments').insert({
-                      application_id: selectedStudent.application_id,
-                      old_amount: oldAmount,
-                      new_amount: adjustNewAmount,
-                      reason: adjustReason,
-                      adjusted_at: new Date().toISOString(),
-                    });
-                    if (error) {
-                      alert('Error: ' + error.message);
-                    } else {
-                      alert(`Adjustment logged! Old: KES ${oldAmount.toLocaleString()} → New: KES ${adjustNewAmount.toLocaleString()}`);
-                      setShowFeeAdjustModal(false);
-                      setAdjustSemesterId('');
-                      setAdjustNewAmount(0);
-                      setAdjustReason('');
-                    }
-                    setAdjustSubmitting(false);
-                  }}
-                  className={`flex-1 px-4 py-2.5 text-sm font-semibold rounded-xl transition-colors ${
-                    adjustSubmitting || !adjustSemesterId || !adjustReason || adjustNewAmount <= 0
-                      ? 'bg-indigo-400 text-white cursor-not-allowed'
-                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                  }`}
-                >
-                  {adjustSubmitting ? 'Submitting...' : 'Submit Adjustment'}
-                </button>
               </div>
             </div>
           </div>
