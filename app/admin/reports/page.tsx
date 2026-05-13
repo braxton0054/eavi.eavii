@@ -31,6 +31,27 @@ export default function ReportsPage() {
   const [feeStructure, setFeeStructure] = useState<any[]>([]);
   const [studentFeeBalance, setStudentFeeBalance] = useState<any[]>([]);
   const [studentsWithGuardians, setStudentsWithGuardians] = useState<any[]>([]);
+  // New report views
+  const [feeCollectionByMethod, setFeeCollectionByMethod] = useState<any[]>([]);
+  const [overdueInstallments, setOverdueInstallments] = useState<any[]>([]);
+  const [dailyFeeCollection, setDailyFeeCollection] = useState<any[]>([]);
+  const [feeCollectionRate, setFeeCollectionRate] = useState<any[]>([]);
+  const [studentsOnHold, setStudentsOnHold] = useState<any[]>([]);
+  const [creditBalances, setCreditBalances] = useState<any[]>([]);
+  const [enrollmentStats, setEnrollmentStats] = useState<any[]>([]);
+  const [studentStatusBreakdown, setStudentStatusBreakdown] = useState<any[]>([]);
+  const [studentsByModule, setStudentsByModule] = useState<any[]>([]);
+  const [incompleteProfiles, setIncompleteProfiles] = useState<any[]>([]);
+  const [studentsWithoutGuardians, setStudentsWithoutGuardians] = useState<any[]>([]);
+  const [passFailSummary, setPassFailSummary] = useState<any[]>([]);
+  const [applicationsPipeline, setApplicationsPipeline] = useState<any[]>([]);
+  const [enrollmentGrowth, setEnrollmentGrowth] = useState<any[]>([]);
+  const [missingDocuments, setMissingDocuments] = useState<any[]>([]);
+  const [courseCapacity, setCourseCapacity] = useState<any[]>([]);
+  const [pendingPromotion, setPendingPromotion] = useState<any[]>([]);
+  const [graduationPipeline, setGraduationPipeline] = useState<any[]>([]);
+  const [creditExemptions, setCreditExemptions] = useState<any[]>([]);
+  const [expandedReports, setExpandedReports] = useState<Record<string, boolean>>({});
   
   // Exam data
   const [classResults, setClassResults] = useState<any[]>([]);
@@ -236,6 +257,33 @@ export default function ReportsPage() {
 
       const { data: students } = await supabase.from('vw_students_with_guardians').select('*').limit(100);
       if (students) setStudentsWithGuardians(students);
+
+      // Load all new report views
+      const reportViews: [string, (d: any[]) => void][] = [
+        ['vw_fee_collection_by_method', setFeeCollectionByMethod],
+        ['vw_overdue_installments', setOverdueInstallments],
+        ['vw_daily_fee_collection', setDailyFeeCollection],
+        ['vw_fee_collection_rate', setFeeCollectionRate],
+        ['vw_students_on_hold', setStudentsOnHold],
+        ['vw_credit_balances', setCreditBalances],
+        ['vw_enrollment_stats', setEnrollmentStats],
+        ['vw_student_status_breakdown', setStudentStatusBreakdown],
+        ['vw_students_by_module', setStudentsByModule],
+        ['vw_incomplete_profiles', setIncompleteProfiles],
+        ['vw_students_without_guardians', setStudentsWithoutGuardians],
+        ['vw_pass_fail_summary', setPassFailSummary],
+        ['vw_applications_pipeline', setApplicationsPipeline],
+        ['vw_enrollment_growth', setEnrollmentGrowth],
+        ['vw_missing_documents', setMissingDocuments],
+        ['vw_course_capacity', setCourseCapacity],
+        ['vw_pending_promotion', setPendingPromotion],
+        ['vw_graduation_pipeline', setGraduationPipeline],
+        ['vw_credit_exemptions', setCreditExemptions],
+      ];
+      for (const [view, setter] of reportViews) {
+        const { data } = await supabase.from(view).select('*').limit(200);
+        if (data) setter(data);
+      }
 
     } catch (err) {
       console.error('Error loading fee data:', err);
@@ -933,6 +981,719 @@ export default function ReportsPage() {
             </div>
           )}
 
+
+              {/* Fee Collection by Payment Method */}
+              {feeCollectionByMethod.length > 0 && (
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-3 border border-white/20">
+                  <button onClick={() => setExpandedReports(p => ({...p, ["fee_collection_by_method"]: !p["fee_collection_by_method"]}))}
+                    className="flex items-center justify-between w-full text-left">
+                    <h3 className="text-md font-bold text-white">Fee Collection by Payment Method</h3>
+                    <span className="text-purple-300 text-xs">{expandedReports["fee_collection_by_method"] ? "▲" : "▼"}</span>
+                  </button>
+                  {expandedReports["fee_collection_by_method"] && (
+                    <div className="overflow-x-auto mt-2 max-h-72 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-gray-900">
+                          <tr className="border-b border-white/20">
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Campus</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Dept</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Course</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Method</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Txns</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Students</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {feeCollectionByMethod.map((row: any, i: number) => (
+                            <tr key={i} className="border-b border-white/10 text-white">
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.campus}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.department}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.course_name}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.payment_method}</td>
+                              <td className="text-right py-1.5 px-2">{row.transaction_count}</td>
+                              <td className="text-right py-1.5 px-2">{row.students_count}</td>
+                              <td className="text-right py-1.5 px-2 whitespace-nowrap">KES {Number(row.total_collected || 0).toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Overdue Installments */}
+              {overdueInstallments.length > 0 && (
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-3 border border-white/20">
+                  <button onClick={() => setExpandedReports(p => ({...p, ["overdue_installments"]: !p["overdue_installments"]}))}
+                    className="flex items-center justify-between w-full text-left">
+                    <h3 className="text-md font-bold text-white">Overdue Installments</h3>
+                    <span className="text-purple-300 text-xs">{expandedReports["overdue_installments"] ? "▲" : "▼"}</span>
+                  </button>
+                  {expandedReports["overdue_installments"] && (
+                    <div className="overflow-x-auto mt-2 max-h-72 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-gray-900">
+                          <tr className="border-b border-white/20">
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Campus</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Course</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Adm No</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Student</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Amount</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Days</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {overdueInstallments.map((row: any, i: number) => (
+                            <tr key={i} className="border-b border-white/10 text-white">
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.campus}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.course_name}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.admission_number}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.student_name}</td>
+                              <td className="text-right py-1.5 px-2 whitespace-nowrap">KES {Number(row.total_due || 0).toLocaleString()}</td>
+                              <td className="text-right py-1.5 px-2">{row.days_overdue}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Daily Fee Collection */}
+              {dailyFeeCollection.length > 0 && (
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-3 border border-white/20">
+                  <button onClick={() => setExpandedReports(p => ({...p, ["daily_fee"]: !p["daily_fee"]}))}
+                    className="flex items-center justify-between w-full text-left">
+                    <h3 className="text-md font-bold text-white">Daily Fee Collection</h3>
+                    <span className="text-purple-300 text-xs">{expandedReports["daily_fee"] ? "▲" : "▼"}</span>
+                  </button>
+                  {expandedReports["daily_fee"] && (
+                    <div className="overflow-x-auto mt-2 max-h-72 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-gray-900">
+                          <tr className="border-b border-white/20">
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Date</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Campus</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Txns</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Students</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Collected</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {dailyFeeCollection.map((row: any, i: number) => (
+                            <tr key={i} className="border-b border-white/10 text-white">
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.payment_date}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.campus}</td>
+                              <td className="text-right py-1.5 px-2">{row.transaction_count}</td>
+                              <td className="text-right py-1.5 px-2">{row.students_paid}</td>
+                              <td className="text-right py-1.5 px-2 whitespace-nowrap">KES {Number(row.total_collected || 0).toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Fee Collection Rate */}
+              {feeCollectionRate.length > 0 && (
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-3 border border-white/20">
+                  <button onClick={() => setExpandedReports(p => ({...p, ["fee_collection_rate"]: !p["fee_collection_rate"]}))}
+                    className="flex items-center justify-between w-full text-left">
+                    <h3 className="text-md font-bold text-white">Fee Collection Rate</h3>
+                    <span className="text-purple-300 text-xs">{expandedReports["fee_collection_rate"] ? "▲" : "▼"}</span>
+                  </button>
+                  {expandedReports["fee_collection_rate"] && (
+                    <div className="overflow-x-auto mt-2 max-h-72 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-gray-900">
+                          <tr className="border-b border-white/20">
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Dept</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Course</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Level</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Students</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Expected</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Paid</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Rate %</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">O/S</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {feeCollectionRate.map((row: any, i: number) => (
+                            <tr key={i} className="border-b border-white/10 text-white">
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.department}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.course_name}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.course_level}</td>
+                              <td className="text-right py-1.5 px-2">{row.enrolled_students}</td>
+                              <td className="text-right py-1.5 px-2 whitespace-nowrap">KES {Number(row.total_expected || 0).toLocaleString()}</td>
+                              <td className="text-right py-1.5 px-2 whitespace-nowrap">KES {Number(row.total_paid || 0).toLocaleString()}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.collection_rate_pct}</td>
+                              <td className="text-right py-1.5 px-2 whitespace-nowrap">KES {Number(row.outstanding_balance || 0).toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Students on Financial Hold */}
+              {studentsOnHold.length > 0 && (
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-3 border border-white/20">
+                  <button onClick={() => setExpandedReports(p => ({...p, ["students_on_hold"]: !p["students_on_hold"]}))}
+                    className="flex items-center justify-between w-full text-left">
+                    <h3 className="text-md font-bold text-white">Students on Financial Hold</h3>
+                    <span className="text-purple-300 text-xs">{expandedReports["students_on_hold"] ? "▲" : "▼"}</span>
+                  </button>
+                  {expandedReports["students_on_hold"] && (
+                    <div className="overflow-x-auto mt-2 max-h-72 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-gray-900">
+                          <tr className="border-b border-white/20">
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Adm No</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Student</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Phone</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Course</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Balance</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Mod</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Sem</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {studentsOnHold.map((row: any, i: number) => (
+                            <tr key={i} className="border-b border-white/10 text-white">
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.admission_number}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.full_name}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.phone}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.course_name}</td>
+                              <td className="text-right py-1.5 px-2 whitespace-nowrap">KES {Number(row.total_balance || 0).toLocaleString()}</td>
+                              <td className="text-right py-1.5 px-2">{row.current_module}</td>
+                              <td className="text-right py-1.5 px-2">{row.current_semester}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Credit Balances */}
+              {creditBalances.length > 0 && (
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-3 border border-white/20">
+                  <button onClick={() => setExpandedReports(p => ({...p, ["credit_balances"]: !p["credit_balances"]}))}
+                    className="flex items-center justify-between w-full text-left">
+                    <h3 className="text-md font-bold text-white">Credit Balances</h3>
+                    <span className="text-purple-300 text-xs">{expandedReports["credit_balances"] ? "▲" : "▼"}</span>
+                  </button>
+                  {expandedReports["credit_balances"] && (
+                    <div className="overflow-x-auto mt-2 max-h-72 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-gray-900">
+                          <tr className="border-b border-white/20">
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Adm No</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Student</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Credit</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Balance</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {creditBalances.map((row: any, i: number) => (
+                            <tr key={i} className="border-b border-white/10 text-white">
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.admission_number}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.full_name}</td>
+                              <td className="text-right py-1.5 px-2 whitespace-nowrap">KES {Number(row.credit_balance || 0).toLocaleString()}</td>
+                              <td className="text-right py-1.5 px-2 whitespace-nowrap">KES {Number(row.total_balance || 0).toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Enrollment Stats */}
+              {enrollmentStats.length > 0 && (
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-3 border border-white/20">
+                  <button onClick={() => setExpandedReports(p => ({...p, ["enrollment_stats"]: !p["enrollment_stats"]}))}
+                    className="flex items-center justify-between w-full text-left">
+                    <h3 className="text-md font-bold text-white">Enrollment Stats</h3>
+                    <span className="text-purple-300 text-xs">{expandedReports["enrollment_stats"] ? "▲" : "▼"}</span>
+                  </button>
+                  {expandedReports["enrollment_stats"] && (
+                    <div className="overflow-x-auto mt-2 max-h-72 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-gray-900">
+                          <tr className="border-b border-white/20">
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Campus</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Course</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Type</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Count</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {enrollmentStats.map((row: any, i: number) => (
+                            <tr key={i} className="border-b border-white/10 text-white">
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.campus}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.course_name}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.enrollment_type}</td>
+                              <td className="text-right py-1.5 px-2">{row.student_count}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Status Breakdown */}
+              {studentStatusBreakdown.length > 0 && (
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-3 border border-white/20">
+                  <button onClick={() => setExpandedReports(p => ({...p, ["status_breakdown"]: !p["status_breakdown"]}))}
+                    className="flex items-center justify-between w-full text-left">
+                    <h3 className="text-md font-bold text-white">Status Breakdown</h3>
+                    <span className="text-purple-300 text-xs">{expandedReports["status_breakdown"] ? "▲" : "▼"}</span>
+                  </button>
+                  {expandedReports["status_breakdown"] && (
+                    <div className="overflow-x-auto mt-2 max-h-72 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-gray-900">
+                          <tr className="border-b border-white/20">
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Dept</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Status</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Count</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {studentStatusBreakdown.map((row: any, i: number) => (
+                            <tr key={i} className="border-b border-white/10 text-white">
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.department}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.student_status}</td>
+                              <td className="text-right py-1.5 px-2">{row.student_count}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Students by Module */}
+              {studentsByModule.length > 0 && (
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-3 border border-white/20">
+                  <button onClick={() => setExpandedReports(p => ({...p, ["students_by_module"]: !p["students_by_module"]}))}
+                    className="flex items-center justify-between w-full text-left">
+                    <h3 className="text-md font-bold text-white">Students by Module</h3>
+                    <span className="text-purple-300 text-xs">{expandedReports["students_by_module"] ? "▲" : "▼"}</span>
+                  </button>
+                  {expandedReports["students_by_module"] && (
+                    <div className="overflow-x-auto mt-2 max-h-72 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-gray-900">
+                          <tr className="border-b border-white/20">
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Course</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Level</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Mod</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Sem</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Count</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {studentsByModule.map((row: any, i: number) => (
+                            <tr key={i} className="border-b border-white/10 text-white">
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.course_name}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.course_level}</td>
+                              <td className="text-right py-1.5 px-2">{row.current_module}</td>
+                              <td className="text-right py-1.5 px-2">{row.current_semester}</td>
+                              <td className="text-right py-1.5 px-2">{row.student_count}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Incomplete Profiles */}
+              {incompleteProfiles.length > 0 && (
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-3 border border-white/20">
+                  <button onClick={() => setExpandedReports(p => ({...p, ["incomplete_profiles"]: !p["incomplete_profiles"]}))}
+                    className="flex items-center justify-between w-full text-left">
+                    <h3 className="text-md font-bold text-white">Incomplete Profiles</h3>
+                    <span className="text-purple-300 text-xs">{expandedReports["incomplete_profiles"] ? "▲" : "▼"}</span>
+                  </button>
+                  {expandedReports["incomplete_profiles"] && (
+                    <div className="overflow-x-auto mt-2 max-h-72 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-gray-900">
+                          <tr className="border-b border-white/20">
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Adm No</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Student</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Phone</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Course</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {incompleteProfiles.map((row: any, i: number) => (
+                            <tr key={i} className="border-b border-white/10 text-white">
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.admission_number}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.full_name}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.phone}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.course_name}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.profile_status}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* No Guardians */}
+              {studentsWithoutGuardians.length > 0 && (
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-3 border border-white/20">
+                  <button onClick={() => setExpandedReports(p => ({...p, ["no_guardians"]: !p["no_guardians"]}))}
+                    className="flex items-center justify-between w-full text-left">
+                    <h3 className="text-md font-bold text-white">No Guardians</h3>
+                    <span className="text-purple-300 text-xs">{expandedReports["no_guardians"] ? "▲" : "▼"}</span>
+                  </button>
+                  {expandedReports["no_guardians"] && (
+                    <div className="overflow-x-auto mt-2 max-h-72 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-gray-900">
+                          <tr className="border-b border-white/20">
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Adm No</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Student</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Phone</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Course</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {studentsWithoutGuardians.map((row: any, i: number) => (
+                            <tr key={i} className="border-b border-white/10 text-white">
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.admission_number}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.full_name}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.phone}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.course_name}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Pass/Fail Summary */}
+              {passFailSummary.length > 0 && (
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-3 border border-white/20">
+                  <button onClick={() => setExpandedReports(p => ({...p, ["pass_fail"]: !p["pass_fail"]}))}
+                    className="flex items-center justify-between w-full text-left">
+                    <h3 className="text-md font-bold text-white">Pass/Fail Summary</h3>
+                    <span className="text-purple-300 text-xs">{expandedReports["pass_fail"] ? "▲" : "▼"}</span>
+                  </button>
+                  {expandedReports["pass_fail"] && (
+                    <div className="overflow-x-auto mt-2 max-h-72 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-gray-900">
+                          <tr className="border-b border-white/20">
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Course</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Mod</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Sem</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Total</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Pass</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Fail</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Avg %</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {passFailSummary.map((row: any, i: number) => (
+                            <tr key={i} className="border-b border-white/10 text-white">
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.course_name}</td>
+                              <td className="text-right py-1.5 px-2">{row.module_index}</td>
+                              <td className="text-right py-1.5 px-2">{row.semester}</td>
+                              <td className="text-right py-1.5 px-2">{row.total_students}</td>
+                              <td className="text-right py-1.5 px-2">{row.passed}</td>
+                              <td className="text-right py-1.5 px-2">{row.failed}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.average_mark}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Applications Pipeline */}
+              {applicationsPipeline.length > 0 && (
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-3 border border-white/20">
+                  <button onClick={() => setExpandedReports(p => ({...p, ["app_pipeline"]: !p["app_pipeline"]}))}
+                    className="flex items-center justify-between w-full text-left">
+                    <h3 className="text-md font-bold text-white">Applications Pipeline</h3>
+                    <span className="text-purple-300 text-xs">{expandedReports["app_pipeline"] ? "▲" : "▼"}</span>
+                  </button>
+                  {expandedReports["app_pipeline"] && (
+                    <div className="overflow-x-auto mt-2 max-h-72 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-gray-900">
+                          <tr className="border-b border-white/20">
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Campus</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Course</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Intake</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Status</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Count</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {applicationsPipeline.map((row: any, i: number) => (
+                            <tr key={i} className="border-b border-white/10 text-white">
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.campus}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.course_name}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.intake}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.status}</td>
+                              <td className="text-right py-1.5 px-2">{row.application_count}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Enrollment Growth */}
+              {enrollmentGrowth.length > 0 && (
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-3 border border-white/20">
+                  <button onClick={() => setExpandedReports(p => ({...p, ["enrollment_growth"]: !p["enrollment_growth"]}))}
+                    className="flex items-center justify-between w-full text-left">
+                    <h3 className="text-md font-bold text-white">Enrollment Growth</h3>
+                    <span className="text-purple-300 text-xs">{expandedReports["enrollment_growth"] ? "▲" : "▼"}</span>
+                  </button>
+                  {expandedReports["enrollment_growth"] && (
+                    <div className="overflow-x-auto mt-2 max-h-72 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-gray-900">
+                          <tr className="border-b border-white/20">
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Intake</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Month</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Total</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">New</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {enrollmentGrowth.map((row: any, i: number) => (
+                            <tr key={i} className="border-b border-white/10 text-white">
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.intake}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.enrollment_month}</td>
+                              <td className="text-right py-1.5 px-2">{row.enrolled_count}</td>
+                              <td className="text-right py-1.5 px-2">{row.new_students}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Missing Documents */}
+              {missingDocuments.length > 0 && (
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-3 border border-white/20">
+                  <button onClick={() => setExpandedReports(p => ({...p, ["missing_docs"]: !p["missing_docs"]}))}
+                    className="flex items-center justify-between w-full text-left">
+                    <h3 className="text-md font-bold text-white">Missing Documents</h3>
+                    <span className="text-purple-300 text-xs">{expandedReports["missing_docs"] ? "▲" : "▼"}</span>
+                  </button>
+                  {expandedReports["missing_docs"] && (
+                    <div className="overflow-x-auto mt-2 max-h-72 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-gray-900">
+                          <tr className="border-b border-white/20">
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Adm No</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Student</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Phone</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Course</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {missingDocuments.map((row: any, i: number) => (
+                            <tr key={i} className="border-b border-white/10 text-white">
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.admission_number}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.full_name}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.phone}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.course_name}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Course Capacity */}
+              {courseCapacity.length > 0 && (
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-3 border border-white/20">
+                  <button onClick={() => setExpandedReports(p => ({...p, ["course_capacity"]: !p["course_capacity"]}))}
+                    className="flex items-center justify-between w-full text-left">
+                    <h3 className="text-md font-bold text-white">Course Capacity</h3>
+                    <span className="text-purple-300 text-xs">{expandedReports["course_capacity"] ? "▲" : "▼"}</span>
+                  </button>
+                  {expandedReports["course_capacity"] && (
+                    <div className="overflow-x-auto mt-2 max-h-72 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-gray-900">
+                          <tr className="border-b border-white/20">
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Campus</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Dept</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Course</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Level</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Body</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Students</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {courseCapacity.map((row: any, i: number) => (
+                            <tr key={i} className="border-b border-white/10 text-white">
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.campus}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.department}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.course_name}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.course_level}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.exam_body}</td>
+                              <td className="text-right py-1.5 px-2">{row.current_enrollment}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Pending Promotion */}
+              {pendingPromotion.length > 0 && (
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-3 border border-white/20">
+                  <button onClick={() => setExpandedReports(p => ({...p, ["pending_promotion"]: !p["pending_promotion"]}))}
+                    className="flex items-center justify-between w-full text-left">
+                    <h3 className="text-md font-bold text-white">Pending Promotion</h3>
+                    <span className="text-purple-300 text-xs">{expandedReports["pending_promotion"] ? "▲" : "▼"}</span>
+                  </button>
+                  {expandedReports["pending_promotion"] && (
+                    <div className="overflow-x-auto mt-2 max-h-72 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-gray-900">
+                          <tr className="border-b border-white/20">
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Adm No</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Student</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Course</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Mod</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Sem</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pendingPromotion.map((row: any, i: number) => (
+                            <tr key={i} className="border-b border-white/10 text-white">
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.admission_number}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.full_name}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.course_name}</td>
+                              <td className="text-right py-1.5 px-2">{row.current_module}</td>
+                              <td className="text-right py-1.5 px-2">{row.current_semester}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Graduation Pipeline */}
+              {graduationPipeline.length > 0 && (
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-3 border border-white/20">
+                  <button onClick={() => setExpandedReports(p => ({...p, ["graduation"]: !p["graduation"]}))}
+                    className="flex items-center justify-between w-full text-left">
+                    <h3 className="text-md font-bold text-white">Graduation Pipeline</h3>
+                    <span className="text-purple-300 text-xs">{expandedReports["graduation"] ? "▲" : "▼"}</span>
+                  </button>
+                  {expandedReports["graduation"] && (
+                    <div className="overflow-x-auto mt-2 max-h-72 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-gray-900">
+                          <tr className="border-b border-white/20">
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Adm No</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Student</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Course</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Level</th>
+                            <th className="text-right py-1.5 px-2 text-purple-300 whitespace-nowrap">Balance</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Transcript</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {graduationPipeline.map((row: any, i: number) => (
+                            <tr key={i} className="border-b border-white/10 text-white">
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.admission_number}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.full_name}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.course_name}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.course_level}</td>
+                              <td className="text-right py-1.5 px-2 whitespace-nowrap">KES {Number(row.total_balance || 0).toLocaleString()}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.transcript_unlocked}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Credit Exemptions */}
+              {creditExemptions.length > 0 && (
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-3 border border-white/20">
+                  <button onClick={() => setExpandedReports(p => ({...p, ["credit_exemptions"]: !p["credit_exemptions"]}))}
+                    className="flex items-center justify-between w-full text-left">
+                    <h3 className="text-md font-bold text-white">Credit Exemptions</h3>
+                    <span className="text-purple-300 text-xs">{expandedReports["credit_exemptions"] ? "▲" : "▼"}</span>
+                  </button>
+                  {expandedReports["credit_exemptions"] && (
+                    <div className="overflow-x-auto mt-2 max-h-72 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-gray-900">
+                          <tr className="border-b border-white/20">
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Adm No</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Student</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Course</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Type</th>
+                            <th className="text-left py-1.5 px-2 text-purple-300 whitespace-nowrap">Prev School</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {creditExemptions.map((row: any, i: number) => (
+                            <tr key={i} className="border-b border-white/10 text-white">
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.admission_number}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.full_name}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.course_name}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.enrollment_type}</td>
+                              <td className="text-left py-1.5 px-2 truncate max-w-40">{row.previous_school}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
           {/* EXAMS TAB */}
           {activeTab === 'exams' && (
             <div className="space-y-6">
