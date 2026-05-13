@@ -38,10 +38,17 @@ export default function LecturerLogin() {
     const client = createClient();
     setSupabase(client);
 
-    // Handle email confirmation code from URL
-    const searchParams = new URLSearchParams(window.location.search);
-    const code = searchParams.get('code');
-    const confirmed = searchParams.get('confirmed');
+    // Handle email confirmation code from URL (search params or hash)
+    const params = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.replace('#', '?'));
+    const code = params.get('code') || hashParams.get('code');
+    const urlError = params.get('error') || hashParams.get('error');
+    const urlErrorDesc = params.get('error_description') || hashParams.get('error_description');
+    const confirmed = params.get('confirmed');
+
+    if (urlError) {
+      setError('Email confirmation failed: ' + (urlErrorDesc || urlError));
+    }
 
     if (confirmed) {
       setSuccess('Email confirmed successfully! You can now log in.');
@@ -51,7 +58,7 @@ export default function LecturerLogin() {
       client.auth.exchangeCodeForSession(code).then(({ error }: { error: any }) => {
         if (error) {
           console.error('Error exchanging code for session:', error);
-          setError('Email confirmation failed. The link may be expired or invalid.');
+          setError('Email confirmation failed: ' + (error.message || 'The link may be expired or invalid.'));
         } else {
           setSuccess('Email confirmed successfully! You can now log in.');
         }
@@ -118,7 +125,7 @@ export default function LecturerLogin() {
           email: formData.email,
           password: formData.password,
           options: {
-            emailRedirectTo: 'https://www.eavi.shop/login/lecturer',
+            emailRedirectTo: window.location.origin + '/login/lecturer',
             data: {
               lecturer_number: formData.lecturerNumber,
               role: 'lecturer',

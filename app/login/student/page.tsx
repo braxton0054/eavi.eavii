@@ -136,7 +136,7 @@ export default function StudentLogin() {
           email: formData.email,
           password: formData.password,
           options: {
-            emailRedirectTo: 'https://www.eavi.shop/login/student',
+            emailRedirectTo: window.location.origin + '/login/student',
             data: {
               admission_number: formData.admissionNumber,
               role: 'student',
