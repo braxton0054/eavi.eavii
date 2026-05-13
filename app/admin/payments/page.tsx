@@ -256,7 +256,7 @@ function SemesterCard({
               Semester {summary.semester_index}
             </p>
             <p className="text-xs text-slate-400 mt-1">
-              {summary.module_index && `M${summary.module_index} · `}🔒 Pay previous semester first
+🔒 Pay previous semester first
             </p>
           </div>
         </div>
@@ -280,11 +280,7 @@ function SemesterCard({
         <div className="min-w-0">
           <p className="font-semibold text-slate-900 dark:text-white text-sm">
             Semester {summary.semester_index}
-            {summary.module_index > 0 && (
-              <span className="ml-2 font-normal text-xs text-slate-400 dark:text-slate-500">
-                M{summary.module_index}
-              </span>
-            )}
+
           </p>
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 font-mono">
             Tuition {fmt(summary.tuition_fee)}
@@ -472,7 +468,28 @@ export default function PaymentsPage() {
           }
         }
 
-        feeSumm = (sems || []).map((sem: any) => {
+        // Calculate global semester index (continuous across modules)
+        // e.g. Module I sems 1,2,3 → displayed as 1,2,3; Module II sems 1,2,3 → displayed as 4,5,6
+        const semsWithModule = (sems || []).map((sem: any) => ({
+          ...sem,
+          mod_index: mods.find((m: any) => m.id === sem.module_id)?.module_index || 0,
+        }));
+        // Count semesters per module to offset subsequent modules
+        const semCountsByModule: Record<number, number> = {};
+        for (const sem of semsWithModule) {
+          semCountsByModule[sem.mod_index] = (semCountsByModule[sem.mod_index] || 0) + 1;
+        }
+        // Calculate offsets: Module II offset = total sems in Module I, etc.
+        const moduleOffsets: Record<number, number> = {};
+        let cumulative = 0;
+        for (let mi = 1; mi <= Math.max(...Object.keys(semCountsByModule).map(Number), 0); mi++) {
+          if (semCountsByModule[mi]) {
+            moduleOffsets[mi] = cumulative;
+            cumulative += semCountsByModule[mi];
+          }
+        }
+
+        feeSumm = semsWithModule.map((sem: any) => {
           const tuition = parseFloat(sem.fee) || 0;
           const practical = parseFloat(sem.practical_fee) || 0;
           const total = tuition + practical;
@@ -481,13 +498,13 @@ export default function PaymentsPage() {
             application_id: s.id || '',
             admission_number: s.admission_number || '',
             module_id: sem.module_id || '',
-            module_index: mods.find((m: any) => m.id === sem.module_id)?.module_index || 0,
+            module_index: sem.mod_index,
             module_label: mods.find((m: any) => m.id === sem.module_id)?.label || '',
             payment_mode: 'per_semester',
             exam_fee: 0,
             module_exam_body: '',
             semester_id: sem.id || '',
-            semester_index: sem.semester_index,
+            semester_index: sem.semester_index + (moduleOffsets[sem.mod_index] || 0),
             tuition_fee: tuition,
             practical_fee: practical,
             additional_fees: 0,
@@ -1030,7 +1047,7 @@ export default function PaymentsPage() {
                   <h2 className="font-semibold text-sm text-slate-900 dark:text-white">Record Payment</h2>
                   <p className="text-xs text-slate-400 dark:text-slate-500">
                     {selectedSemSummary
-                      ? `Semester ${selectedSemSummary.semester_index}${selectedSemSummary.module_index > 0 ? ` · M${selectedSemSummary.module_index}` : ''}`
+                      ? `Semester ${selectedSemSummary.semester_index}`
                       : 'Fill all required fields'}
                   </p>
                 </div>
@@ -1083,7 +1100,7 @@ export default function PaymentsPage() {
                           return pct < 95; // Only show unpaid semesters
                         }).slice(0, 1).map(s => (
                           <option key={s.semester_id} value={s.semester_id}>
-                            Semester {s.semester_index}{s.module_index > 0 ? ` (M${s.module_index})` : ''} — {fmt(s.balance)} outstanding
+                            Semester {s.semester_index} — {fmt(s.balance)} outstanding
                           </option>
                         ))}
                       </select>
@@ -1096,7 +1113,7 @@ export default function PaymentsPage() {
                     <div className="flex items-center justify-between p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800">
                       <div>
                         <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">
-                          Semester {selectedSemSummary.semester_index}{selectedSemSummary.module_index > 0 ? ` · M${selectedSemSummary.module_index}` : ''}
+                          Semester {selectedSemSummary.semester_index}
                         </p>
                         <p className="text-xs text-indigo-500 dark:text-indigo-400 font-mono mt-0.5">
                           Outstanding: {fmt(selectedSemSummary.balance)}
@@ -1344,7 +1361,7 @@ export default function PaymentsPage() {
                   const cur = s.tuition_fee + s.practical_fee;
                   return (
                     <option key={s.semester_id} value={s.semester_id}>
-                      Semester {s.semester_index}{s.module_index > 0 ? ` (M${s.module_index})` : ''} — Current: KES {cur.toLocaleString()}
+                      Semester {s.semester_index} — Current: KES {cur.toLocaleString()}
                     </option>
                   );
                 })}
