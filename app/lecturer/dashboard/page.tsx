@@ -269,7 +269,12 @@ export default function LecturerDashboard() {
 
   // Setup functions for lecturer self-assignment
   const loadCoursesForSetup = async () => {
-    const { data } = await supabase.from('courses').select('id, name, code').order('name');
+    const { data, error } = await supabase.from('courses').select('id, name, code').order('name');
+    if (error) {
+      console.error('Courses load error:', error);
+      setError('Failed to load courses: ' + error.message);
+      return;
+    }
     setCourses(data || []);
   };
 
