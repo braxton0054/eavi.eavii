@@ -253,11 +253,13 @@ function SemesterCard({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="font-semibold text-slate-500 dark:text-slate-500 text-sm">
-              Semester {summary.semester_index}
+              {summary.module_label && summary.module_label !== `Module ${summary.module_index}`
+                ? `${summary.module_label} – `
+                : summary.module_index > 0
+                ? `Module ${summary.module_index} – `
+                : ''}Semester {summary.semester_index}
             </p>
-            <p className="text-xs text-slate-400 mt-1">
-🔒 Pay previous semester first
-            </p>
+            <p className="text-xs text-slate-400 mt-1">🔒 Pay previous semester first</p>
           </div>
         </div>
       </div>
@@ -279,8 +281,11 @@ function SemesterCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-semibold text-slate-900 dark:text-white text-sm">
-            Semester {summary.semester_index}
-
+            {summary.module_label && summary.module_label !== `Module ${summary.module_index}`
+              ? `${summary.module_label} – `
+              : summary.module_index > 0
+              ? `Module ${summary.module_index} – `
+              : ''}Semester {summary.semester_index}
           </p>
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 font-mono">
             Tuition {fmt(summary.tuition_fee)}
@@ -468,8 +473,11 @@ export default function PaymentsPage() {
           }
         }
 
+        // Get all modules for this course type (used for label context)
+        const allCourseMods = mods || [];
+
         // Filter semesters to only show the student's current module
-        const currentModuleId = mods.find((m: any) => m.module_index === (s.current_module || 1))?.id;
+        const currentModuleId = allCourseMods.find((m: any) => m.module_index === (s.current_module || 1))?.id;
         feeSumm = (sems || [])
           .filter((sem: any) => !currentModuleId || sem.module_id === currentModuleId)
           .map((sem: any) => {
