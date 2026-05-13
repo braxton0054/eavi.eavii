@@ -327,7 +327,7 @@ export default function CoursesPage() {
       const { data: ctData, error: ctError } = await supabase.from('course_types').upsert([{
         course_id: courseId, level, duration_months: courseFormData.total_duration_months,
         study_mode: selectedCourseType === 'INSTALL' ? 'short-course' : 'module', enabled: true,
-        min_kcse_grade: courseFormData.min_kcse_grade, is_modular: courseFormData.is_modular,
+        is_modular: courseFormData.is_modular,
         payment_mode: courseFormData.fee_payment_mode,
       }], { onConflict: 'course_id,level' }).select().single();
       if (ctError) throw ctError;
