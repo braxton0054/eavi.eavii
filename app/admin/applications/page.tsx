@@ -73,7 +73,7 @@ export default function ApplicationsPage() {
     kcse_grade: '',
     course: '',
     course_type: '',
-    campus: campus,
+    campus: ['main','west'].includes(campus) ? campus : 'main',
     gender: '',
     admission_number: '',
     application_date: '',
