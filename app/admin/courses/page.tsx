@@ -160,7 +160,7 @@ export default function CoursesPage() {
   useEffect(() => {
     if (supabase && kcseGrades.length === 0) {
       supabase.from('kcse_grades').select('grade').order('sort_order').then((res: any) => {
-        if (res.data) setKcseGrades(res.data.map((r: any) => r.grade));
+        if (res.data) setKcseGrades(['ID/Birth Certificate', ...res.data.map((r: any) => r.grade)]);
       });
     }
   }, [supabase]);
@@ -328,7 +328,7 @@ export default function CoursesPage() {
         course_id: courseId, level, duration_months: courseFormData.total_duration_months,
         study_mode: selectedCourseType === 'INSTALL' ? 'short-course' : 'module', enabled: true,
         min_kcse_grade: courseFormData.min_kcse_grade, is_modular: courseFormData.is_modular,
-        fee_payment_mode: courseFormData.fee_payment_mode,
+        payment_mode: courseFormData.fee_payment_mode,
       }], { onConflict: 'course_id,level' }).select().single();
       if (ctError) throw ctError;
       setSavedCourseTypeId(ctData.id);
@@ -358,7 +358,7 @@ export default function CoursesPage() {
           course_type_id: courseTypeId, module_index: i+1,
           label: mod.label, duration_months: mod.duration_months, exam_body: examBody,
           exam_fee: mod.exam_fee || 0, fee: mod.fee || 0,
-          fee_payment_mode: courseFormData.fee_payment_mode,
+          payment_mode: courseFormData.fee_payment_mode,
           is_attachment_stage: mod.is_attachment_stage || false,
           has_attachment: mod.has_attachment || false,
           attachment_after_semester: mod.has_attachment ? mod.attachment_after_semester : null,
