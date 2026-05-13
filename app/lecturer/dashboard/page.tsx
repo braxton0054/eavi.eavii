@@ -162,20 +162,26 @@ export default function LecturerDashboard() {
 
       setLecturerInfo(user.user_metadata);
 
-      // Get lecturer UUID — first try lecturer_number from metadata, then email
-      let lecturerData = null;
+      // Debug: log what metadata we have
+      console.log('User metadata:', JSON.stringify(user.user_metadata));
+      
+      // Get lecturer UUID by lecturer_number from JWT metadata
       const lecNumber = user.user_metadata?.lecturer_number;
-      if (lecNumber) {
-        const { data } = await supabase.from('lecturers').select('id').eq('lecturer_number', lecNumber).maybeSingle();
-        lecturerData = data;
-      }
-      if (!lecturerData && user.email) {
-        const { data } = await supabase.from('lecturers').select('id').eq('email', user.email).maybeSingle();
-        lecturerData = data;
+      if (!lecNumber) {
+        setError('Lecturer number missing from your account. Metadata: ' + JSON.stringify(user.user_metadata));
+        setLoading(false);
+        return;
       }
 
-      if (!lecturerData) {
-        setError('Lecturer profile not found. Contact admin to create your account.');
+      const { data: lecturerData, error: lecError } = await supabase
+        .from('lecturers')
+        .select('id, full_name, email')
+        .eq('lecturer_number', lecNumber)
+        .maybeSingle();
+
+      if (lecError || !lecturerData) {
+        console.error('Lecturer lookup error:', lecError);
+        setError('Lecturer profile not found for number ' + lecNumber + '. Contact admin.');
         setLoading(false);
         return;
       }
