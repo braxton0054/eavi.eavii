@@ -326,8 +326,8 @@ export default function LecturerDashboard() {
 
   const handleCreateAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!lecturerId || !setupForm.class_id || setupForm.selected_units.length === 0) {
-      setError('Please select a class and at least one unit');
+    if (!lecturerId || setupForm.selected_units.length === 0) {
+      setError('Please select a course and at least one unit');
       return;
     }
 
@@ -335,31 +335,27 @@ export default function LecturerDashboard() {
     setError('');
 
     try {
-      const selectedClass = availableClasses.find(c => c.id === setupForm.class_id);
-      if (!selectedClass) throw new Error('Class not found');
-
-      // Check if assignment already exists
+      // Check if assignment already exists for this course
       const { data: existing } = await supabase
         .from('lecturer_assignments')
         .select('id')
         .eq('lecturer_id', lecturerId)
-        .eq('class_id', setupForm.class_id)
+        .eq('course_id', setupForm.course_id)
         .maybeSingle();
 
       if (existing) {
-        setError('You are already assigned to this class');
+        setError('You are already assigned to this course');
         setCreatingAssignment(false);
         return;
       }
 
-      // Create lecturer assignment
+      // Create lecturer assignment (without class_id — auto-matched)
       const { data: assignmentData, error: assignmentError } = await supabase
         .from('lecturer_assignments')
         .insert([{
           lecturer_id: lecturerId,
-          class_id: setupForm.class_id,
-          course_id: selectedClass.course_id,
-          campus: selectedClass.campus
+          course_id: setupForm.course_id,
+          campus: 'main',
         }])
         .select()
         .single();
@@ -402,7 +398,7 @@ export default function LecturerDashboard() {
       if (unitsError) throw unitsError;
 
       setSuccess('Assignment created successfully!');
-      setSetupForm({ course_id: '', class_id: '', selected_units: [] });
+      setSetupForm({ course_id: "", class_id: "", selected_units: [] });
       setViewMode('dashboard');
       await loadLecturerClasses(lecturerId);
     } catch (err: any) {
@@ -415,8 +411,7 @@ export default function LecturerDashboard() {
   const openSetup = async () => {
     await loadCoursesForSetup();
     setViewMode('setup');
-    setSetupForm({ course_id: '', class_id: '', selected_units: [] });
-    setAvailableClasses([]);
+    setSetupForm({ course_id: "", class_id: "", selected_units: [] });
     setCourseUnits([]);
   };
 
@@ -471,8 +466,8 @@ export default function LecturerDashboard() {
       setSelectedSemesterAssignment(semData);
     }
     
-    // Load students
-    await loadStudentsForClass(cls.class_id);
+    // Load students (by class_id or course_id fallback)
+    await loadStudentsForClass(cls.class_id, cls.course_id);
     
     // Load units
     await loadUnitsForAssignment(cls.assignment_id);
@@ -486,14 +481,20 @@ export default function LecturerDashboard() {
   };
 
   // Load students for class
-  const loadStudentsForClass = async (classId: string) => {
-    const { data, error } = await supabase
+  const loadStudentsForClass = async (classId: string, courseId?: string) => {
+    let query = supabase
       .from('applications')
       .select('id, full_name, admission_number, current_semester, financial_hold, status')
-      .eq('class_id', classId)
       .eq('status', 'enrolled')
-      .eq('financial_hold', false)
-      .order('full_name');
+      .eq('financial_hold', false);
+
+    if (classId) {
+      query = query.eq('class_id', classId);
+    } else if (courseId) {
+      query = query.eq('course_id', courseId);
+    }
+
+    const { data, error } = await query.order('full_name');
 
     if (error) {
       console.error('Error loading students:', error);
