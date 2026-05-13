@@ -507,13 +507,39 @@ export default function ApplicationsPage() {
         return;
       }
 
+      // Auto-create student_profile if missing
+      const { data: existingProfile } = await supabase
+        .from('student_profiles')
+        .select('id')
+        .eq('application_id', selectedApplication?.id)
+        .maybeSingle();
+
+      if (!existingProfile) {
+        await supabase.from('student_profiles').insert([{
+          application_id: selectedApplication?.id,
+        }]);
+      }
+
+      // Auto-create placeholder guardian records if none exist
+      const { data: existingGuardians } = await supabase
+        .from('guardians')
+        .select('id')
+        .eq('application_id', selectedApplication?.id)
+        .limit(1);
+
+      if (!existingGuardians || existingGuardians.length === 0) {
+        await supabase.from('guardians').insert([
+          { application_id: selectedApplication?.id, relationship: 'Father', name: '', phone: '' },
+          { application_id: selectedApplication?.id, relationship: 'Mother', name: '', phone: '' },
+        ]);
+      }
+
       // Reload applications
       loadApplications(campus);
 
       setShowEnrollModal(false);
-      setSelectedApplication(null);
       setNewAdmissionNumber('');
-      setError('Student enrolled successfully!');
+      setError('Student enrolled! Please complete guardian info on the student details page.');
     } catch (err) {
       setError('Failed to enroll student. Please try again.');
     } finally {
@@ -1098,6 +1124,11 @@ Jane Smith,0723456789,jane@example.com,A-,Certificate in Business,Certificate,we
                   <span className="text-gray-600 text-sm">KCPE Photocopy</span>
                 </label>
               </div>
+            </div>
+
+            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-amber-800 text-xs font-medium">⚠ Guardian/Parent info not included here</p>
+              <p className="text-amber-600 text-xs mt-1">After enrollment, go to student details to add parent/guardian information.</p>
             </div>
 
             <div className="flex gap-3">
