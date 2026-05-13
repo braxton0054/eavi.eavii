@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { createClient } from '@/lib/client';
@@ -8,13 +8,13 @@ import AdmissionLetter from '@/components/AdmissionLetter';
 import GuardianManager from '@/components/GuardianManager';
 import { getCourseTypeConfig } from '@/lib/course-structure';
 
-const KCSE_GRADES = ['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'D-', 'E'];
-const GRADE_VALUE: Record<string, number> = {
-  'A': 12, 'A-': 11, 'B+': 10, 'B': 9, 'B-': 8, 'C+': 7, 'C': 6, 'C-': 5, 'D+': 4, 'D': 3, 'D-': 2, 'E': 1
-};
-
 export default function ApplyPage() {
   const [supabase, setSupabase] = useState<any>(null);
+  const [kcseGrades, setKcseGrades] = useState<{grade: string; value: number}[]>([]);
+  const getGradeValue = useCallback((grade: string) => {
+    const g = kcseGrades.find(k => k.grade === grade);
+    return g?.value ?? 0;
+  }, [kcseGrades]);
   const currentYear = new Date().getFullYear();
   const [formData, setFormData] = useState({
     firstName: '',
@@ -50,6 +50,10 @@ export default function ApplyPage() {
       const client = createClient();
       console.log('Supabase client created:', client ? 'success' : 'failed');
       setSupabase(client);
+      // Load KCSE grades from DB
+      client.from('kcse_grades').select('grade, value').order('sort_order').then((res: any) => {
+        if (res.data) setKcseGrades(res.data);
+      });
     } catch (err: any) {
       console.error('Error creating Supabase client:', err);
       alert('Failed to initialize: ' + err.message);
@@ -184,8 +188,8 @@ export default function ApplyPage() {
   // Compare student grade with course minimum grade
   const compareGrades = (studentGrade: string, minRequiredGrade: string): boolean => {
     if (!studentGrade || !minRequiredGrade) return false;
-    const studentValue = GRADE_VALUE[studentGrade];
-    const minValue = GRADE_VALUE[minRequiredGrade];
+    const studentValue = getGradeValue(studentGrade);
+    const minValue = getGradeValue(minRequiredGrade);
     console.log(`Grade compare: ${studentGrade}(${studentValue}) >= ${minRequiredGrade}(${minValue}) = ${studentValue >= minValue}`);
     return studentValue >= minValue;
   };
@@ -708,7 +712,7 @@ export default function ApplyPage() {
                 className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm md:text-base"
               >
                 <option value="">Select Grade</option>
-                {KCSE_GRADES.map(grade => (
+                {kcseGrades.map(({ grade }) => (
                   <option key={grade} value={grade} className="text-gray-900">{grade}</option>
                 ))}
               </select>

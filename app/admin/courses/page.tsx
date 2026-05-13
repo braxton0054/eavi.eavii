@@ -52,7 +52,6 @@ const LEVEL_LABELS: Record<string, string> = {
   diploma: 'Diploma', certificate: 'Certificate', artisan: 'Artisan', craft: 'Craft',
   level6: 'Higher Diploma (L6)', level5: 'Diploma (L5)', level4: 'Certificate (L4)',
 };
-const GRADES = ['ID/Birth Certificate','A','A-','B+','B','B-','C+','C','C-','D+','D','D-','E'];
 const WIZARD_STEPS = ['Course Details', 'Modules & Fees', 'Units'];
 const ADDITIONAL_FEE_OPTIONS = ['Practical Fee','Admission Fee','Lab Fee','Library Fee','Registration Fee'];
 
@@ -95,6 +94,7 @@ export default function CoursesPage() {
   // View state
   const [viewMode, setViewMode] = useState<'list' | 'add'>('list');
   const [courses, setCourses] = useState<any[]>([]);
+  const [kcseGrades, setKcseGrades] = useState<string[]>([]);
   const [editingCourse, setEditingCourse] = useState<string | null>(null);
 
   // List filters
@@ -156,6 +156,11 @@ export default function CoursesPage() {
   useEffect(() => { if (supabase && viewMode === 'list') loadCourses(); }, [viewMode, supabase]);
   useEffect(() => {
     if (supabase && viewMode === 'add') { loadDepts(); loadQualLevels(); loadSubjects(); }
+    if (supabase && kcseGrades.length === 0) {
+      supabase.from('kcse_grades').select('grade').order('sort_order').then((res: any) => {
+        if (res.data) setKcseGrades(['ID/Birth Certificate', ...res.data.map((r: any) => r.grade)]);
+      });
+    }
   }, [viewMode, supabase]);
 
   const loadDepts = async () => {
@@ -937,7 +942,7 @@ export default function CoursesPage() {
                             <select className="inp" value={courseFormData.min_kcse_grade}
                               onChange={e => setCourseFormData(p => ({ ...p, min_kcse_grade: e.target.value }))}>
                               <option value="">Select grade</option>
-                              {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
+                              {kcseGrades.map(g => <option key={g} value={g}>{g}</option>)}
                             </select>
                           </div>
 
