@@ -101,7 +101,7 @@ export default function LecturerDashboard() {
   const [filteredUnits, setFilteredUnits] = useState<any[]>([]);
   const [setupForm, setSetupForm] = useState({
     course_id: '',
-    class_id: '',
+    campus: '',
     selected_units: [] as string[]
   });
   const [creatingAssignment, setCreatingAssignment] = useState(false);
@@ -332,7 +332,7 @@ export default function LecturerDashboard() {
         .insert([{
           lecturer_id: lecturerId,
           course_id: setupForm.course_id,
-          campus: 'main',
+          campus: setupForm.campus || 'main',
         }])
         .select()
         .single();
@@ -353,7 +353,7 @@ export default function LecturerDashboard() {
       if (unitsError) throw unitsError;
 
       setSuccess('Assignment created successfully!');
-      setSetupForm({ course_id: "", class_id: "", selected_units: [] });
+      setSetupForm({ course_id: "", campus: "", selected_units: [] });
       setViewMode('dashboard');
       await loadLecturerClasses(lecturerId);
     } catch (err: any) {
@@ -366,7 +366,7 @@ export default function LecturerDashboard() {
   const openSetup = async () => {
     await loadCoursesForSetup();
     setViewMode('setup');
-    setSetupForm({ course_id: "", class_id: "", selected_units: [] });
+    setSetupForm({ course_id: "", campus: "", selected_units: [] });
     setCourseUnits([]);
   };
 
@@ -1230,6 +1230,17 @@ export default function LecturerDashboard() {
             </div>
 
             <form onSubmit={handleCreateAssignment} className="glass-neu p-6 space-y-6 max-w-3xl">
+              {/* Campus Selection */}
+              <div>
+                <label className="block text-purple-200 text-sm mb-2">Campus *</label>
+                <select value={setupForm.campus} onChange={(e) => setSetupForm({ ...setupForm, campus: e.target.value, course_id: '', selected_units: [] })}
+                  className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white" required>
+                  <option value="">Select Campus</option>
+                  <option value="main">Main Campus</option>
+                  <option value="west">West Campus</option>
+                </select>
+              </div>
+
               {/* Course Selection */}
               <div>
                 <label className="block text-purple-200 text-sm mb-2">Select Course *</label>
