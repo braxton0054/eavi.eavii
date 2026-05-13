@@ -9,8 +9,6 @@ import { useRouter } from 'next/navigation';
 export const dynamic = 'force-dynamic';
 import jsPDF from 'jspdf';
 
-const DEPARTMENTS = ['ICT', 'Business', 'Engineering', 'Hospitality'];
-
 export default function ResultsPage() {
   const router = useRouter();
   const [supabase, setSupabase] = useState<any>(null);
@@ -23,6 +21,7 @@ export default function ResultsPage() {
   const [filterExamType, setFilterExamType] = useState('');
   const [filterAcademicPeriod, setFilterAcademicPeriod] = useState('');
   const [courses, setCourses] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<string[]>([]);
   const [academicCalendars, setAcademicCalendars] = useState<any[]>([]);
   const [error, setError] = useState('');
   
@@ -80,6 +79,14 @@ export default function ResultsPage() {
     if (data && !error) {
       setCourses(data);
     }
+
+    // Load departments from DB
+    const { data: depts } = await supabase
+      .from('departments')
+      .select('name')
+      .eq('is_active', true)
+      .order('name');
+    if (depts) setDepartments(depts.map((d: any) => d.name));
   };
 
   const loadAcademicCalendars = async (campus: string) => {
@@ -561,7 +568,7 @@ export default function ResultsPage() {
                 className="w-full px-4 py-3 bg-gray-50/10 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
               >
                 <option value="">All Departments</option>
-                {DEPARTMENTS.map(dept => (
+                {departments.map(dept => (
                   <option key={dept} value={dept} className="text-gray-900">{dept}</option>
                 ))}
               </select>
