@@ -1305,51 +1305,17 @@ export default function LecturerDashboard() {
                 </select>
               </div>
 
-              {/* Class Selection */}
-              <div>
-                <label className="block text-purple-200 text-sm mb-2">Select Class / Intake *</label>
-                {setupForm.course_id && availableClasses.length === 0 ? (
-                  <p className="text-orange-300 text-sm">No active classes found for this course. Contact admin to create classes.</p>
-                ) : (
-                  <select
-                    value={setupForm.class_id}
-                    onChange={(e) => {
-                      const clsId = e.target.value;
-                      const cls = availableClasses.find(c => c.id === clsId);
-                      if (cls) {
-                        // Filter units to match this class's module & semester
-                        const filtered = courseUnits.filter(u => u.module_index === cls.module_index && u.semester_index === cls.semester);
-                        setFilteredUnits(filtered);
-                        setSetupForm({ ...setupForm, class_id: clsId, selected_units: [] });
-                      } else {
-                        setFilteredUnits(courseUnits);
-                        setSetupForm({ ...setupForm, class_id: clsId, selected_units: [] });
-                      }
-                    }}
-                    className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white"
-                    required
-                    disabled={!setupForm.course_id}
-                  >
-                    <option value="">{setupForm.course_id ? 'Select a class' : 'Select course first'}</option>
-                    {availableClasses.map((cls) => (
-                      <option key={cls.id} value={cls.id}>
-                        {cls.class_name} — {cls.intake_month} ({cls.campus === 'west' ? 'West' : 'Main'} Campus, Sem {cls.semester}, Mod {cls.module_index})
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
               {/* Units Selection */}
               <div>
                 <label className="block text-purple-200 text-sm mb-2">Select Units You Teach *</label>
+                <p className="text-purple-300 text-xs mb-3">Check all units/subjects you teach in this course.</p>
                 {setupForm.course_id && courseUnits.length === 0 ? (
                   <p className="text-orange-300 text-sm">No units found for this course.</p>
-                ) : !setupForm.class_id ? (
-                  <p className="text-purple-300 text-sm">Select a class above to see relevant units.</p>
+                ) : !setupForm.course_id ? (
+                  <p className="text-purple-300 text-sm">Select a course first.</p>
                 ) : (
                   <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {(filteredUnits.length > 0 ? filteredUnits : courseUnits).map((unit) => (
+                    {courseUnits.map((unit) => (
                       <label key={unit.unit_code} className="flex items-center gap-3 p-2 hover:bg-white/5 rounded cursor-pointer">
                         <input
                           type="checkbox"
@@ -1394,7 +1360,7 @@ export default function LecturerDashboard() {
                 </button>
                 <button
                   type="submit"
-                  disabled={creatingAssignment || !setupForm.class_id || setupForm.selected_units.length === 0}
+                  disabled={creatingAssignment || setupForm.selected_units.length === 0}
                   className="flex-1 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {creatingAssignment ? 'Creating...' : 'Create Assignment'}
