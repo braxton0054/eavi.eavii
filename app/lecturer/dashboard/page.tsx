@@ -207,33 +207,9 @@ export default function LecturerDashboard() {
   // Load lecturer classes with full details
   const loadLecturerClasses = async (lecId: string) => {
     try {
-      // Query using the view or direct query
       const { data, error } = await supabase
-        .from('lecturer_assignments')
-        .select(`
-          id,
-          class_id,
-          course_id,
-          campus,
-          classes (
-            id,
-            class_name,
-            semester,
-            module_index,
-            intake_month,
-            intake
-          ),
-          courses (name),
-          lecturer_assignment_semesters (
-            id,
-            academic_calendar_id,
-            semester,
-            module_index,
-            exam_type_allowed,
-            is_active,
-            academic_calendar (term_name, cat_opening_date, cat_closing_date, end_term_exam_date)
-          )
-        `)
+        .from('v_lecturer_assignments_full')
+        .select('*')
         .eq('lecturer_id', lecId);
 
       if (error) {
@@ -242,59 +218,52 @@ export default function LecturerDashboard() {
         return;
       }
 
-      const transformed = await Promise.all((data || []).map(async (assignment: any) => {
-        const cls = assignment.classes;
-        const course = assignment.courses;
-        const semester = assignment.lecturer_assignment_semesters?.[0];
-        const calendar = semester?.academic_calendar;
+      const transformed = await Promise.all((data || []).map(async (a: any) => {
+        let classId = a.class_id;
+        let className = a.class_name;
 
-        // If no class linked, find auto-created ones for this course
-        let matchedClass = Array.isArray(cls) ? cls[0] : cls;
-        if (!matchedClass && assignment.course_id) {
+        if (!classId && a.course_id) {
           const { data: found } = await supabase
             .from('classes')
             .select('id,class_name,semester,module_index,intake_month,intake')
-            .eq('course_id', assignment.course_id)
+            .eq('course_id', a.course_id)
             .eq('is_active', true)
             .order('created_at', { ascending: false });
-          if (found?.length) matchedClass = found[0];
+          if (found?.length) {
+            classId = found[0].id;
+            className = found[0].class_name;
+          }
         }
 
         return {
-          assignment_id: assignment.id,
-          class_id: matchedClass?.id || assignment.class_id || '',
-          class_name: matchedClass?.class_name || course?.name || 'Class',
-          course_name: course?.name || 'Unknown',
-          campus: assignment.campus,
-          semester: matchedClass?.semester || 1,
-          module_index: matchedClass?.module_index || 1,
-          intake_month: matchedClass?.intake_month || '',
-          intake: matchedClass?.intake || '',
-          semester_assignment_id: semester?.id,
-          exam_type_allowed: semester?.exam_type_allowed || ['cat', 'end_term', 'mock'],
-          term_active: semester?.is_active ?? true,
-          term_name: calendar?.term_name,
-          cat_opening_date: calendar?.cat_opening_date,
-          cat_closing_date: calendar?.cat_closing_date,
-          end_term_exam_date: calendar?.end_term_exam_date,
+          assignment_id: a.assignment_id,
+          class_id: classId || '',
+          class_name: className || a.course_name,
+          course_name: a.course_name,
+          campus: a.campus,
+          semester: a.semester || 1,
+          module_index: a.module_index || 1,
+          intake_month: a.intake || '',
+          intake: a.intake || '',
+          exam_type_allowed: ['cat', 'end_term', 'mock'],
           total_students: 0
         };
       }));
 
       for (const cls of transformed) {
-        const { count } = await supabase
-          .from('applications')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'enrolled')
-          .eq('financial_hold', false)
-          .eq('class_id', cls.class_id);
-        cls.total_students = count || 0;
+        if (cls.class_id) {
+          const { count } = await supabase
+            .from('applications')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'enrolled')
+            .eq('class_id', cls.class_id);
+          cls.total_students = count || 0;
+        }
       }
 
       setLecturerClasses(transformed);
     } catch (err) {
       console.error('Error loading classes:', err);
-      setError('Failed to load classes');
     }
   };
 
@@ -370,32 +339,10 @@ export default function LecturerDashboard() {
 
       if (assignmentError) throw assignmentError;
 
-      // Get current academic calendar
-      const { data: calendarData } = await supabase
-        .from('academic_calendar')
-        .select('id')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      // Create semester assignment
-      const { error: semesterError } = await supabase
-        .from('lecturer_assignment_semesters')
-        .insert([{
-          assignment_id: assignmentData.id,
-          academic_calendar_id: calendarData?.id,
-          semester: selectedClass.semester,
-          module_index: selectedClass.module_index,
-          exam_type_allowed: ['cat', 'end_term', 'mock']
-        }]);
-
-      if (semesterError) throw semesterError;
-
       // Create unit assignments
       const unitAssignments = setupForm.selected_units.map(unitCode => ({
         assignment_id: assignmentData.id,
-        course_id: selectedClass.course_id,
+        course_id: setupForm.course_id,
         unit_code: unitCode
       }));
 
@@ -1290,9 +1237,7 @@ export default function LecturerDashboard() {
                   value={setupForm.course_id}
                   onChange={(e) => {
                     const courseId = e.target.value;
-                    setSetupForm({ ...setupForm, course_id: courseId, class_id: '', selected_units: [] });
-                    setFilteredUnits([]);
-                    loadClassesForCourse(courseId);
+                    setSetupForm({ ...setupForm, course_id: courseId, selected_units: [] });
                     loadUnitsForCourse(courseId);
                   }}
                   className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white"
