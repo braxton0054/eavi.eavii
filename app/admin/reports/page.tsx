@@ -28,6 +28,9 @@ export default function ReportsPage() {
   const [monthlyRevenue, setMonthlyRevenue] = useState<any[]>([]);
   const [revenueByCourse, setRevenueByCourse] = useState<any[]>([]);
   const [outstandingBalances, setOutstandingBalances] = useState<any[]>([]);
+  const [feeStructure, setFeeStructure] = useState<any[]>([]);
+  const [studentFeeBalance, setStudentFeeBalance] = useState<any[]>([]);
+  const [studentsWithGuardians, setStudentsWithGuardians] = useState<any[]>([]);
   
   // Exam data
   const [classResults, setClassResults] = useState<any[]>([]);
@@ -223,6 +226,16 @@ export default function ReportsPage() {
         return acc;
       }, {});
       setOutstandingBalances(Object.values(campusBalances));
+
+      // Load from new vw_ views
+      const { data: feeStruct } = await supabase.from('vw_course_fee_structure').select('*').limit(100);
+      if (feeStruct) setFeeStructure(feeStruct);
+
+      const { data: feeBalance } = await supabase.from('vw_student_fee_balance').select('*').limit(100);
+      if (feeBalance) setStudentFeeBalance(feeBalance);
+
+      const { data: students } = await supabase.from('vw_students_with_guardians').select('*').limit(100);
+      if (students) setStudentsWithGuardians(students);
 
     } catch (err) {
       console.error('Error loading fee data:', err);
@@ -809,6 +822,114 @@ export default function ReportsPage() {
                   </table>
                 </div>
               </div>
+              {/* Course Fee Structure - vw_course_fee_structure */}
+              {feeStructure.length > 0 && (
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+                  <h2 className="text-xl font-bold text-white mb-4">Course Fee Structure</h2>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-white/20">
+                          <th className="text-left py-2 px-3 text-purple-300">Course</th>
+                          <th className="text-left py-2 px-3 text-purple-300">Level</th>
+                          <th className="text-left py-2 px-3 text-purple-300">Exam Body</th>
+                          <th className="text-center py-2 px-3 text-purple-300">Module</th>
+                          <th className="text-center py-2 px-3 text-purple-300">Sem</th>
+                          <th className="text-right py-2 px-3 text-purple-300">Sem Fee</th>
+                          <th className="text-right py-2 px-3 text-purple-300">Practical</th>
+                          <th className="text-right py-2 px-3 text-purple-300">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {feeStructure.map((row: any, i: number) => (
+                          <tr key={i} className="border-b border-white/10 text-white">
+                            <td className="py-2 px-3">{row.course_name}</td>
+                            <td className="py-2 px-3">{row.course_level}</td>
+                            <td className="py-2 px-3">{row.exam_body}</td>
+                            <td className="py-2 px-3 text-center">{row.module_index}</td>
+                            <td className="py-2 px-3 text-center">{row.semester_index}</td>
+                            <td className="py-2 px-3 text-right">KES {Number(row.semester_fee || 0).toLocaleString()}</td>
+                            <td className="py-2 px-3 text-right">KES {Number(row.practical_fee || 0).toLocaleString()}</td>
+                            <td className="py-2 px-3 text-right font-semibold text-green-400">KES {Number(row.total_per_semester || 0).toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Student Fee Balance - vw_student_fee_balance */}
+              {studentFeeBalance.length > 0 && (
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+                  <h2 className="text-xl font-bold text-white mb-4">Fee Balance by Course</h2>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-white/20">
+                          <th className="text-left py-2 px-3 text-purple-300">Course</th>
+                          <th className="text-left py-2 px-3 text-purple-300">Level</th>
+                          <th className="text-right py-2 px-3 text-purple-300">Students</th>
+                          <th className="text-right py-2 px-3 text-purple-300">Total Balance</th>
+                          <th className="text-right py-2 px-3 text-purple-300">Credit</th>
+                          <th className="text-right py-2 px-3 text-purple-300">Net Outstanding</th>
+                          <th className="text-right py-2 px-3 text-purple-300">On Hold</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {studentFeeBalance.map((row: any, i: number) => (
+                          <tr key={i} className="border-b border-white/10 text-white">
+                            <td className="py-2 px-3">{row.course_name}</td>
+                            <td className="py-2 px-3">{row.course_level}</td>
+                            <td className="py-2 px-3 text-right">{row.total_students}</td>
+                            <td className="py-2 px-3 text-right">KES {Number(row.total_fee_balance || 0).toLocaleString()}</td>
+                            <td className="py-2 px-3 text-right">KES {Number(row.total_credit_balance || 0).toLocaleString()}</td>
+                            <td className="py-2 px-3 text-right font-semibold text-yellow-400">KES {Number(row.net_outstanding_balance || 0).toLocaleString()}</td>
+                            <td className="py-2 px-3 text-right text-red-400">{row.students_on_hold}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Students with Guardians - vw_students_with_guardians */}
+              {studentsWithGuardians.length > 0 && (
+                <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+                  <h2 className="text-xl font-bold text-white mb-4">Students with Guardian Info</h2>
+                  <div className="overflow-x-auto max-h-96 overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead className="sticky top-0 bg-gray-900">
+                        <tr className="border-b border-white/20">
+                          <th className="text-left py-2 px-3 text-purple-300">Adm No</th>
+                          <th className="text-left py-2 px-3 text-purple-300">Student</th>
+                          <th className="text-left py-2 px-3 text-purple-300">Phone</th>
+                          <th className="text-left py-2 px-3 text-purple-300">Course</th>
+                          <th className="text-left py-2 px-3 text-purple-300">Guardian</th>
+                          <th className="text-left py-2 px-3 text-purple-300">Guardian Phone</th>
+                          <th className="text-left py-2 px-3 text-purple-300">Relationship</th>
+                          <th className="text-left py-2 px-3 text-purple-300">Emergency</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {studentsWithGuardians.map((row: any, i: number) => (
+                          <tr key={i} className="border-b border-white/10 text-white">
+                            <td className="py-2 px-3 font-mono text-xs">{row.admission_number}</td>
+                            <td className="py-2 px-3">{row.student_full_name}</td>
+                            <td className="py-2 px-3">{row.student_phone}</td>
+                            <td className="py-2 px-3 text-xs">{row.course_name}</td>
+                            <td className="py-2 px-3">{row.guardian_full_name || '—'}</td>
+                            <td className="py-2 px-3">{row.guardian_phone || '—'}</td>
+                            <td className="py-2 px-3">{row.guardian_relationship || '—'}</td>
+                            <td className="py-2 px-3">{row.is_emergency_contact ? '✅' : '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
