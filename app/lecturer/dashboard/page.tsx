@@ -176,6 +176,22 @@ export default function LecturerDashboard() {
       }
 
       setLecturerId(lecturerData.id);
+
+      // Auto-create ai_user_registry if missing (fixes RLS for dashboard)
+      const { data: existingReg } = await supabase
+        .from('ai_user_registry')
+        .select('id')
+        .eq('auth_user_id', user.id)
+        .maybeSingle();
+
+      if (!existingReg) {
+        await supabase.from('ai_user_registry').insert([{
+          auth_user_id: user.id,
+          email: user.email || lecturerData.email,
+          user_role: 'lecturer',
+          full_name: lecturerData.full_name || user.user_metadata?.full_name,
+        }]);
+      }
       
       // Load classes for this lecturer
       await loadLecturerClasses(lecturerData.id);
