@@ -77,7 +77,7 @@ const getInitialFormData = () => ({
 });
 const getInitialWizardForm = () => ({
   department_id: '', qualification_level_id: '', knec_code: '', course_name: '', min_kcse_grade: '',
-  is_modular: true, total_duration_months: 24, cdacc_payment_mode: 'per_semester' as 'per_semester' | 'once_per_stage',
+  is_modular: true, total_duration_months: 24, fee_payment_mode: 'per_semester' as 'per_semester' | 'per_module',
   unit_assignment_mode: 'per_semester' as 'per_semester' | 'module_level', jp_exam_fee: 0, has_units: false,
   first_installment: 0, subsequent_installment: 0, practical_fee: 0, payment_mode: 'Once' as 'Once' | 'Monthly' | 'Per Semester',
 });
@@ -254,7 +254,7 @@ export default function CoursesPage() {
     const mPerMod = 12;
     const count = ct.is_modular ? Math.ceil(total / mPerMod) : 1;
     const dur = Math.ceil(total / count);
-    const isCdaccOnce = type === 'CDACC' && ct.cdacc_payment_mode === 'once_per_stage';
+    const isCdaccOnce = type === 'CDACC' && ct.fee_payment_mode === 'per_module';
     const semCount = isCdaccOnce ? 0 : 3;
     return Array.from({ length: count }, (_, i) => ({
       duration_months: i === count - 1 ? total - dur * (count - 1) : dur,
@@ -321,6 +321,7 @@ export default function CoursesPage() {
         course_id: courseId, level, duration_months: courseFormData.total_duration_months,
         study_mode: selectedCourseType === 'INSTALL' ? 'short-course' : 'module', enabled: true,
         min_kcse_grade: courseFormData.min_kcse_grade, is_modular: courseFormData.is_modular,
+        fee_payment_mode: courseFormData.fee_payment_mode,
       }], { onConflict: 'course_id,level' }).select().single();
       if (ctError) throw ctError;
       setSavedCourseTypeId(ctData.id);
@@ -350,6 +351,7 @@ export default function CoursesPage() {
           course_type_id: courseTypeId, module_index: i+1,
           label: mod.label, duration_months: mod.duration_months, exam_body: examBody,
           exam_fee: mod.exam_fee || 0, fee: mod.fee || 0,
+          fee_payment_mode: courseFormData.fee_payment_mode,
           is_attachment_stage: mod.is_attachment_stage || false,
           has_attachment: mod.has_attachment || false,
           attachment_after_semester: mod.has_attachment ? mod.attachment_after_semester : null,
@@ -395,7 +397,7 @@ export default function CoursesPage() {
   };
 
   const handleAddUnit = async (modIdx: number, semIdx: number, unit: any) => {
-    const isCdaccOnce = selectedCourseType === 'CDACC' && courseFormData.cdacc_payment_mode === 'once_per_stage';
+    const isCdaccOnce = selectedCourseType === 'CDACC' && courseFormData.fee_payment_mode === 'per_module';
     const isModLevel = courseFormData.unit_assignment_mode === 'module_level';
     const key = isCdaccOnce ? `${modIdx}_stage` : `${modIdx}_${isModLevel ? 0 : semIdx}`;
     setUnitsData(prev => ({ ...prev, [key]: [...(prev[key] || []), unit] }));
@@ -422,7 +424,7 @@ export default function CoursesPage() {
       min_kcse_grade: course.min_kcse_grade || 'C-',
       is_modular: ct?.is_modular ?? true,
       total_duration_months: ct?.duration_months || 24,
-      cdacc_payment_mode: 'per_semester',
+      fee_payment_mode: ct?.fee_payment_mode ?? 'per_semester',
       unit_assignment_mode: 'per_semester',
       jp_exam_fee: 0,
       has_units: (course.units?.length || 0) > 0,
@@ -972,14 +974,14 @@ export default function CoursesPage() {
                             </div>
                           )}
 
-                          {/* CDACC payment mode */}
+                          {/* Payment mode */}
                           {selectedCourseType === 'CDACC' && (
                             <div style={{ gridColumn: '1/-1' }}>
                               <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--text2)', display: 'block', marginBottom: 6 }}>Payment mode</label>
-                              <select className="inp" value={courseFormData.cdacc_payment_mode}
-                                onChange={e => setCourseFormData(p => ({ ...p, cdacc_payment_mode: e.target.value as any }))}>
-                                <option value="per_semester">Per semester</option>
-                                <option value="once_per_stage">Once per stage</option>
+                              <select className="inp" value={courseFormData.fee_payment_mode}
+                                onChange={e => setCourseFormData(p => ({ ...p, fee_payment_mode: e.target.value as any }))}>
+                                <option value="per_semester">Per Semester</option>
+                                <option value="per_module">Per Module/Stage</option>
                               </select>
                             </div>
                           )}
@@ -1042,7 +1044,7 @@ export default function CoursesPage() {
                           </div>
                           {courseFormData.is_modular && (
                             <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => {
-                              const isCdaccOnce = selectedCourseType === 'CDACC' && courseFormData.cdacc_payment_mode === 'once_per_stage';
+                              const isCdaccOnce = selectedCourseType === 'CDACC' && courseFormData.fee_payment_mode === 'per_module';
                               setModulesData(prev => [...prev, {
                                 duration_months: 12,
                                 label: `${selectedCourseType === 'CDACC' ? 'Stage' : 'Module'} ${['I','II','III','IV','V','VI'][prev.length] || prev.length+1}`,
@@ -1058,7 +1060,7 @@ export default function CoursesPage() {
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                           {modulesData.map((mod, mi) => {
-                            const isCdaccOnce = selectedCourseType === 'CDACC' && courseFormData.cdacc_payment_mode === 'once_per_stage';
+                            const isCdaccOnce = selectedCourseType === 'CDACC' && courseFormData.fee_payment_mode === 'per_module';
                             const semCount = isCdaccOnce ? 0 : (mod.semesters?.length || 3);
                             return (
                               <div key={mi} style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
@@ -1159,7 +1161,7 @@ export default function CoursesPage() {
                         <div className="serif" style={{ fontSize: 22, fontWeight: 700, marginBottom: 24, color: 'var(--text)' }}>Assign units</div>
 
                         {/* Assignment mode (JP / CDACC per_semester) */}
-                        {(selectedCourseType === 'JP' || (selectedCourseType === 'CDACC' && courseFormData.cdacc_payment_mode === 'per_semester')) && (
+                        {(selectedCourseType === 'JP' || courseFormData.fee_payment_mode === 'per_semester') && (
                           <div style={{ padding: '12px 16px', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <span style={{ fontSize: 13, color: 'var(--text2)' }}>Assignment mode</span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1187,7 +1189,7 @@ export default function CoursesPage() {
 
                         {/* Semester tabs */}
                         {courseFormData.unit_assignment_mode === 'per_semester' && selectedCourseType !== 'KNEC' && (() => {
-                          const isCdaccOnce = selectedCourseType === 'CDACC' && courseFormData.cdacc_payment_mode === 'once_per_stage';
+                          const isCdaccOnce = selectedCourseType === 'CDACC' && courseFormData.fee_payment_mode === 'per_module';
                           if (isCdaccOnce) return null;
                           const semCount = modulesData[selectedModule]?.semesters?.length || 3;
                           return (
@@ -1203,7 +1205,7 @@ export default function CoursesPage() {
 
                         {/* Units list */}
                         {(() => {
-                          const isCdaccOnce = selectedCourseType === 'CDACC' && courseFormData.cdacc_payment_mode === 'once_per_stage';
+                          const isCdaccOnce = selectedCourseType === 'CDACC' && courseFormData.fee_payment_mode === 'per_module';
                           const isModLevel = courseFormData.unit_assignment_mode === 'module_level' || selectedCourseType === 'KNEC';
                           const key = isCdaccOnce ? `${selectedModule}_stage` : `${selectedModule}_${isModLevel ? 0 : selectedSemester}`;
                           const units = unitsData[key] || [];
@@ -1244,7 +1246,7 @@ export default function CoursesPage() {
                                 <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} disabled={!bulkText.trim()}
                                   onClick={() => {
                                     const ut = (document.getElementById('bulkType') as HTMLSelectElement)?.value || 'Core';
-                                    const isCdaccOnce = selectedCourseType === 'CDACC' && courseFormData.cdacc_payment_mode === 'once_per_stage';
+                                    const isCdaccOnce = selectedCourseType === 'CDACC' && courseFormData.fee_payment_mode === 'per_module';
                                     const isModLevel = courseFormData.unit_assignment_mode === 'module_level' || selectedCourseType === 'KNEC';
                                     const si = (isCdaccOnce || isModLevel) ? 0 : selectedSemester;
                                     bulkText.trim().split('\n').filter(Boolean).forEach(line => {
@@ -1275,7 +1277,7 @@ export default function CoursesPage() {
                                     const name = (document.getElementById('sname') as HTMLInputElement)?.value;
                                     const type = (document.getElementById('stype') as HTMLSelectElement)?.value;
                                     if (!code || !name) return;
-                                    const isCdaccOnce = selectedCourseType === 'CDACC' && courseFormData.cdacc_payment_mode === 'once_per_stage';
+                                    const isCdaccOnce = selectedCourseType === 'CDACC' && courseFormData.fee_payment_mode === 'per_module';
                                     const isModLevel = courseFormData.unit_assignment_mode === 'module_level' || selectedCourseType === 'KNEC';
                                     handleAddUnit(selectedModule, (isCdaccOnce || isModLevel) ? 0 : selectedSemester, { paper_code: code, subject_name: name, unit_type: type });
                                     (document.getElementById('scode') as HTMLInputElement).value = '';
