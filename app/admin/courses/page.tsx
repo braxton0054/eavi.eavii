@@ -320,7 +320,7 @@ export default function CoursesPage() {
       const { data: ctData, error: ctError } = await supabase.from('course_types').upsert([{
         course_id: courseId, level, duration_months: courseFormData.total_duration_months,
         study_mode: selectedCourseType === 'INSTALL' ? 'short-course' : 'module', enabled: true,
-        min_kcse_grade: courseFormData.min_kcse_grade,
+        min_kcse_grade: courseFormData.min_kcse_grade, is_modular: courseFormData.is_modular,
       }], { onConflict: 'course_id,level' }).select().single();
       if (ctError) throw ctError;
       setSavedCourseTypeId(ctData.id);
@@ -420,7 +420,7 @@ export default function CoursesPage() {
       knec_code: course.id || '',
       course_name: course.name || '',
       min_kcse_grade: course.min_kcse_grade || 'C-',
-      is_modular: true,
+      is_modular: ct?.is_modular ?? true,
       total_duration_months: ct?.duration_months || 24,
       cdacc_payment_mode: 'per_semester',
       unit_assignment_mode: 'per_semester',
