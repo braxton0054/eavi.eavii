@@ -332,6 +332,10 @@ export default function PaymentsPage() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [lastReceipt, setLastReceipt] = useState('');
   const [showFeeAdjustModal, setShowFeeAdjustModal] = useState(false);
+  const [adjustSemesterId, setAdjustSemesterId] = useState('');
+  const [adjustNewAmount, setAdjustNewAmount] = useState(0);
+  const [adjustReason, setAdjustReason] = useState('');
+  const [adjustSubmitting, setAdjustSubmitting] = useState(false);
 
   const [form, setForm] = useState<PaymentFormData>({
     application_id: '',
@@ -1316,25 +1320,48 @@ export default function PaymentsPage() {
             <div className="bg-gray-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl max-w-md w-full p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-sm text-slate-900 dark:text-white">Fee Adjustment</h3>
-                <button onClick={() => setShowFeeAdjustModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                <button onClick={() => { setShowFeeAdjustModal(false); setAdjustSemesterId(''); setAdjustNewAmount(0); setAdjustReason(''); }} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
                   <X className="w-4 h-4" />
                 </button>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Record a fee adjustment for <strong>{selectedStudent.full_name}</strong>. This will be logged in <code>fee_adjustments</code> and the installment amount may be updated after approval.
+                Record a fee adjustment for <strong>{selectedStudent.full_name}</strong>. This will be logged in <code>fee_adjustments</code> with the reason provided.
               </p>
+              <select
+                value={adjustSemesterId}
+                onChange={e => setAdjustSemesterId(e.target.value)}
+                className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+              >
+                <option value="">Select semester...</option>
+                {feeSummary.map(s => {
+                  const cur = s.tuition_fee + s.practical_fee;
+                  return (
+                    <option key={s.semester_id} value={s.semester_id}>
+                      Semester {s.semester_index} — Current: KES {cur.toLocaleString()}
+                    </option>
+                  );
+                })}
+              </select>
+              {adjustSemesterId && (() => {
+                const sem = feeSummary.find(s => s.semester_id === adjustSemesterId);
+                const cur = sem ? sem.tuition_fee + sem.practical_fee : 0;
+                return (
+                  <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-3 text-xs text-slate-500 dark:text-slate-400">
+                    Current fee: <strong className="font-mono">KES {cur.toLocaleString()}</strong>
+                  </div>
+                );
+              })()}
               <input
                 type="number"
-                placeholder="New amount (KES)"
+                min="0"
+                value={adjustNewAmount || ''}
+                onChange={e => setAdjustNewAmount(parseFloat(e.target.value) || 0)}
+                placeholder="New total amount (KES)"
                 className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-white"
               />
-              <select className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-white">
-                <option value="">Select semester...</option>
-                {feeSummary.map(s => (
-                  <option key={s.semester_id} value={s.semester_id}>Semester {s.semester_index}</option>
-                ))}
-              </select>
               <textarea
+                value={adjustReason}
+                onChange={e => setAdjustReason(e.target.value)}
                 placeholder="Reason for adjustment (required)"
                 rows={2}
                 className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-white"
@@ -1342,20 +1369,44 @@ export default function PaymentsPage() {
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowFeeAdjustModal(false)}
+                  onClick={() => { setShowFeeAdjustModal(false); setAdjustSemesterId(''); setAdjustNewAmount(0); setAdjustReason(''); }}
                   className="flex-1 px-4 py-2.5 text-sm font-semibold rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 bg-gray-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
+                  disabled={adjustSubmitting || !adjustSemesterId || !adjustReason || adjustNewAmount <= 0}
                   onClick={async () => {
-                    alert('Fee adjustment submitted. Installment will be updated after approval. (This is a placeholder — submit will insert into fee_adjustments table.)');
-                    setShowFeeAdjustModal(false);
+                    if (!supabase) return;
+                    setAdjustSubmitting(true);
+                    const sem = feeSummary.find(s => s.semester_id === adjustSemesterId);
+                    const oldAmount = sem ? sem.tuition_fee + sem.practical_fee : 0;
+                    const { error } = await supabase.from('fee_adjustments').insert({
+                      application_id: selectedStudent.application_id,
+                      old_amount: oldAmount,
+                      new_amount: adjustNewAmount,
+                      reason: adjustReason,
+                      adjusted_at: new Date().toISOString(),
+                    });
+                    if (error) {
+                      alert('Error: ' + error.message);
+                    } else {
+                      alert(`Adjustment logged! Old: KES ${oldAmount.toLocaleString()} → New: KES ${adjustNewAmount.toLocaleString()}`);
+                      setShowFeeAdjustModal(false);
+                      setAdjustSemesterId('');
+                      setAdjustNewAmount(0);
+                      setAdjustReason('');
+                    }
+                    setAdjustSubmitting(false);
                   }}
-                  className="flex-1 px-4 py-2.5 text-sm font-semibold rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                  className={`flex-1 px-4 py-2.5 text-sm font-semibold rounded-xl transition-colors ${
+                    adjustSubmitting || !adjustSemesterId || !adjustReason || adjustNewAmount <= 0
+                      ? 'bg-indigo-400 text-white cursor-not-allowed'
+                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                  }`}
                 >
-                  Submit Adjustment
+                  {adjustSubmitting ? 'Submitting...' : 'Submit Adjustment'}
                 </button>
               </div>
             </div>
