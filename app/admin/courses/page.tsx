@@ -324,12 +324,15 @@ export default function CoursesPage() {
       }
       setSavedCourseId(courseId);
 
-      const { data: ctData, error: ctError } = await supabase.from('course_types').upsert([{
+      // Delete existing course_type for this course+level to avoid conflicts
+      await supabase.from('course_types').delete().eq('course_id', courseId).eq('level', level);
+
+      const { data: ctData, error: ctError } = await supabase.from('course_types').insert([{
         course_id: courseId, level, duration_months: courseFormData.total_duration_months,
         study_mode: selectedCourseType === 'INSTALL' ? 'short-course' : 'module', enabled: true,
         is_modular: courseFormData.is_modular,
         payment_mode: courseFormData.fee_payment_mode,
-      }], { onConflict: 'course_id,level,study_mode' }).select().single();
+      }]).select().single();
       if (ctError) throw ctError;
       setSavedCourseTypeId(ctData.id);
       setWizardStep(3);
