@@ -1125,6 +1125,12 @@ export default function PaymentsPage() {
                         <X className="w-4 h-4" />
                       </button>
                     </div>
+                  ) : (
+                    <div className="p-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/30 text-center">
+                      <p className="text-xs text-slate-400 dark:text-slate-500">
+                        Select a fee line above to start the payment form
+                      </p>
+                    </div>
                   )}
 
                   {/* ── Payment Method ── */}
