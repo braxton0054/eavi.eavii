@@ -215,16 +215,15 @@ export default function LecturerDashboard() {
           class_id,
           course_id,
           campus,
-          classes!inner (
+          classes (
             id,
             class_name,
-            course_id,
-            campus,
             semester,
             module_index,
             intake_month,
-            courses (name)
+            intake
           ),
+          courses (name),
           lecturer_assignment_semesters (
             id,
             academic_calendar_id,
@@ -239,28 +238,38 @@ export default function LecturerDashboard() {
 
       if (error) {
         console.error('Error loading classes:', error);
-        // Fallback to raw query
-        const { data: rawData } = await supabase.rpc('get_lecturer_classes', { p_lecturer_id: lecId });
-        setLecturerClasses(rawData || []);
+        setLecturerClasses([]);
         return;
       }
 
-      // Transform data
-      const transformed = data?.map((assignment: any) => {
+      const transformed = await Promise.all((data || []).map(async (assignment: any) => {
         const cls = assignment.classes;
+        const course = assignment.courses;
         const semester = assignment.lecturer_assignment_semesters?.[0];
         const calendar = semester?.academic_calendar;
-        
-        // Count students
+
+        // If no class linked, find auto-created ones for this course
+        let matchedClass = Array.isArray(cls) ? cls[0] : cls;
+        if (!matchedClass && assignment.course_id) {
+          const { data: found } = await supabase
+            .from('classes')
+            .select('id,class_name,semester,module_index,intake_month,intake')
+            .eq('course_id', assignment.course_id)
+            .eq('is_active', true)
+            .order('created_at', { ascending: false });
+          if (found?.length) matchedClass = found[0];
+        }
+
         return {
           assignment_id: assignment.id,
-          class_id: cls.id,
-          class_name: cls.class_name,
-          course_name: cls.courses?.name || 'Unknown Course',
-          campus: cls.campus,
-          semester: cls.semester,
-          module_index: cls.module_index,
-          intake_month: cls.intake_month,
+          class_id: matchedClass?.id || assignment.class_id || '',
+          class_name: matchedClass?.class_name || course?.name || 'Class',
+          course_name: course?.name || 'Unknown',
+          campus: assignment.campus,
+          semester: matchedClass?.semester || 1,
+          module_index: matchedClass?.module_index || 1,
+          intake_month: matchedClass?.intake_month || '',
+          intake: matchedClass?.intake || '',
           semester_assignment_id: semester?.id,
           exam_type_allowed: semester?.exam_type_allowed || ['cat', 'end_term', 'mock'],
           term_active: semester?.is_active ?? true,
@@ -268,18 +277,17 @@ export default function LecturerDashboard() {
           cat_opening_date: calendar?.cat_opening_date,
           cat_closing_date: calendar?.cat_closing_date,
           end_term_exam_date: calendar?.end_term_exam_date,
-          total_students: 0 // Will be loaded separately
+          total_students: 0
         };
-      }) || [];
+      }));
 
-      // Load student counts
       for (const cls of transformed) {
         const { count } = await supabase
           .from('applications')
           .select('*', { count: 'exact', head: true })
-          .eq('class_id', cls.class_id)
           .eq('status', 'enrolled')
-          .eq('financial_hold', false);
+          .eq('financial_hold', false)
+          .eq('class_id', cls.class_id);
         cls.total_students = count || 0;
       }
 
