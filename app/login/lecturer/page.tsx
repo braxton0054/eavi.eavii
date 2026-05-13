@@ -123,7 +123,7 @@ export default function LecturerLogin() {
               lecturer_number: formData.lecturerNumber,
               role: 'lecturer',
               full_name: lecturerData.full_name,
-              phone_number: lecturerData.phone_number
+              phone_number: lecturerData.phone
             }
           },
         });
