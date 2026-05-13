@@ -408,6 +408,35 @@ export default function CoursesPage() {
     }
   };
 
+  const handleEditCourse = (course: any) => {
+    // Populate wizard form with existing course data
+    const examBody = course.exam_body || course.id.split('-')[0];
+    const ct = course.course_types?.find((c: any) => c.enabled);
+    const examType = examBody === 'internal' ? 'INSTALL' : examBody;
+
+    setCourseFormData({
+      department_id: course.department_id || '',
+      qualification_level_id: course.qualification_level_id || '',
+      knec_code: course.id || '',
+      course_name: course.name || '',
+      min_kcse_grade: course.min_kcse_grade || 'C-',
+      is_modular: true,
+      total_duration_months: ct?.duration_months || 24,
+      cdacc_payment_mode: 'per_semester',
+      unit_assignment_mode: 'per_semester',
+      jp_exam_fee: 0,
+      has_units: (course.units?.length || 0) > 0,
+      first_installment: 0,
+      subsequent_installment: 0,
+      practical_fee: 0,
+      payment_mode: 'Per Semester',
+    });
+    setSelectedCourseType(examType);
+    setEditingCourse(course.id);
+    setWizardStep(1);
+    setViewMode('add');
+  };
+
   const handleDeleteCourse = async (id: string) => {
     if (!confirm('Delete this course and all related data? This cannot be undone.')) return;
     const { data: cts } = await supabase.from('course_types').select('id').eq('course_id', id);
@@ -732,7 +761,7 @@ export default function CoursesPage() {
                         {/* Actions */}
                         <div style={{ padding: '10px 16px', display: 'flex', gap: 8 }}>
                           <button className="btn btn-ghost" style={{ flex: 1, justifyContent: 'center', fontSize: 12 }}
-                            onClick={() => { /* edit handler */ showToast('Edit mode coming soon'); }}>
+                            onClick={() => handleEditCourse(course)}>
                             Edit
                           </button>
                           <button className="btn btn-danger" style={{ flex: 1, justifyContent: 'center', fontSize: 12 }}
