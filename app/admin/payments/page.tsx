@@ -85,7 +85,7 @@ export default function PaymentsPage() {
       const { data } = await supabase
         .from('applications')
         .select('id, full_name, admission_number, campus, courses!inner(name)')
-        .eq('status', 'enrolled')
+        .in('status', ['enrolled', 'pending'])
         .or(`full_name.ilike.%${query}%,admission_number.ilike.%${query}%`)
         .limit(8);
       setResults(data || []);
@@ -114,11 +114,80 @@ export default function PaymentsPage() {
       .single();
     setStudentProfile(profile);
 
-    // Fee summary from backend view — handles ALL calculations
-    const { data: fees } = await supabase!
+    // Fee summary from backend view
+    let { data: fees } = await supabase!
       .from('v_student_fee_summary')
       .select('*')
       .eq('application_id', s.id);
+
+    // Fallback for pending students (view only returns enrolled)
+    if (!fees || fees.length === 0) {
+      const { data: app } = await supabase!
+        .from('applications')
+        .select('course_type_id, current_module')
+        .eq('id', s.id)
+        .single();
+
+      if (app) {
+        const ctId = (app as any).course_type_id;
+        const currMod = (app as any).current_module || 1;
+
+        // Get current module
+        const { data: mods } = await supabase!
+          .from('modules')
+          .select('id, module_index, label, payment_mode, fee, exam_fee')
+          .eq('course_type_id', ctId)
+          .order('module_index');
+
+        const curMod = mods?.find((m: any) => m.module_index === currMod);
+        if (curMod && mods) {
+          if (curMod.payment_mode === 'per_module') {
+            const modFee = Number(curMod.fee || 0);
+            fees = [{
+              module_id: curMod.id,
+              module_index: curMod.module_index,
+              module_label: curMod.label || '',
+              payment_mode: 'per_module',
+              semester_id: null,
+              semester_index: 0,
+              tuition_fee: modFee,
+              practical_fee: 0,
+              additional_fees: 0,
+              total_expected: modFee,
+              total_paid: 0,
+              balance: modFee,
+              due_date: null,
+            }];
+          } else {
+            const { data: sems } = await supabase!
+              .from('semesters')
+              .select('id, semester_index, fee, practical_fee')
+              .eq('module_id', curMod.id)
+              .order('semester_index');
+
+            fees = (sems || []).map((sem: any) => {
+              const total = Number(sem.fee || 0) + Number(sem.practical_fee || 0);
+              return {
+                module_id: curMod.id,
+                module_index: curMod.module_index,
+                module_label: curMod.label || '',
+                payment_mode: 'per_semester',
+                semester_id: sem.id,
+                semester_index: sem.semester_index,
+                tuition_fee: Number(sem.fee || 0),
+                practical_fee: Number(sem.practical_fee || 0),
+                additional_fees: 0,
+                total_expected: total,
+                total_paid: 0,
+                balance: total,
+                due_date: null,
+              };
+            });
+          }
+        }
+      }
+    }
+
     setFeeLines(fees || []);
 
     // Payment history
