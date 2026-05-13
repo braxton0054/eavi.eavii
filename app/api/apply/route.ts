@@ -44,10 +44,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    // Also create an empty student profile
+    // Create student profile with gender if provided
+    const profileData: Record<string, any> = { application_id: data.id };
+    if (body.gender) profileData.gender = body.gender;
+
     const { error: profileError } = await supabase
       .from('student_profiles')
-      .insert([{ application_id: data.id }]);
+      .insert([profileData]);
 
     if (profileError) {
       console.warn('Profile creation warning:', profileError.message);

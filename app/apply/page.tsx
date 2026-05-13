@@ -20,6 +20,7 @@ export default function ApplyPage() {
     firstName: '',
     middleName: '',
     lastName: '',
+    gender: '',
     phone: '',
     email: '',
 
@@ -470,6 +471,7 @@ export default function ApplyPage() {
           bridge_start_date: bridgeStartDate,
           sync_target_date: syncTargetDate,
           acceleration_factor: accelerationFactor,
+          gender: formData.gender,
           current_semester: 1,
         }),
       });
@@ -640,6 +642,25 @@ export default function ApplyPage() {
                 onChange={handleChange}
                 className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm md:text-base"
               />
+            </div>
+
+            {/* Gender */}
+            <div>
+              <label htmlFor="gender" className="block text-gray-700 font-medium mb-1 text-xs md:text-sm">
+                Gender *
+              </label>
+              <select
+                id="gender"
+                name="gender"
+                value={formData.gender}
+                onChange={handleChange}
+                required
+                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm md:text-base"
+              >
+                <option value="">Select Gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+              </select>
             </div>
 
             {/* Phone Number */}
