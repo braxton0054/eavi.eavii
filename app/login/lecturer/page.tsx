@@ -97,6 +97,20 @@ export default function LecturerLogin() {
         }
 
         if (data?.session) {
+          // Auto-create ai_user_registry if missing
+          const { data: existingReg } = await supabase
+            .from('ai_user_registry')
+            .select('id')
+            .eq('auth_user_id', data.session.user.id)
+            .maybeSingle();
+          if (!existingReg) {
+            await supabase.from('ai_user_registry').insert([{
+              auth_user_id: data.session.user.id,
+              email: data.session.user.email,
+              user_role: 'lecturer',
+              full_name: data.session.user.user_metadata?.full_name || '',
+            }]);
+          }
           console.log('Login successful, waiting for cookies...');
           await new Promise(resolve => setTimeout(resolve, 1000));
           router.replace('/lecturer/dashboard');
