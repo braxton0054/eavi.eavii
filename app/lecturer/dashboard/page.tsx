@@ -162,15 +162,20 @@ export default function LecturerDashboard() {
 
       setLecturerInfo(user.user_metadata);
 
-      // Get lecturer UUID
-      const { data: lecturerData } = await supabase
-        .from('lecturers')
-        .select('id')
-        .eq('lecturer_number', user.user_metadata.lecturer_number || user.user_metadata.id)
-        .single();
+      // Get lecturer UUID — first try lecturer_number from metadata, then email
+      let lecturerData = null;
+      const lecNumber = user.user_metadata?.lecturer_number;
+      if (lecNumber) {
+        const { data } = await supabase.from('lecturers').select('id').eq('lecturer_number', lecNumber).maybeSingle();
+        lecturerData = data;
+      }
+      if (!lecturerData && user.email) {
+        const { data } = await supabase.from('lecturers').select('id').eq('email', user.email).maybeSingle();
+        lecturerData = data;
+      }
 
       if (!lecturerData) {
-        setError('Lecturer profile not found');
+        setError('Lecturer profile not found. Contact admin to create your account.');
         setLoading(false);
         return;
       }
