@@ -329,7 +329,7 @@ export default function CoursesPage() {
         study_mode: selectedCourseType === 'INSTALL' ? 'short-course' : 'module', enabled: true,
         is_modular: courseFormData.is_modular,
         payment_mode: courseFormData.fee_payment_mode,
-      }], { onConflict: 'course_id,level' }).select().single();
+      }], { onConflict: 'course_id,level,study_mode' }).select().single();
       if (ctError) throw ctError;
       setSavedCourseTypeId(ctData.id);
       setWizardStep(3);
