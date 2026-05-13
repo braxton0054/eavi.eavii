@@ -1064,43 +1064,8 @@ export default function PaymentsPage() {
 
                 <form onSubmit={handleSubmit} className="space-y-5">
 
-                  {/* ── Semester selector (if not clicked from summary) ── */}
-                  {!selectedSemSummary && (
-                    <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">
-                        Semester <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        value={form.semester_id}
-                        onChange={e => {
-                          const sem = feeSummary.find(s => s.semester_id === e.target.value);
-                          if (sem) {
-                            setSelectedSemSummary(sem);
-                            setField('semester_id', sem.semester_id);
-                            setField('module_id', sem.module_id);
-                          }
-                        }}
-                        className={`w-full px-3 py-2.5 text-sm rounded-xl border bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors ${
-                          errors.semester_id ? 'border-red-400' : 'border-slate-300 dark:border-slate-700'
-                        }`}
-                      >
-                        <option value="">Select semester...</option>
-                        {feeSummary.filter(s => {
-                          const total = s.tuition_fee + s.practical_fee + s.additional_fees;
-                          const pct = total > 0 ? Math.min(Math.round(((s.total_paid || 0) / total) * 100), 100) : 0;
-                          return pct < 95; // Only show unpaid semesters
-                        }).slice(0, 1).map(s => (
-                          <option key={s.semester_id} value={s.semester_id}>
-                            Semester {s.semester_index} — {fmt(s.balance)} outstanding
-                          </option>
-                        ))}
-                      </select>
-                      {errors.semester_id && <p className="mt-1.5 text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.semester_id}</p>}
-                    </div>
-                  )}
-
-                  {/* Selected semester reminder */}
-                  {selectedSemSummary && (
+                  {/* Selected semester reminder — click a semester card to select */}
+                  {selectedSemSummary ? (
                     <div className="flex items-center justify-between p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800">
                       <div>
                         <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">
