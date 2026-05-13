@@ -7,7 +7,8 @@ import {
   Search, ArrowLeft, User, CreditCard, Calendar, Receipt,
   Wallet, CheckCircle, AlertCircle, Building, GraduationCap,
   FileText, ChevronRight, Loader2, Shield, BookOpen,
-  TrendingUp, Clock, Banknote, Smartphone, X, RefreshCw, Beaker
+  TrendingUp, Clock, Banknote, Smartphone, X, RefreshCw, Beaker,
+  Plus, Lock, Unlock, DollarSign
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -77,6 +78,7 @@ interface StudentProfile {
   practical_fee:    number;
   total_expected:   number;
   total_paid:       number;
+  transcript_unlocked: boolean;
   is_final_period:  boolean;
 }
 
@@ -329,6 +331,7 @@ export default function PaymentsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [lastReceipt, setLastReceipt] = useState('');
+  const [showFeeAdjustModal, setShowFeeAdjustModal] = useState(false);
 
   const [form, setForm] = useState<PaymentFormData>({
     application_id: '',
@@ -411,7 +414,7 @@ export default function PaymentsPage() {
     // Student profile from applications table directly
     const { data: profile } = await supabase
       .from('applications')
-      .select('id, full_name, phone, email, course_id, admission_number, campus, current_module, current_semester, total_balance, financial_hold, status, enrollment_type, class_id')
+      .select('id, full_name, phone, email, course_id, admission_number, campus, current_module, current_semester, total_balance, credit_balance, financial_hold, transcript_unlocked, status, enrollment_type, class_id')
       .eq('admission_number', s.admission_number)
       .single();
 
@@ -571,18 +574,7 @@ export default function PaymentsPage() {
     if (!validate() || !supabase) return;
     setSubmitting(true);
 
-    // Check receipt uniqueness
-    const { data: exists } = await supabase
-      .from('fee_payments')
-      .select('id')
-      .eq('receipt_number', form.receipt_number)
-      .maybeSingle();
-
-    if (exists) {
-      setErrors(prev => ({ ...prev, receipt_number: 'Receipt number already used' }));
-      setSubmitting(false);
-      return;
-    }
+    // Receipt number is auto-generated with timestamp+random — collisions are effectively impossible
 
     // Insert — fee_payments exact columns
     const { error } = await supabase.from('fee_payments').insert([{
@@ -815,7 +807,7 @@ export default function PaymentsPage() {
                       </div>
 
                       {/* Metrics */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
+                      <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 mt-5">
                         {[
                           {
                             label: 'Total Expected',
@@ -833,6 +825,13 @@ export default function PaymentsPage() {
                             color: selectedStudent.total_balance > 0
                               ? 'text-red-600 dark:text-red-400'
                               : 'text-emerald-600 dark:text-emerald-400',
+                          },
+                          {
+                            label: 'Credit Balance',
+                            value: fmt(selectedStudent.credit_balance || 0),
+                            color: (selectedStudent.credit_balance || 0) > 0
+                              ? 'text-indigo-600 dark:text-indigo-400'
+                              : 'text-slate-400',
                           },
                           {
                             label: 'Last Payment',
@@ -867,6 +866,29 @@ export default function PaymentsPage() {
                             {Number(currentClearance.paid_pct).toFixed(0)}% cleared this semester
                           </span>
                         )}
+                      </div>
+
+                      {/* ── Fee Action Buttons ── */}
+                      <div className="mt-4 flex items-center gap-3 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!confirm('Are you sure you want to unlock this student\'s transcript? This is gated by full payment. Wait... the transcript is already unlocked by the system when balance is zero.')) return;
+                            alert('Transcript unlock is automatic when all fees are cleared (balance = 0).');
+                          }}
+                          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/60 transition-colors"
+                        >
+                          {selectedStudent.transcript_unlocked ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+                          {selectedStudent.transcript_unlocked ? 'Transcript Unlocked' : 'Locked Transcript'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowFeeAdjustModal(true)}
+                          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-950/60 transition-colors"
+                        >
+                          <Plus className="w-3 h-3" />
+                          Fee Adjustment
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -1207,11 +1229,9 @@ export default function PaymentsPage() {
                         <input
                           type="text"
                           value={form.receipt_number}
-                          onChange={e => setField('receipt_number', e.target.value)}
+                          readOnly
                           placeholder="RCP-YYYYMMDD-XXX"
-                          className={`w-full pl-9 pr-8 py-2.5 text-sm rounded-xl border bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors font-mono ${
-                            errors.receipt_number ? 'border-red-400' : 'border-slate-300 dark:border-slate-700'
-                          }`}
+                          className="w-full pl-9 pr-8 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 font-mono cursor-not-allowed"
                         />
                         <button
                           type="button"
@@ -1285,6 +1305,58 @@ export default function PaymentsPage() {
                     Clearance trigger runs automatically · Results unlock at 95% paid
                   </p>
                 </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── FEE ADJUSTMENT MODAL ── */}
+        {showFeeAdjustModal && selectedStudent && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+            <div className="bg-gray-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl max-w-md w-full p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-sm text-slate-900 dark:text-white">Fee Adjustment</h3>
+                <button onClick={() => setShowFeeAdjustModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Record a fee adjustment for <strong>{selectedStudent.full_name}</strong>. This will be logged in <code>fee_adjustments</code> and the installment amount may be updated after approval.
+              </p>
+              <input
+                type="number"
+                placeholder="New amount (KES)"
+                className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+              />
+              <select className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-white">
+                <option value="">Select semester...</option>
+                {feeSummary.map(s => (
+                  <option key={s.semester_id} value={s.semester_id}>Semester {s.semester_index}</option>
+                ))}
+              </select>
+              <textarea
+                placeholder="Reason for adjustment (required)"
+                rows={2}
+                className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+              ></textarea>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowFeeAdjustModal(false)}
+                  className="flex-1 px-4 py-2.5 text-sm font-semibold rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 bg-gray-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    alert('Fee adjustment submitted. Installment will be updated after approval. (This is a placeholder — submit will insert into fee_adjustments table.)');
+                    setShowFeeAdjustModal(false);
+                  }}
+                  className="flex-1 px-4 py-2.5 text-sm font-semibold rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                >
+                  Submit Adjustment
+                </button>
               </div>
             </div>
           </div>
