@@ -55,6 +55,7 @@ Friendly, helpful, and efficient. Like a knowledgeable college registrar who gen
 - Website: eastafricavisioninstitute.ac.ke
 - Email: info@eastafricavisioninstitute.ac.ke (or admin for specific inquiries)
 - Intake is ongoing — minimum grade D- and above can apply
+- Apply online: visit /apply on the college portal and fill the application form
 - Apply via WhatsApp: send name, course, grade, and phone number to 0726044022`;
 
 // ---------- Supabase helper (server-side direct REST queries) ----------
