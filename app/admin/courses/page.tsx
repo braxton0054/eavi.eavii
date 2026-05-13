@@ -305,8 +305,12 @@ export default function CoursesPage() {
       const courseId = editingCourse || (rawCode.startsWith(prefix+'-') ? rawCode : `${prefix}-${rawCode}`);
       const selectedLevel = qualificationLevels.find(l => l.id === courseFormData.qualification_level_id);
       const ln = selectedLevel?.name?.toLowerCase() || '';
-      const lvMap: Record<string,LevelKey> = { diploma:'diploma', certificate:'certificate', artisan:'artisan', craft:'craft', 'higher diploma':'level6' };
-      const level: LevelKey = Object.entries(lvMap).find(([k]) => ln.includes(k))?.[1] as LevelKey || 'diploma';
+      const lvPairs: [string, LevelKey][] = [
+        ['level 6', 'level6'], ['level 5', 'level5'], ['level 4', 'level4'],
+        ['higher diploma', 'level6'], ['craft', 'craft'], ['artisan', 'artisan'],
+        ['diploma', 'diploma'], ['certificate', 'certificate'],
+      ];
+      const level: LevelKey = lvPairs.find(([k]) => ln.includes(k))?.[1] || 'diploma';
 
       if (!editingCourse) {
         const { error } = await supabase.from('courses').insert([{
