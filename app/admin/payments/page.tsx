@@ -468,28 +468,11 @@ export default function PaymentsPage() {
           }
         }
 
-        // Calculate global semester index (continuous across modules)
-        // e.g. Module I sems 1,2,3 → displayed as 1,2,3; Module II sems 1,2,3 → displayed as 4,5,6
-        const semsWithModule = (sems || []).map((sem: any) => ({
-          ...sem,
-          mod_index: mods.find((m: any) => m.id === sem.module_id)?.module_index || 0,
-        }));
-        // Count semesters per module to offset subsequent modules
-        const semCountsByModule: Record<number, number> = {};
-        for (const sem of semsWithModule) {
-          semCountsByModule[sem.mod_index] = (semCountsByModule[sem.mod_index] || 0) + 1;
-        }
-        // Calculate offsets: Module II offset = total sems in Module I, etc.
-        const moduleOffsets: Record<number, number> = {};
-        let cumulative = 0;
-        for (let mi = 1; mi <= Math.max(...Object.keys(semCountsByModule).map(Number), 0); mi++) {
-          if (semCountsByModule[mi]) {
-            moduleOffsets[mi] = cumulative;
-            cumulative += semCountsByModule[mi];
-          }
-        }
-
-        feeSumm = semsWithModule.map((sem: any) => {
+        // Filter semesters to only show the student's current module
+        const currentModuleId = mods.find((m: any) => m.module_index === (s.current_module || 1))?.id;
+        feeSumm = (sems || [])
+          .filter((sem: any) => !currentModuleId || sem.module_id === currentModuleId)
+          .map((sem: any) => {
           const tuition = parseFloat(sem.fee) || 0;
           const practical = parseFloat(sem.practical_fee) || 0;
           const total = tuition + practical;
@@ -498,13 +481,13 @@ export default function PaymentsPage() {
             application_id: s.id || '',
             admission_number: s.admission_number || '',
             module_id: sem.module_id || '',
-            module_index: sem.mod_index,
+            module_index: mods.find((m: any) => m.id === sem.module_id)?.module_index || 0,
             module_label: mods.find((m: any) => m.id === sem.module_id)?.label || '',
             payment_mode: 'per_semester',
             exam_fee: 0,
             module_exam_body: '',
             semester_id: sem.id || '',
-            semester_index: sem.semester_index + (moduleOffsets[sem.mod_index] || 0),
+            semester_index: sem.semester_index,
             tuition_fee: tuition,
             practical_fee: practical,
             additional_fees: 0,
