@@ -66,10 +66,15 @@ export default function LecturerCalendar() {
   }, [supabase, router]);
 
   const loadCalendars = async (campusFilter: string) => {
-    const { data, error } = await supabase
+    let query = supabase
       .from('academic_calendar')
-      .select('*')
-      .eq('campus', campusFilter)
+      .select('*');
+    
+    if (campusFilter) {
+      query = query.eq('campus', campusFilter);
+    }
+    
+    const { data, error } = await query
       .order('academic_year', { ascending: false })
       .order('term', { ascending: true });
 
