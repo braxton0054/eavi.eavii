@@ -1065,6 +1065,20 @@ export default function LecturerDashboard() {
                              <span>students</span>
                            </span>
                          </div>
+
+                         {/* Your Units */}
+                         {cls.units && cls.units.length > 0 && (
+                           <div className="mb-3">
+                             <p className="text-xs text-gray-400 font-medium mb-1.5">📋 Your Units</p>
+                             <div className="flex flex-wrap gap-1.5">
+                               {(cls.units || []).map((u: any, i: number) => (
+                                 <span key={i} className="px-2 py-1 bg-gray-50 border border-gray-200 rounded-md text-xs text-gray-700 font-medium">
+                                   {u.unit_code} — {u.unit_name}
+                                 </span>
+                               ))}
+                             </div>
+                           </div>
+                         )}
                          
                          {/* Term and Status Badges */}
                          <div className="flex flex-wrap gap-2 mb-3">
