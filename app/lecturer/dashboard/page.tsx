@@ -250,61 +250,77 @@ export default function LecturerDashboard() {
         return;
       }
 
-      const transformed = await Promise.all((data || []).map(async (a: any) => {
-        let classId = a.class_id;
-        let className = a.class_name;
+      const transformed: any[] = [];
+      
+      for (const a of data || []) {
+        // Find ALL active classes for this course + campus
+        const { data: classes } = await supabase
+          .from('classes')
+          .select('id, class_name, semester, module_index, intake_month, intake')
+          .eq('course_id', a.course_id)
+          .eq('campus', a.campus)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false });
 
-        if (!classId && a.course_id) {
-          const { data: found } = await supabase
-            .from('classes')
-            .select('id,class_name,semester,module_index,intake_month,intake')
-            .eq('course_id', a.course_id)
-            .eq('is_active', true)
-            .order('created_at', { ascending: false });
-          if (found?.length) {
-            classId = found[0].id;
-            className = found[0].class_name;
+        if (classes && classes.length > 0) {
+          // Create one entry per class/intake
+          for (const cl of classes) {
+            const { count } = await supabase
+              .from('applications')
+              .select('*', { count: 'exact', head: true })
+              .eq('status', 'enrolled')
+              .eq('class_id', cl.id);
+
+            transformed.push({
+              assignment_id: a.assignment_id,
+              class_id: cl.id,
+              class_name: cl.class_name,
+              course_name: a.course_name,
+              campus: a.campus,
+              semester: cl.semester || a.semester || 1,
+              module_index: cl.module_index || a.module_index || 1,
+              intake_month: cl.intake_month || a.intake || '',
+              intake: cl.intake || '',
+              exam_type_allowed: ['cat', 'end_term', 'mock'],
+              total_students: count || 0,
+              exam_body: a.exam_body,
+              term_name: a.term_name,
+              cat_opening_date: a.cat_opening_date,
+              cat_closing_date: a.cat_closing_date,
+              end_term_exam_date: a.end_term_exam_date,
+              is_attachment_stage: a.is_attachment_stage,
+              units: a.units || []
+            });
           }
-        }
-
-        return {
-          assignment_id: a.assignment_id,
-          class_id: classId || '',
-          class_name: className || a.course_name,
-          course_name: a.course_name,
-          campus: a.campus,
-          semester: a.semester || 1,
-          module_index: a.module_index || 1,
-          intake_month: a.intake || '',
-          intake: a.intake || '',
-          exam_type_allowed: ['cat', 'end_term', 'mock'],
-          total_students: 0,
-          exam_body: a.exam_body,
-          term_name: a.term_name,
-          cat_opening_date: a.cat_opening_date,
-          cat_closing_date: a.cat_closing_date,
-          end_term_exam_date: a.end_term_exam_date,
-          is_attachment_stage: a.is_attachment_stage,
-          units: a.units || []
-        };
-      }));
-
-      for (const cls of transformed) {
-        if (cls.class_id) {
+        } else {
+          // No classes exist yet — show as awaiting enrollment
           const { count } = await supabase
             .from('applications')
             .select('*', { count: 'exact', head: true })
             .eq('status', 'enrolled')
-            .eq('class_id', cls.class_id);
-          cls.total_students = count || 0;
-        } else if (cls.course_name) {
-          // Fallback: count students by course when no class exists yet
-          const { count } = await supabase
-            .from('applications')
-            .select('*', { count: 'exact', head: true })
-            .eq('status', 'enrolled')
-            .eq('course_id', cls.course_id);
-          cls.total_students = count || 0;
+            .eq('course_id', a.course_id);
+
+          transformed.push({
+            assignment_id: a.assignment_id,
+            class_id: '',
+            class_name: a.course_name,
+            course_name: a.course_name,
+            campus: a.campus,
+            semester: a.semester || 1,
+            module_index: a.module_index || 1,
+            intake_month: a.intake || '',
+            intake: a.intake || '',
+            exam_type_allowed: ['cat', 'end_term', 'mock'],
+            total_students: count || 0,
+            exam_body: a.exam_body,
+            term_name: a.term_name,
+            cat_opening_date: a.cat_opening_date,
+            cat_closing_date: a.cat_closing_date,
+            end_term_exam_date: a.end_term_exam_date,
+            is_attachment_stage: a.is_attachment_stage,
+            units: a.units || [],
+            _no_class: true
+          });
         }
       }
 
@@ -1235,14 +1251,29 @@ export default function LecturerDashboard() {
                       </div>
                     ) : (
                       lecturerClasses.map((cls) => (
+                        cls._no_class ? (
+                          <div key={cls.assignment_id} className="p-4 sm:p-6 opacity-60 cursor-not-allowed">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <h3 className="font-semibold text-slate-900">{cls.course_name}</h3>
+                                <p className="text-sm text-slate-500 mt-1">{formatCampus(cls.campus)} · Awaiting enrollment — class will be created when students join</p>
+                              </div>
+                              <span className="text-xs bg-slate-100 text-slate-400 px-2 py-1 rounded">No class yet</span>
+                            </div>
+                          </div>
+                        ) : (
                         <button
-                          key={cls.assignment_id || cls.class_id}
+                          key={cls.class_id || cls.assignment_id}
                           onClick={() => enterMarks(cls)}
                           className="w-full text-left p-4 sm:p-6 hover:bg-blue-50 transition-colors flex items-center justify-between"
                         >
-                          <div>
-                            <h3 className="font-semibold text-slate-900">{cls.course_name}</h3>
-                            <p className="text-sm text-slate-500 mt-1">{formatCampus(cls.campus)}{cls.total_students > 0 ? ` · ${cls.total_students} student${cls.total_students !== 1 ? 's' : ''}` : ' · No students yet'}</p>
+                          <div className="min-w-0 flex-1">
+                            <h3 className="font-semibold text-slate-900">{cls.class_name}</h3>
+                            <p className="text-sm text-slate-500 mt-1">
+                              {cls.course_name} · {formatCampus(cls.campus)}
+                              {cls.intake_month ? ` · ${cls.intake_month} intake` : ''}
+                              {cls.total_students > 0 ? ` · ${cls.total_students} student${cls.total_students !== 1 ? 's' : ''}` : ' · No students'}
+                            </p>
                             {cls.units && cls.units.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-2">
                                 {cls.units.map((u: any, i: number) => (
@@ -1253,10 +1284,11 @@ export default function LecturerDashboard() {
                               </div>
                             )}
                           </div>
-                          <svg className="w-5 h-5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-5 h-5 text-slate-400 flex-shrink-0 ml-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                           </svg>
                         </button>
+                        )
                       ))
                     )}
                   </div>
