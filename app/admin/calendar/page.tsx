@@ -128,13 +128,27 @@ export default function AcademicCalendar() {
         await loadCalendars(campus);
       }
     } else {
+      // Check if a calendar entry already exists for this year + term + campus
+      const { data: existing } = await supabase
+        .from('academic_calendar')
+        .select('id')
+        .eq('academic_year', formData.academic_year)
+        .eq('term', formData.term)
+        .eq('campus', formData.campus)
+        .maybeSingle();
+      
+      if (existing) {
+        alert(`Term ${formData.term} for year ${formData.academic_year} already exists for ${formData.campus} campus.`);
+        return;
+      }
+      
       const { error } = await supabase
         .from('academic_calendar')
         .insert([submitData]);
 
       if (error) {
         console.error('Error creating calendar:', error);
-        alert('Error creating calendar');
+        alert('Error creating calendar: ' + error.message);
       } else {
         alert('Calendar created successfully');
         setShowForm(false);
@@ -278,11 +292,13 @@ export default function AcademicCalendar() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Academic Year</label>
                       <input
-                        type="text"
+                        type="number"
+                        min={2020}
+                        max={2099}
                         value={formData.academic_year}
                         onChange={(e) => setFormData({ ...formData, academic_year: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                        placeholder="2024-2025"
+                        placeholder="e.g. 2025"
                         required
                       />
                     </div>
