@@ -183,7 +183,7 @@ export default function LecturerDashboard() {
 
       const { data: lecturerData, error: lecError } = await supabase
         .from('lecturers')
-        .select('id, full_name, email')
+        .select('id, full_name, email, campus')
         .eq('lecturer_number', lecNumber)
         .maybeSingle();
 
