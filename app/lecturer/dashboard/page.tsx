@@ -294,6 +294,14 @@ export default function LecturerDashboard() {
             .eq('status', 'enrolled')
             .eq('class_id', cls.class_id);
           cls.total_students = count || 0;
+        } else if (cls.course_name) {
+          // Fallback: count students by course when no class exists yet
+          const { count } = await supabase
+            .from('applications')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'enrolled')
+            .eq('course_id', cls.course_id);
+          cls.total_students = count || 0;
         }
       }
 
