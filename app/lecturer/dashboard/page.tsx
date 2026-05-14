@@ -219,7 +219,7 @@ export default function LecturerDashboard() {
       const { data: annData } = await supabase
         .from('announcements')
         .select('title, body, category, created_at, is_pinned')
-        .or(`audience.cs.{"lecturer"},audience.is.null`)
+        .or(`audience.cs.{"lecturer"},audience.cs.{"all"},audience.is.null`)
         .or(`campus.eq.${lecturerData.campus || 'main'},campus.is.null`)
         .lte('publish_at', new Date().toISOString())
         .or(`expire_at.gt.${new Date().toISOString()},expire_at.is.null`)
@@ -1089,18 +1089,23 @@ export default function LecturerDashboard() {
                 { mode: 'dashboard', label: 'Dashboard', icon: '📊' },
                 { mode: 'marks', label: 'Manage Marks', icon: '✏️' },
                 { mode: 'setup', label: 'My Courses', icon: '📚' },
-                { mode: 'submissions', label: 'Submissions', icon: '📤' }
+                { mode: 'submissions', label: 'Submissions', icon: '📤' },
+                { mode: 'calendar', label: 'Academic Calendar', icon: '📅' }
               ].map((item) => (
                 <button
                   key={item.mode}
                   onClick={() => {
-                    setViewMode(item.mode as any);
+                    if (item.mode === 'calendar') {
+                      router.push('/lecturer/calendar');
+                    } else {
+                      setViewMode(item.mode as any);
+                    }
                     setSidebarOpen(false);
                   }}
                   className={`
                     w-full text-left px-4 py-3 rounded-lg font-medium transition-all duration-200
                     flex items-center gap-3
-                    ${viewMode === item.mode
+                    ${item.mode !== 'calendar' && viewMode === item.mode
                       ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-700'
                       : 'text-slate-700 hover:bg-slate-50'
                     }
