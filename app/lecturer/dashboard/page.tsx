@@ -1029,7 +1029,7 @@ export default function LecturerDashboard() {
                    const borderColor = cls.exam_body === 'CDACC' ? 'border-l-4 border-l-blue-500' : 'border-l-4 border-l-green-500';
                    
                    return (
-                     <div key={cls.class_id} className={`bg-white rounded-xl border border-gray-200 p-6 space-y-4 hover:shadow-md transition-shadow ${borderColor}`}>
+                     <div key={cls.assignment_id || cls.class_id} className={`bg-white rounded-xl border border-gray-200 p-6 space-y-4 hover:shadow-md transition-shadow ${borderColor}`}>
                        {/* Header with exam body badge */}
                        <div className="flex items-center justify-between mb-2">
                          <div className="flex-1">
