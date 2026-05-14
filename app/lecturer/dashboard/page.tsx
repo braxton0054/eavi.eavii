@@ -46,6 +46,7 @@ interface Student {
   application_id: string;
   full_name: string;
   admission_number: string;
+  current_module: number;
   current_semester: number;
   financial_hold: boolean;
   status: string;
@@ -548,7 +549,7 @@ export default function LecturerDashboard() {
   const loadStudentsForClass = async (classId: string, courseId?: string) => {
     let query = supabase
       .from('applications')
-      .select('id, full_name, admission_number, current_semester, financial_hold, status')
+      .select('id, full_name, admission_number, current_module, current_semester, financial_hold, status')
       .eq('status', 'enrolled')
       .eq('financial_hold', false);
 
@@ -571,6 +572,7 @@ export default function LecturerDashboard() {
       application_id: s.id,
       full_name: s.full_name,
       admission_number: s.admission_number,
+      current_module: s.current_module,
       current_semester: s.current_semester,
       financial_hold: s.financial_hold,
       status: s.status
@@ -1299,11 +1301,34 @@ export default function LecturerDashboard() {
 
             {/* Marks Table */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 overflow-x-auto">
-              {students.length === 0 ? (
-                <div className="text-center py-12"><p className="text-gray-400 text-lg">👥 No enrolled students</p><p className="text-gray-400 text-sm mt-1">This class has no enrolled students yet</p></div>
-              ) : units.length === 0 ? (
-                <div className="text-center py-12"><p className="text-gray-400 text-lg">📝 No units assigned</p><p className="text-gray-400 text-sm mt-1">You haven't been assigned units for this class</p></div>
-              ) : (
+              {(() => {
+                const selUnit = units.find(u => u.unit_code === selectedMarksUnit);
+                const modIdx = selUnit?.module_index;
+                const modStudents = modIdx ? students.filter(s => s.current_module === modIdx) : students;
+                const hasFilter = modIdx && modStudents.length !== students.length;
+                
+                if (students.length === 0) {
+                  return <div className="text-center py-12"><p className="text-gray-400 text-lg">👥 No enrolled students</p><p className="text-gray-400 text-sm mt-1">This class has no enrolled students yet</p></div>;
+                }
+                if (units.length === 0) {
+                  return <div className="text-center py-12"><p className="text-gray-400 text-lg">📝 No units assigned</p><p className="text-gray-400 text-sm mt-1">You haven't been assigned units for this class</p></div>;
+                }
+                if (modStudents.length === 0) {
+                  return (
+                    <div className="text-center py-12">
+                      <p className="text-gray-400 text-lg">🎯 No students at this module</p>
+                      <p className="text-gray-400 text-sm mt-1">This unit is in {selectedClass?.exam_body === 'CDACC' ? 'Stage' : 'Module'} {modIdx}, but no enrolled students are at that level yet</p>
+                    </div>
+                  );
+                }
+                
+                return (
+                  <>
+                    {hasFilter && (
+                      <div className="mb-3 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-700">
+                        Showing {modStudents.length} of {students.length} students — only those at {selectedClass?.exam_body === 'CDACC' ? 'Stage' : 'Module'} {modIdx}
+                      </div>
+                    )}
                 <table className="w-full">
                   <thead>
                     <tr className="border-b-2 border-gray-200 bg-gray-50">
@@ -1327,7 +1352,7 @@ export default function LecturerDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {students.map((student, idx) => (
+                    {modStudents.map((student, idx) => (
                       <tr key={student.id} className={`border-b border-gray-100 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} hover:bg-blue-50/30`}>
                         <td className="p-3 text-gray-900 font-medium">{student.full_name}</td>
                         <td className="p-3 text-gray-400 text-sm">{student.admission_number}</td>
@@ -1433,7 +1458,9 @@ export default function LecturerDashboard() {
                     ))}
                   </tbody>
                 </table>
-              )}
+                  </>
+                );
+              })()}
             </div>
 
             {/* Action Buttons */}
