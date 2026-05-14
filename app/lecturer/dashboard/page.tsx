@@ -454,6 +454,8 @@ export default function LecturerDashboard() {
           lecturer_id: lecturerId,
           course_id: setupForm.course_id,
           campus: setupForm.campus || 'main',
+          semester: 1,
+          module_index: 1,
         }])
         .select()
         .single();
