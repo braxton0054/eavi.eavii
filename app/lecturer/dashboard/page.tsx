@@ -1179,7 +1179,7 @@ export default function LecturerDashboard() {
                       </div>
                     ) : (
                       lecturerClasses.map((cls) => (
-                        <div key={cls.id} className="p-4 sm:p-6 hover:bg-blue-50 transition-colors">
+                        <div key={cls.assignment_id || cls.class_id} className="p-4 sm:p-6 hover:bg-blue-50 transition-colors">
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                             <div className="min-w-0">
                               <h3 className="font-semibold text-slate-900">{cls.class_name}</h3>
@@ -1233,7 +1233,7 @@ export default function LecturerDashboard() {
                     <div className="divide-y divide-slate-200">
                       {lecturerClasses.map((cls) => (
                         <button
-                          key={cls.id}
+                          key={cls.assignment_id || cls.class_id}
                           onClick={() => setSelectedClass(cls)}
                           className="w-full text-left p-4 sm:p-6 hover:bg-blue-50 transition-colors"
                         >
