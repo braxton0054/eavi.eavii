@@ -1229,6 +1229,10 @@ export default function LecturerDashboard() {
                          <div className="w-full py-2 bg-gray-100 text-gray-400 rounded-lg text-sm font-semibold text-center mt-4 cursor-not-allowed">
                            Attachment - No marks entry
                          </div>
+                       ) : (cls.total_students === 0) ? (
+                         <div className="w-full py-2 bg-gray-100 text-gray-400 rounded-lg text-sm font-semibold text-center mt-4 cursor-not-allowed">
+                           No students enrolled yet
+                         </div>
                        ) : (
                          <button
                            onClick={() => enterMarks(cls)}
