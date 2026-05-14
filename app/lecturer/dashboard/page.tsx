@@ -1079,8 +1079,13 @@ export default function LecturerDashboard() {
                              <p className="text-xs text-gray-400 font-medium mb-1.5">📋 Your Units</p>
                              <div className="flex flex-wrap gap-1.5">
                                {(cls.units || []).map((u: any, i: number) => (
-                                 <span key={i} className="px-2 py-1 bg-gray-50 border border-gray-200 rounded-md text-xs text-gray-700 font-medium">
-                                   {u.unit_code} — {u.unit_name}
+                                 <span key={i} className="px-2 py-1 bg-gray-50 border border-gray-200 rounded-md text-xs text-gray-700 font-medium flex items-center gap-1">
+                                   {u.module_index && (
+                                     <span className="px-1 py-0.5 bg-white border border-gray-300 rounded text-xs font-semibold">
+                                       {cls.exam_body === 'CDACC' ? 'S' : 'M'}{u.module_index}
+                                     </span>
+                                   )}
+                                   <span>{u.unit_code} — {u.unit_name}</span>
                                  </span>
                                ))}
                              </div>
