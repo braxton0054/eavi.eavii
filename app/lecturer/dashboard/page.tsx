@@ -259,7 +259,14 @@ export default function LecturerDashboard() {
           intake_month: a.intake || '',
           intake: a.intake || '',
           exam_type_allowed: ['cat', 'end_term', 'mock'],
-          total_students: 0
+          total_students: 0,
+          exam_body: a.exam_body,
+          term_name: a.term_name,
+          cat_opening_date: a.cat_opening_date,
+          cat_closing_date: a.cat_closing_date,
+          end_term_exam_date: a.end_term_exam_date,
+          is_attachment_stage: a.is_attachment_stage,
+          units: a.units || []
         };
       }));
 
