@@ -1241,6 +1241,15 @@ export default function LecturerDashboard() {
                           <div>
                             <h3 className="font-semibold text-slate-900">{cls.course_name}</h3>
                             <p className="text-sm text-slate-500 mt-1">{formatCampus(cls.campus)}{cls.total_students > 0 ? ` · ${cls.total_students} student${cls.total_students !== 1 ? 's' : ''}` : ' · No students yet'}</p>
+                            {cls.units && cls.units.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                {cls.units.map((u: any, i: number) => (
+                                  <span key={i} className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md text-xs">
+                                    {u.unit_code} — {u.unit_name}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
                           <svg className="w-5 h-5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
