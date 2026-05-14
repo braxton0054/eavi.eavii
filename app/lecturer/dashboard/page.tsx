@@ -89,6 +89,7 @@ export default function LecturerDashboard() {
   const [viewMode, setViewMode] = useState<'dashboard' | 'marks' | 'setup' | 'submissions'>('dashboard');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [announcements, setAnnouncements] = useState<any[]>([]);
   
   // Classes data - lecturer's workload
   const [lecturerClasses, setLecturerClasses] = useState<any[]>([]);
@@ -209,6 +210,19 @@ export default function LecturerDashboard() {
       
       // Load classes for this lecturer
       await loadLecturerClasses(lecturerData.id);
+      
+      // Load announcements
+      const { data: annData } = await supabase
+        .from('announcements')
+        .select('title, body, category, created_at, is_pinned')
+        .or(`audience.cs.{"lecturer"},audience.is.null`)
+        .or(`campus.eq.${lecturerData.campus || 'main'},campus.is.null`)
+        .lte('publish_at', new Date().toISOString())
+        .or(`expire_at.gt.${new Date().toISOString()},expire_at.is.null`)
+        .order('is_pinned', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(5);
+      setAnnouncements(annData || []);
       
     } catch (err) {
       console.error('Auth error:', err);
@@ -1043,6 +1057,27 @@ export default function LecturerDashboard() {
         {success && (
           <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
             {success}
+          </div>
+        )}
+
+        {/* Announcements */}
+        {announcements.length > 0 && (
+          <div className="mb-6 space-y-3">
+            {announcements.map((a, i) => (
+              <div key={i} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <span className="text-lg mt-0.5">{a.is_pinned ? '📌' : '📢'}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-900 text-sm">{a.title}</p>
+                    {a.body && <p className="text-gray-500 text-xs mt-1 line-clamp-2">{a.body}</p>}
+                    <p className="text-gray-400 text-[10px] mt-1">
+                      {new Date(a.created_at).toLocaleDateString()}
+                      {a.category && ` · ${a.category}`}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
