@@ -107,8 +107,8 @@ export default function AcademicCalendar() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Auto-generate term_name from term + semester
-    const termName = formData.term_name || `Term ${formData.term} - Semester ${formData.semester}`;
+    // Auto-generate term_name from term
+    const termName = formData.term_name || `Term ${formData.term}`;
     
     const submitData = {
       ...formData,
@@ -320,17 +320,7 @@ export default function AcademicCalendar() {
                       </select>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Term Name</label>
-                      <input
-                        type="text"
-                        value={formData.term_name}
-                        onChange={(e) => setFormData({ ...formData, term_name: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                        placeholder="January Term"
-                        required
-                      />
-                    </div>
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Campus</label>
                       <select
