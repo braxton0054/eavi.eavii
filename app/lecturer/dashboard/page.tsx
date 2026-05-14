@@ -1255,7 +1255,7 @@ export default function LecturerDashboard() {
                 >
                   {units.map((u) => (
                     <option key={u.unit_code} value={u.unit_code}>
-                      {u.unit_code} — {u.unit_name}
+                      {u.module_index ? (selectedClass?.exam_body === 'CDACC' ? `S${u.module_index} · ` : `M${u.module_index} · `) : ''}{u.unit_code} — {u.unit_name}
                     </option>
                   ))}
                 </select>
