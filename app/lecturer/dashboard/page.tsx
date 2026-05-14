@@ -515,10 +515,17 @@ export default function LecturerDashboard() {
     // Load units
     await loadUnitsForAssignment(cls.assignment_id);
     
-    // Check window
-    const status = checkWindowStatus(cls, selectedExamType);
-    setIsWindowOpen(status.open);
-    setWindowMessage(status.message);
+    // Check window — combined CAT + End Term
+    const catStatus = checkWindowStatus(cls, 'cat');
+    const etStatus = checkWindowStatus(cls, 'end_term');
+    const anyOpen = catStatus.open || etStatus.open;
+    setIsWindowOpen(anyOpen);
+    let winMsg = '';
+    if (catStatus.open && etStatus.open) winMsg = 'CAT and End Term windows are OPEN';
+    else if (catStatus.open) winMsg = 'CAT window is OPEN — End Term: ' + etStatus.message;
+    else if (etStatus.open) winMsg = 'End Term window is OPEN — CAT: ' + catStatus.message;
+    else winMsg = 'CAT: ' + catStatus.message + ' | End Term: ' + etStatus.message;
+    setWindowMessage(winMsg);
     
     setViewMode('marks');
   };
@@ -612,12 +619,20 @@ export default function LecturerDashboard() {
       `)
       .eq('class_id', classId)
       .in('unit_code', unitCodes)
-      .eq('exam_type', selectedExamType);
+      .in('exam_type', ['cat', 'end_term']);
 
+    // Merge CAT and End Term rows into one entry per student+unit
     const marksMap = new Map();
     data?.forEach((m: any) => {
       const key = `${m.application_id}-${m.unit_code}`;
-      marksMap.set(key, m);
+      const existing = marksMap.get(key) || {};
+      marksMap.set(key, {
+        ...existing,
+        ...m,
+        cat_marks: m.exam_type === 'cat' ? m.cat_marks : (existing.cat_marks ?? null),
+        end_term_marks: m.exam_type === 'end_term' ? m.end_term_marks : (existing.end_term_marks ?? null),
+        is_submitted: existing.is_submitted && m.is_submitted
+      });
     });
     
     setExistingMarks(marksMap);
@@ -711,6 +726,7 @@ export default function LecturerDashboard() {
           const totalMarks = calculateTotal(catMarks, endTermMarks, practicalMarks, isAbsent);
           const grade = isAbsent ? 'ABS' : calculateGrade(totalMarks);
           
+          // Save CAT row
           marksToSave.push({
             application_id: student.application_id,
             campus: selectedClass.campus,
@@ -718,12 +734,32 @@ export default function LecturerDashboard() {
             class_id: selectedClass.class_id,
             unit_code: unit.unit_code,
             semester: selectedClass.semester,
-            exam_type: selectedExamType,
+            exam_type: 'cat',
             cat_marks: catMarks,
+            end_term_marks: null,
+            practical_marks: null,
+            marks: catMarks || 0,
+            grade: isAbsent ? 'ABS' : calculateGrade(catMarks || 0),
+            is_absent: isAbsent,
+            is_submitted: false,
+            lecturer_id: lecturerId,
+            intake: selectedIntake,
+            semester_assignment_id: selectedSemesterAssignment.id
+          });
+          // Save End Term row
+          marksToSave.push({
+            application_id: student.application_id,
+            campus: selectedClass.campus,
+            course_id: selectedClass.course_id,
+            class_id: selectedClass.class_id,
+            unit_code: unit.unit_code,
+            semester: selectedClass.semester,
+            exam_type: 'end_term',
+            cat_marks: null,
             end_term_marks: endTermMarks,
             practical_marks: practicalMarks,
-            marks: totalMarks,
-            grade: grade,
+            marks: (endTermMarks || 0) + (practicalMarks || 0),
+            grade: isAbsent ? 'ABS' : calculateGrade((endTermMarks || 0) + (practicalMarks || 0)),
             is_absent: isAbsent,
             is_submitted: false,
             lecturer_id: lecturerId,
@@ -773,28 +809,46 @@ export default function LecturerDashboard() {
     setError('');
     
     try {
-      // VALIDATION: Check ALL enrolled students have marks entered
+      // VALIDATION: Check ALL enrolled students have BOTH CAT and End Term marks entered
       const totalStudents = students.length;
       
-      // Count distinct students who have exam_marks rows for this lecturer+class
-      const { count: marksCount, error: countError } = await supabase
+      // Count CAT marks rows
+      const { count: catCount, error: catError } = await supabase
         .from('exam_marks')
         .select('*', { count: 'exact', head: true })
         .eq('lecturer_id', lecturerId)
         .eq('class_id', selectedClass.class_id)
         .eq('semester', selectedClass.semester)
-        .eq('intake', selectedIntake);
+        .eq('intake', selectedIntake)
+        .eq('exam_type', 'cat');
       
-      if (countError) throw countError;
+      if (catError) throw catError;
       
-      if (!marksCount || marksCount < totalStudents) {
-        const missing = totalStudents - (marksCount || 0);
-        setError(`Cannot submit: ${marksCount || 0} of ${totalStudents} students have marks. ${missing} student${missing > 1 ? 's are' : ' is'} missing. Please save marks (enter 0 for absent/no-show) for all students first.`);
+      // Count End Term marks rows  
+      const { count: etCount, error: etError } = await supabase
+        .from('exam_marks')
+        .select('*', { count: 'exact', head: true })
+        .eq('lecturer_id', lecturerId)
+        .eq('class_id', selectedClass.class_id)
+        .eq('semester', selectedClass.semester)
+        .eq('intake', selectedIntake)
+        .eq('exam_type', 'end_term');
+      
+      if (etError) throw etError;
+      
+      if ((catCount || 0) < totalStudents || (etCount || 0) < totalStudents) {
+        const catMissing = totalStudents - (catCount || 0);
+        const etMissing = totalStudents - (etCount || 0);
+        let msg = 'Cannot submit: ';
+        if (catMissing > 0) msg += `${catMissing} student${catMissing > 1 ? 's' : ''} missing CAT marks. `;
+        if (etMissing > 0) msg += `${etMissing} student${etMissing > 1 ? 's' : ''} missing End Term marks. `;
+        msg += 'Please save marks (enter 0 for absent/no-show) for all students first.';
+        setError(msg);
         setIsSubmittingMarks(false);
         return;
       }
       
-      // Update all marks for this class/semester to is_submitted = true
+      // Update all marks for this class/semester to is_submitted = true for BOTH exam types
       const { error: submitError } = await supabase
         .from('exam_marks')
         .update({ is_submitted: true })
@@ -1173,26 +1227,22 @@ export default function LecturerDashboard() {
               </div>
             </div>
 
-            {/* Exam Type Tabs */}
-            <div className="flex gap-2">
-              {['cat', 'end_term', 'mock'].map((type) => (
-                <button
-                  key={type}
-                  onClick={() => handleExamTypeChange(type)}
-                  disabled={!selectedClass.exam_type_allowed?.includes(type)}
-                  className={`px-5 py-2 rounded-full text-sm font-semibold transition-colors ${
-                    selectedExamType === type
-                      ? 'bg-green-600 text-white'
-                      : 'border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-30'
-                  }`}
-                >
-                  {formatExamType(type)}
-                </button>
-              ))}
-            </div>
+            {/* Window Status Banner */}
+            {!isWindowOpen && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-red-700 font-semibold">Exam Windows Closed</p>
+                <p className="text-red-500 text-sm">{windowMessage}</p>
+              </div>
+            )}
+            
+            {isWindowOpen && windowMessage && (
+              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-green-700 font-semibold">{windowMessage}</p>
+              </div>
+            )}
 
             {/* Unit Selector */}
-            {units.length > 1 && (
+            {units.length > 0 && (
               <div className="flex items-center gap-3">
                 <label className="text-sm text-gray-500 font-medium">Unit:</label>
                 <select
@@ -1212,20 +1262,6 @@ export default function LecturerDashboard() {
               </div>
             )}
 
-            {/* Window Status Banner */}
-            {!isWindowOpen && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-700 font-semibold">Window Closed</p>
-                <p className="text-red-500 text-sm">{windowMessage}</p>
-              </div>
-            )}
-            
-            {isWindowOpen && windowMessage && (
-              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-green-700 font-semibold">{windowMessage}</p>
-              </div>
-            )}
-
             {/* Marks Table */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 overflow-x-auto">
               {students.length === 0 ? (
@@ -1239,9 +1275,18 @@ export default function LecturerDashboard() {
                       <th className="text-left p-3 text-gray-600 text-sm font-semibold">Student</th>
                       <th className="text-left p-3 text-gray-600 text-sm font-semibold">Admission #</th>
                       {units.filter(u => u.unit_code === selectedMarksUnit).map((unit) => (
-                        <th key={unit.unit_code} className="p-3 text-center text-gray-600 text-sm font-semibold">
+                        <th key={unit.unit_code} className="p-3 text-center text-gray-600 text-sm font-semibold" colSpan={selectedClass?.exam_type_allowed?.includes('practical') ? 4 : 3}>
                           <div>{unit.unit_name}</div>
                           <div className="text-xs text-gray-400 font-normal">{unit.unit_code}</div>
+                          {/* Sub-headers */}
+                          <div className="flex gap-1 mt-1.5 justify-center">
+                            <span className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded font-medium">CAT</span>
+                            <span className="text-[10px] px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded font-medium">End Term</span>
+                            {selectedClass?.exam_type_allowed?.includes('practical') && (
+                              <span className="text-[10px] px-1.5 py-0.5 bg-purple-50 text-purple-600 rounded font-medium">Prac</span>
+                            )}
+                            <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded font-medium">Total</span>
+                          </div>
                         </th>
                       ))}
                     </tr>
@@ -1265,7 +1310,7 @@ export default function LecturerDashboard() {
                           const grade = isAbsent ? 'ABS' : calculateGrade(total);
                           
                           return (
-                            <td key={unit.unit_code} className="p-3">
+                            <td key={unit.unit_code} className="p-3 align-top">
                               {/* Submitted Badge */}
                               {isSubmitted && (
                                 <div className="mb-1 inline-block px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-semibold">✓ SUBMITTED</div>
@@ -1284,22 +1329,25 @@ export default function LecturerDashboard() {
                               </label>
                               
                               {!isAbsent && (
-                                <>
-                                  {selectedExamType === 'cat' && (
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      max="30"
-                                      step="0.5"
-                                      value={catMarks ?? ''}
-                                      onChange={(e) => handleMarkChange(student.application_id, unit.unit_code, 'cat_marks', parseFloat(e.target.value) || 0)}
-                                      disabled={!isWindowOpen || isSubmitted}
-                                      className="w-20 px-2 py-1 bg-white border border-gray-300 rounded text-gray-900 text-center disabled:opacity-30 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                    />
-                                  )}
-                                  
-                                  {selectedExamType === 'end_term' && (
-                                    <>
+                                <div className="flex flex-col items-center gap-1">
+                                  <div className="flex gap-1 items-start">
+                                    {/* CAT Input */}
+                                    <div className="flex flex-col items-center">
+                                      <span className="text-[10px] text-blue-600 font-medium mb-0.5">CAT</span>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        max="30"
+                                        step="0.5"
+                                        value={catMarks ?? ''}
+                                        onChange={(e) => handleMarkChange(student.application_id, unit.unit_code, 'cat_marks', parseFloat(e.target.value) || 0)}
+                                        disabled={!isWindowOpen || isSubmitted}
+                                        className="w-16 px-1 py-1 bg-white border border-gray-300 rounded text-gray-900 text-center text-sm disabled:opacity-30 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                      />
+                                    </div>
+                                    {/* End Term Input */}
+                                    <div className="flex flex-col items-center">
+                                      <span className="text-[10px] text-indigo-600 font-medium mb-0.5">Term</span>
                                       <input
                                         type="number"
                                         min="0"
@@ -1308,37 +1356,27 @@ export default function LecturerDashboard() {
                                         value={endTermMarks ?? ''}
                                         onChange={(e) => handleMarkChange(student.application_id, unit.unit_code, 'end_term_marks', parseFloat(e.target.value) || 0)}
                                         disabled={!isWindowOpen || isSubmitted}
-                                        className="w-20 px-2 py-1 bg-white border border-gray-300 rounded text-gray-900 text-center disabled:opacity-30 mb-1 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                        className="w-16 px-1 py-1 bg-white border border-gray-300 rounded text-gray-900 text-center text-sm disabled:opacity-30 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                                       />
-                                      {/* Practical marks for CDACC courses */}
-                                      {selectedClass?.exam_type_allowed?.includes('practical') && (
+                                    </div>
+                                    {/* Practical marks for CDACC courses */}
+                                    {selectedClass?.exam_type_allowed?.includes('practical') && (
+                                      <div className="flex flex-col items-center">
+                                        <span className="text-[10px] text-purple-600 font-medium mb-0.5">Prac</span>
                                         <input
                                           type="number"
                                           min="0"
                                           max="30"
                                           step="0.5"
-                                          placeholder="Prac"
                                           value={practicalMarks ?? ''}
                                           onChange={(e) => handlePracticalMarkChange(student.application_id, unit.unit_code, parseFloat(e.target.value) || 0)}
                                           disabled={!isWindowOpen || isSubmitted}
-                                          className="w-20 px-2 py-1 bg-white border border-gray-300 rounded text-gray-900 text-center disabled:opacity-30 text-xs focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                          className="w-16 px-1 py-1 bg-white border border-gray-300 rounded text-gray-900 text-center text-sm disabled:opacity-30 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                                         />
-                                      )}
-                                    </>
-                                  )}
-                                  
-                                  {selectedExamType === 'mock' && (
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      max="100"
-                                      step="0.5"
-                                      value={total || ''}
-                                      disabled={!isWindowOpen || isSubmitted}
-                                      className="w-20 px-2 py-1 bg-white border border-gray-300 rounded text-gray-900 text-center disabled:opacity-30 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                    />
-                                  )}
-                                </>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
                               )}
                               
                               {/* Total, Grade and Pass/Fail */}
