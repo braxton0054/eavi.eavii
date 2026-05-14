@@ -1220,7 +1220,38 @@ export default function LecturerDashboard() {
             {/* MARKS VIEW */}
 
         {/* MARKS ENTRY VIEW */}
-        {viewMode === 'marks' && selectedClass && (
+        {viewMode === 'marks' && (
+          <div className="space-y-6">
+            {!selectedClass ? (
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-4">Select a Class</h2>
+                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                  <div className="divide-y divide-slate-200">
+                    {lecturerClasses.length === 0 ? (
+                      <div className="p-8 text-center">
+                        <p className="text-slate-500">No classes available</p>
+                      </div>
+                    ) : (
+                      lecturerClasses.map((cls) => (
+                        <button
+                          key={cls.assignment_id || cls.class_id}
+                          onClick={() => enterMarks(cls)}
+                          className="w-full text-left p-4 sm:p-6 hover:bg-blue-50 transition-colors flex items-center justify-between"
+                        >
+                          <div>
+                            <h3 className="font-semibold text-slate-900">{cls.class_name || cls.course_name}</h3>
+                            <p className="text-sm text-slate-500 mt-1">{cls.course_name} · {formatCampus(cls.campus)}</p>
+                          </div>
+                          <svg className="w-5 h-5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : selectedClass && (
           <div className="space-y-6">
             {/* Class Header */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -1472,6 +1503,8 @@ export default function LecturerDashboard() {
                   ⚠️ Some students have fee holds. Their results will be blocked until they reach 95% fee clearance.
                 </p>
               </div>
+            )}
+          </div>
             )}
           </div>
         )}
