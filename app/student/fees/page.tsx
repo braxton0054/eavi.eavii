@@ -50,8 +50,10 @@ export default function StudentFeesPage() {
   const [clearanceStatus, setClearanceStatus] = useState<ClearanceStatus[]>([]);
   const [paymentHistory, setPaymentHistory] = useState<PaymentHistory[]>([]);
   
-  // Selected semester for detail view
-  const [selectedSemester, setSelectedSemester] = useState<number | null>(null);
+   // Selected semester for detail view
+   const [selectedSemester, setSelectedSemester] = useState<number | null>(null);
+   // Payment mode (per_semester or per_module)
+   const [paymentMode, setPaymentMode] = useState<string>('per_semester');
 
   useEffect(() => {
     const client = createClient();
@@ -79,112 +81,121 @@ export default function StudentFeesPage() {
     checkAuth();
   }, [router]);
 
-  const loadStudentData = async (client: any, admissionNumber: string) => {
-    try {
-      // Get student basic info
-      const { data: student } = await client
-        .from('applications')
-        .select('id, full_name, admission_number, course_id, current_semester, current_module, campus, total_balance, courses(name)')
-        .eq('admission_number', admissionNumber)
-        .single();
-      
-      if (student) {
-        setStudentData(student);
-        
-        // Get all payments for this student directly from fee_payments table
-        const { data: payments, error: paymentsError } = await client
-          .from('fee_payments')
-          .select('id, amount, payment_method, transaction_id, receipt_number, payment_date, payment_type, status, semester_id, semesters(semester_index)')
-          .eq('application_id', student.id)
-          .eq('status', 'completed')
-          .order('payment_date', { ascending: false });
-        
-        if (paymentsError) {
-          console.error('Error loading payments:', paymentsError);
-        }
-        
-        // Format payment history
-        const formattedPayments: PaymentHistory[] = (payments || []).map((p: any) => ({
-          receipt_number: p.receipt_number || `PAY-${p.id?.slice(-6) || '000000'}`,
-          amount: p.amount || 0,
-          payment_method: p.payment_method || 'cash',
-          payment_date: p.payment_date || new Date().toISOString(),
-          payment_type: p.payment_type || 'tuition',
-          status: p.status || 'completed'
-        }));
-        setPaymentHistory(formattedPayments);
-        
-        // Calculate clearance status per semester
-        const semestersMap = new Map<number, { amountPaid: number; semester: number }>();
-        
-        for (const payment of (payments || [])) {
-          const sem = payment.semesters?.semester_index || 1;
-          const existing = semestersMap.get(sem);
-          if (existing) {
-            existing.amountPaid += (payment.amount || 0);
-          } else {
-            semestersMap.set(sem, { amountPaid: payment.amount || 0, semester: sem });
-          }
-        }
-        
-        // Build clearance status for all semesters (1-6)
-        const clearanceData: ClearanceStatus[] = [];
-        const currentSemester = student.current_semester || 1;
-        
-        for (let sem = 1; sem <= 6; sem++) {
-          const semPayments = semestersMap.get(sem);
-          const amountPaid = semPayments?.amountPaid || 0;
-          
-          // Estimate semester fee (simplified - use total_balance + payments for current sem)
-          const estimatedSemesterFee = sem === currentSemester 
-            ? (student.total_balance || 0) + amountPaid
-            : amountPaid; // For past semesters, assume they paid what they paid
-          
-          const balance = Math.max(0, estimatedSemesterFee - amountPaid);
-          const paidPct = estimatedSemesterFee > 0 ? (amountPaid / estimatedSemesterFee) * 100 : 0;
-          const isCleared = paidPct >= 95;
-          
-           clearanceData.push({
-             admission_number: student.admission_number,
-             full_name: student.full_name,
-             current_semester: sem,
-             module_index: student.current_module || 1,
-             semester_fee: estimatedSemesterFee,
-             amount_paid: amountPaid,
-             balance: balance,
-             paid_pct: paidPct,
-             clearance_status: isCleared ? 'cleared' : 'pending',
-             results_released: isCleared,
-             results_pending: ''
-           });
-        }
-        
-        setClearanceStatus(clearanceData);
-        
-        // Calculate current balance info
-        const currentSemData = clearanceData.find(c => c.current_semester === currentSemester) || clearanceData[0];
-        const semesterFee = currentSemData?.semester_fee || 0;
-        const amountPaid = currentSemData?.amount_paid || 0;
-        const totalPaidAllSemesters = formattedPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
-        const requiredFor95 = semesterFee * 0.95;
-        const amountNeeded = Math.max(0, requiredFor95 - amountPaid);
-        const isCleared = amountNeeded <= 0;
-        
-        setBalance({
-          total_balance: Math.max(0, (student.total_balance || 0)),
-          current_semester_fee: semesterFee,
-          amount_paid_current: amountPaid,
-          clearance_pct: currentSemData?.paid_pct || 0,
-          amount_needed_for_95: amountNeeded,
-          is_cleared: isCleared
-        });
-        
-        setSelectedSemester(currentSemester);
-      }
-    } catch (err) {
-      console.error('Error loading student data:', err);
-    }
-  };
+   const loadStudentData = async (client: any, admissionNumber: string) => {
+     try {
+       // Get student basic info
+       const { data: student } = await client
+         .from('applications')
+         .select('id, full_name, admission_number, course_id, current_semester, current_module, campus, total_balance, courses(name)')
+         .eq('admission_number', admissionNumber)
+         .single();
+       
+       if (student) {
+         setStudentData(student);
+         
+         // Get all payments for this student directly from fee_payments table
+         const { data: payments, error: paymentsError } = await client
+           .from('fee_payments')
+           .select('id, amount, payment_method, transaction_id, receipt_number, payment_date, payment_type, status, semester_id, semesters(semester_index), module_id')
+           .eq('application_id', student.id)
+           .eq('status', 'completed')
+           .order('payment_date', { ascending: false });
+         
+         if (paymentsError) {
+           console.error('Error loading payments:', paymentsError);
+         }
+         
+         // Format payment history
+         const formattedPayments: PaymentHistory[] = (payments || []).map((p: any) => ({
+           receipt_number: p.receipt_number || `PAY-${p.id?.slice(-6) || '000000'}`,
+           amount: p.amount || 0,
+           payment_method: p.payment_method || 'cash',
+           payment_date: p.payment_date || new Date().toISOString(),
+           payment_type: p.payment_type || 'tuition',
+           status: p.status || 'completed'
+         }));
+         setPaymentHistory(formattedPayments);
+         
+         // Determine fee mode
+         let pmode = 'per_semester';
+         const { data: ct } = await client.from('course_types').select('payment_mode').eq('course_id', student.course_id).maybeSingle();
+         if (ct) pmode = ct.payment_mode || 'per_semester';
+         setPaymentMode(pmode);
+         
+         const clearanceData: ClearanceStatus[] = [];
+         
+         if (pmode === 'per_module') {
+           // CDACC stage-based: load modules, calculate per stage
+           const { data: mods } = await client.from('modules').select('id, module_index, label, fee').eq('course_type_id', ct?.id).order('module_index');
+           if (mods) {
+             for (const mod of mods) {
+               const modPayments = (payments || []).filter((p: any) => p.module_id === mod.id).reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+               const stageFee = Number(mod.fee || 0);
+               const bal = Math.max(0, stageFee - modPayments);
+               const pct = stageFee > 0 ? (modPayments / stageFee) * 100 : 0;
+               const cleared = pct >= 95;
+               clearanceData.push({
+                 admission_number: student.admission_number, full_name: student.full_name,
+                 current_semester: mod.module_index, module_index: mod.module_index,
+                 semester_fee: stageFee, amount_paid: modPayments, balance: bal,
+                 paid_pct: pct, clearance_status: cleared ? 'cleared' : 'pending',
+                 results_released: cleared, results_pending: ''
+               });
+             }
+           }
+         } else {
+           // Existing per-semester logic
+           const semsMap = new Map<number, { amountPaid: number }>();
+           for (const payment of (payments || [])) {
+             const sem = payment.semesters?.semester_index || 1;
+             const existing = semsMap.get(sem);
+             if (existing) existing.amountPaid += (payment.amount || 0);
+             else semsMap.set(sem, { amountPaid: payment.amount || 0 });
+           }
+           const currentSemester = student.current_semester || 1;
+           for (let sem = 1; sem <= 6; sem++) {
+             const semPayments = semsMap.get(sem);
+             const amountPaid = semPayments?.amountPaid || 0;
+             const estimatedFee = sem === currentSemester ? (student.total_balance || 0) + amountPaid : amountPaid;
+             const bal = Math.max(0, estimatedFee - amountPaid);
+             const pct = estimatedFee > 0 ? (amountPaid / estimatedFee) * 100 : 0;
+             const cleared = pct >= 95;
+             clearanceData.push({
+               admission_number: student.admission_number, full_name: student.full_name,
+               current_semester: sem, module_index: student.current_module || 1,
+               semester_fee: estimatedFee, amount_paid: amountPaid, balance: bal,
+               paid_pct: pct, clearance_status: cleared ? 'cleared' : 'pending',
+               results_released: cleared, results_pending: ''
+             });
+           }
+         }
+         
+         setClearanceStatus(clearanceData);
+         
+         // Calculate current balance info
+         const currentSemData = clearanceData.find(c => c.current_semester === student.current_semester) || clearanceData[0];
+         const semesterFee = currentSemData?.semester_fee || 0;
+         const amountPaid = currentSemData?.amount_paid || 0;
+         const totalPaidAllSemesters = formattedPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+         const requiredFor95 = semesterFee * 0.95;
+         const amountNeeded = Math.max(0, requiredFor95 - amountPaid);
+         const isCleared = amountNeeded <= 0;
+         
+         setBalance({
+           total_balance: Math.max(0, (student.total_balance || 0)),
+           current_semester_fee: semesterFee,
+           amount_paid_current: amountPaid,
+           clearance_pct: currentSemData?.paid_pct || 0,
+           amount_needed_for_95: amountNeeded,
+           is_cleared: isCleared
+         });
+         
+         setSelectedSemester(student.current_semester);
+       }
+     } catch (err) {
+       console.error('Error loading student data:', err);
+     }
+   };
 
   const getPaymentMethodIcon = (method: string) => {
     switch (method?.toLowerCase()) {
@@ -275,14 +286,14 @@ export default function StudentFeesPage() {
           {balance && (
             <div className="mb-8 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 overflow-hidden">
               <div className="p-6">
-                <h2 className="text-lg font-semibold text-white mb-4">Current Semester Balance</h2>
+                <h2 className="text-lg font-semibold text-white mb-4">{paymentMode === "per_module" ? "Current Stage Balance" : "Current Semester Balance"}</h2>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="bg-white/5 rounded-xl p-4">
                     <div className="text-purple-300 text-xs mb-1">Total Balance</div>
                     <div className="text-2xl font-bold text-white">KES {balance.total_balance.toLocaleString()}</div>
                   </div>
                   <div className="bg-white/5 rounded-xl p-4">
-                    <div className="text-purple-300 text-xs mb-1">Semester Fee</div>
+                    <div className="text-purple-300 text-xs mb-1">{paymentMode === "per_module" ? "Stage Fee" : "Semester Fee"}</div>
                     <div className="text-2xl font-bold text-white">KES {balance.current_semester_fee.toLocaleString()}</div>
                   </div>
                   <div className="bg-white/5 rounded-xl p-4">
@@ -331,7 +342,7 @@ export default function StudentFeesPage() {
           {/* Semester Selection */}
           {clearanceStatus.length > 0 && (
             <div className="mb-6">
-              <h3 className="text-white font-semibold mb-3">View by Semester</h3>
+              <h3 className="text-white font-semibold mb-3">View by {paymentMode === "per_module" ? "Stage" : "Semester"}</h3>
               <div className="flex flex-wrap gap-2">
                 {clearanceStatus.map((sem) => (
                   <button
@@ -361,7 +372,7 @@ export default function StudentFeesPage() {
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
-                  <div className="text-purple-300 text-xs">Semester Fee</div>
+                  <div className="text-purple-300 text-xs">{paymentMode === "per_module" ? "Stage Fee" : "Semester Fee"}</div>
                   <div className="text-lg font-medium text-white">
                     KES {selectedSemesterData.semester_fee?.toLocaleString()}
                   </div>
