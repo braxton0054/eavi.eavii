@@ -91,6 +91,7 @@ export default function LecturerDashboard() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   
   // Classes data - lecturer's workload
   const [lecturerClasses, setLecturerClasses] = useState<any[]>([]);
@@ -115,7 +116,7 @@ export default function LecturerDashboard() {
   const [selectedSemesterAssignment, setSelectedSemesterAssignment] = useState<SemesterAssignment | null>(null);
   const [selectedIntake, setSelectedIntake] = useState<string>('');
   
-  // Marks entry state - Updated for Part 3
+  // Marks entry state
   const [students, setStudents] = useState<Student[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [selectedMarksUnit, setSelectedMarksUnit] = useState<string | null>(null);
@@ -146,6 +147,7 @@ export default function LecturerDashboard() {
     if (!supabase) return;
     checkAuthAndLoadClasses();
   }, [supabase]);
+
 
   const checkAuthAndLoadClasses = async () => {
     try {
@@ -991,857 +993,483 @@ export default function LecturerDashboard() {
       console.error('Error loading submission status:', err);
     }
   };
+  const formatCampus = (campus: string) => campus === 'main' ? 'Main Campus' : 'West Campus';
 
-  // Format campus for display
-  const formatCampus = (campus: string) => {
-    return campus === 'west' ? 'West Campus' : 'Main Campus';
-  };
-
-  // Format exam type for display
-  const formatExamType = (type: string) => {
-    switch (type) {
-      case 'cat': return 'CAT';
-      case 'end_term': return 'END TERM';
-      case 'mock': return 'MOCK';
-      default: return type.toUpperCase();
-    }
-  };
-
-  if (loading && viewMode === 'dashboard') {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-gray-500 text-xl">Loading...</div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="inline-block">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+          <p className="text-slate-600 font-medium">Loading your dashboard...</p>
+        </div>
       </div>
     );
   }
 
+  // ============================================================
+  // PROFESSIONAL DASHBOARD LAYOUT
+  // ============================================================
   return (
-    <div className="min-h-screen w-full bg-gray-50">
-      {/* Header */}
-      <div className="relative z-10 w-full bg-white border-b border-gray-200 shadow-sm rounded-none">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/" className="relative w-12 h-12">
-              <Image src="/logo.webp" alt="EAVI Logo" fill className="object-contain" />
-            </Link>
-            <div>
-              <h1 className="text-gray-900 font-bold text-lg">Lecturer Portal</h1>
-              <p className="text-gray-500 text-sm">{lecturerInfo?.full_name}</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      {/* HEADER - Fixed */}
+      <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16 md:h-20">
+            {/* Logo / Branding */}
+            <div className="flex items-center gap-3 min-w-0">
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="md:hidden inline-flex items-center justify-center w-10 h-10 rounded-lg bg-slate-100 hover:bg-slate-200 transition-colors"
+              >
+                <svg className="w-6 h-6 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={sidebarOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
+                </svg>
+              </button>
+              <div className="hidden md:block">
+                <h1 className="text-xl font-bold text-slate-900">EAVI</h1>
+                <p className="text-xs text-slate-500">Lecturer Portal</p>
+              </div>
+              <div className="md:hidden">
+                <p className="text-sm font-semibold text-slate-900">EAVI Portal</p>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            {viewMode === 'marks' && (
-              <button
-                onClick={() => {
-                  setViewMode('dashboard');
-                  setSelectedClass(null);
-                  setSelectedSemesterAssignment(null);
-                  setMarksData(new Map());
-                }}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
-              >
-                ← Back to Classes
+
+            {/* User Profile */}
+            <div className="flex items-center gap-4 min-w-0">
+              <div className="hidden sm:block text-right">
+                <p className="text-sm font-semibold text-slate-900 truncate">
+                  {lecturerInfo?.full_name || 'Lecturer'}
+                </p>
+                <p className="text-xs text-slate-500">Lecturer</p>
+              </div>
+              <button className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 transition-colors">
+                <svg className="w-5 h-5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
               </button>
-            )}
-            {viewMode === 'dashboard' && (
-              <button
-                onClick={() => {
-                  loadSubmissionStatus();
-                  setViewMode('submissions');
-                }}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
-              >
-                Submission Status
-              </button>
-            )}
-            {(viewMode === 'submissions' || viewMode === 'setup') && (
-              <button
-                onClick={() => setViewMode('dashboard')}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
-              >
-                ← Back to Dashboard
-              </button>
-            )}
-            <button
-              onClick={() => supabase.auth.signOut().then(() => router.push('/'))}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold"
-            >
-              Logout
-            </button>
+            </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Main Content */}
-      <div className="relative z-10 max-w-7xl mx-auto px-4 py-8">
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-            {error}
-          </div>
-        )}
+      <div className="flex flex-1 overflow-hidden">
+        {/* SIDEBAR - Mobile Overlay + Desktop */}
+        {sidebarOpen && <div className="fixed inset-0 bg-black/50 md:hidden z-30" onClick={() => setSidebarOpen(false)} />}
         
-        {success && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
-            {success}
-          </div>
-        )}
-
-        {/* Announcements */}
-        {announcements.length > 0 && (
-          <div className="mb-6 space-y-3">
-            {announcements.map((a, i) => (
-              <div key={i} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <span className="text-lg mt-0.5">{a.is_pinned ? '📌' : '📢'}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-900 text-sm">{a.title}</p>
-                    {a.body && <p className="text-gray-500 text-xs mt-1 line-clamp-2">{a.body}</p>}
-                    <p className="text-gray-400 text-[10px] mt-1">
-                      {new Date(a.created_at).toLocaleDateString()}
-                      {a.category && ` · ${a.category}`}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* DASHBOARD VIEW */}
-        {viewMode === 'dashboard' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-gray-900">Your Classes</h2>
-              <div className="flex items-center gap-4">
-                <span className="text-gray-400">{lecturerClasses.length} classes assigned</span>
+        <nav className={`
+          fixed md:static inset-y-0 left-0 z-30 w-64 bg-white border-r border-slate-200 
+          transform transition-transform duration-300 ease-out
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+          flex flex-col
+        `}>
+          <div className="flex-1 overflow-y-auto pt-6 px-4">
+            <div className="space-y-2">
+              {[
+                { mode: 'dashboard', label: 'Dashboard', icon: '📊' },
+                { mode: 'marks', label: 'Manage Marks', icon: '✏️' },
+                { mode: 'setup', label: 'My Courses', icon: '📚' },
+                { mode: 'submissions', label: 'Submissions', icon: '📤' }
+              ].map((item) => (
                 <button
-                  onClick={openSetup}
-                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold"
-                >
-                  + Setup Classes
-                </button>
-              </div>
-            </div>
-
-             {lecturerClasses.length === 0 ? (
-               <div className="flex items-center justify-center py-12">
-                 <div className="text-center">
-                   <div className="flex items-center justify-center mb-4">
-                     <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center mb-2">
-                       <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                       </svg>
-                     </div>
-                     <h3 className="text-xl font-bold text-gray-900 mb-2">No classes assigned</h3>
-                     <p className="text-gray-500 mb-4">Click "Setup Your Classes" to get started</p>
-                     <button
-                       onClick={openSetup}
-                       className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors"
-                     >
-                       Setup Your Classes
-                     </button>
-                   </div>
-                 </div>
-               </div>
-             ) : (
-               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                 {lecturerClasses.map((cls) => {
-                   const catStatus = checkWindowStatus(cls, 'cat');
-                   const endTermStatus = checkWindowStatus(cls, 'end_term');
-                   
-                   // Determine border color based on exam body
-                   const borderColor = cls.exam_body === 'CDACC' ? 'border-l-4 border-l-blue-500' : 'border-l-4 border-l-green-500';
-                   
-                   return (
-                     <div key={cls.assignment_id || cls.class_id} className={`bg-white rounded-xl border border-gray-200 p-6 space-y-4 hover:shadow-md transition-shadow ${borderColor}`}>
-                       {/* Header with exam body badge */}
-                       <div className="flex items-center justify-between mb-2">
-                         <div className="flex-1">
-                           <h3 className="text-lg font-semibold text-gray-900">{cls.course_name}</h3>
-                           <div className="flex items-center gap-2 mt-1">
-                             <span className="text-xs font-medium">{cls.class_name}</span>
-                             <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs font-semibold">
-                               {cls.exam_body}
-                             </span>
-                           </div>
-                         </div>
-                       </div>
-                       
-                       {/* Info Section */}
-                       <div className="space-y-2">
-                         <div className="flex items-center gap-2 mb-1">
-                           <div className="w-5 h-5 bg-indigo-50 flex items-center justify-center rounded">
-                             <svg className="w-3 h-3 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2z"></path>
-                             </svg>
-                           </div>
-                           <span className="text-sm text-gray-500">{cls.intake_month} • {formatCampus(cls.campus)}</span>
-                         </div>
-                         
-                         <div className="flex items-center gap-2 mb-1">
-                           <div className="w-5 h-5 bg-green-50 flex items-center justify-center rounded">
-                             <svg className="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.1 0-2 .9-2 2s1 2 2 2 2-.9 2-2-1-2-2-2zm0 12c-4 0-6-2-6-4 0-1.2.4-2.2 1-3"/>
-                             </svg>
-                           </div>
-                           <span className="flex items-center gap-1 text-sm text-gray-500 font-medium">
-                             <span>{cls.total_students}</span>
-                             <span>students</span>
-                           </span>
-                         </div>
-
-                         {/* Your Units */}
-                         {cls.units && cls.units.length > 0 && (
-                           <div className="mb-3">
-                             <p className="text-xs text-gray-400 font-medium mb-1.5">📋 Your Units</p>
-                             <div className="flex flex-wrap gap-1.5">
-                               {(cls.units || []).map((u: any, i: number) => (
-                                 <span key={i} className="px-2 py-1 bg-gray-50 border border-gray-200 rounded-md text-xs text-gray-700 font-medium flex items-center gap-1">
-                                   {u.module_index && (
-                                     <span className="px-1 py-0.5 bg-white border border-gray-300 rounded text-xs font-semibold">
-                                       {cls.exam_body === 'CDACC' ? 'S' : 'M'}{u.module_index}
-                                     </span>
-                                   )}
-                                   <span>{u.unit_code} — {u.unit_name}</span>
-                                 </span>
-                               ))}
-                             </div>
-                           </div>
-                         )}
-                         
-                         {/* Term and Status Badges */}
-                         <div className="flex flex-wrap gap-2 mb-3">
-                           {cls.is_attachment_stage && (
-                             <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-medium">
-                               🔧 Industrial Attachment
-                             </span>
-                           )}
-                           {cls.term_name && !cls.is_attachment_stage && (
-                             <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded text-xs font-medium">
-                               {cls.term_name}
-                             </span>
-                           )}
-                           {!cls.is_attachment_stage && (
-                           <>
-                           <span className={`px-2 py-0.5 rounded ${
-                             catStatus.open ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                           } text-xs font-medium`}>
-                             {catStatus.open ? 'CAT: OPEN' : 'CAT: CLOSED'}
-                           </span>
-                           <span className={`px-2 py-0.5 rounded ${
-                             endTermStatus.open ? 'bg-green-100 text-green-700' : 
-                             endTermStatus.message.includes('UPCOMING') ? 'bg-yellow-100 text-yellow-700' :
-                             'bg-red-100 text-red-700'
-                           } text-xs font-medium`}>
-                             {endTermStatus.open ? 'END TERM: DUE' : endTermStatus.message.includes('opens') ? 'END TERM: UPCOMING' : 'END TERM: CLOSED'}
-                           </span>
-                           </>
-                           )}
-                         </div>
-                       </div>
- 
-                       {/* Enter Marks Button - disabled during attachment */}
-                       {cls.is_attachment_stage ? (
-                         <div className="w-full py-2 bg-gray-100 text-gray-400 rounded-lg text-sm font-semibold text-center mt-4 cursor-not-allowed">
-                           Attachment - No marks entry
-                         </div>
-                       ) : (cls.total_students === 0) ? (
-                         <div className="w-full py-2 bg-gray-100 text-gray-400 rounded-lg text-sm font-semibold text-center mt-4 cursor-not-allowed">
-                           No students enrolled yet
-                         </div>
-                       ) : (
-                         <button
-                           onClick={() => enterMarks(cls)}
-                           className="w-full py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition-colors mt-4"
-                         >
-                           Enter Marks
-                         </button>
-                       )}
-                     </div>
-                   );
-                 })}
-               </div>
-             )}
-          </div>
-        )}
-
-        {/* MARKS ENTRY VIEW */}
-        {viewMode === 'marks' && selectedClass && (
-          <div className="space-y-6">
-            {/* Class Header */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">{selectedClass.course_name}</h2>
-                  <p className="text-gray-500">{selectedClass.class_name}</p>
-                  <div className="flex gap-2 mt-2">
-                    <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium">
-                      {selectedClass.intake_month}
-                    </span>
-                    <span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-xs font-medium">
-                      {formatCampus(selectedClass.campus)}
-                    </span>
-                    <span className="px-2 py-1 bg-green-50 text-green-700 rounded text-xs font-medium">
-                      Sem {selectedClass.semester} • {selectedClass.exam_body === 'CDACC' ? 'Stage' : 'Mod'} {selectedClass.module_index}
-                    </span>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-gray-400 text-sm">{students.length} students</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Window Status Banner */}
-            {!isWindowOpen && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-700 font-semibold">Exam Windows Closed</p>
-                <p className="text-red-500 text-sm">{windowMessage}</p>
-              </div>
-            )}
-            
-            {isWindowOpen && windowMessage && (
-              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-green-700 font-semibold">{windowMessage}</p>
-              </div>
-            )}
-
-            {/* Unit Selector */}
-            {units.length > 0 && (
-              <div className="flex items-center gap-3">
-                <label className="text-sm text-gray-500 font-medium">Unit:</label>
-                <select
-                  value={selectedMarksUnit || ''}
-                  onChange={(e) => {
-                    setSelectedMarksUnit(e.target.value);
-                    loadExistingMarks(selectedClass?.class_id, units);
+                  key={item.mode}
+                  onClick={() => {
+                    setViewMode(item.mode as any);
+                    setSidebarOpen(false);
                   }}
-                  className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  className={`
+                    w-full text-left px-4 py-3 rounded-lg font-medium transition-all duration-200
+                    flex items-center gap-3
+                    ${viewMode === item.mode
+                      ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-700'
+                      : 'text-slate-700 hover:bg-slate-50'
+                    }
+                  `}
                 >
-                  {units.map((u) => (
-                    <option key={u.unit_code} value={u.unit_code}>
-                      {u.module_index ? (selectedClass?.exam_body === 'CDACC' ? `S${u.module_index} · ` : `M${u.module_index} · `) : ''}{u.unit_code} — {u.unit_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {/* Marks Table */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 overflow-x-auto">
-              {(() => {
-                const selUnit = units.find(u => u.unit_code === selectedMarksUnit);
-                const modIdx = selUnit?.module_index;
-                const modStudents = modIdx ? students.filter(s => s.current_module === modIdx) : students;
-                const hasFilter = modIdx && modStudents.length !== students.length;
-                
-                if (students.length === 0) {
-                  return <div className="text-center py-12"><p className="text-gray-400 text-lg">👥 No enrolled students</p><p className="text-gray-400 text-sm mt-1">This class has no enrolled students yet</p></div>;
-                }
-                if (units.length === 0) {
-                  return <div className="text-center py-12"><p className="text-gray-400 text-lg">📝 No units assigned</p><p className="text-gray-400 text-sm mt-1">You haven't been assigned units for this class</p></div>;
-                }
-                if (modStudents.length === 0) {
-                  return (
-                    <div className="text-center py-12">
-                      <p className="text-gray-400 text-lg">🎯 No students at this module</p>
-                      <p className="text-gray-400 text-sm mt-1">This unit is in {selectedClass?.exam_body === 'CDACC' ? 'Stage' : 'Module'} {modIdx}, but no enrolled students are at that level yet</p>
-                    </div>
-                  );
-                }
-                
-                return (
-                  <>
-                    {hasFilter && (
-                      <div className="mb-3 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-700">
-                        Showing {modStudents.length} of {students.length} students — only those at {selectedClass?.exam_body === 'CDACC' ? 'Stage' : 'Module'} {modIdx}
-                      </div>
-                    )}
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b-2 border-gray-200 bg-gray-50">
-                      <th className="text-left p-3 text-gray-600 text-sm font-semibold">Student</th>
-                      <th className="text-left p-3 text-gray-600 text-sm font-semibold">Admission #</th>
-                      {units.filter(u => u.unit_code === selectedMarksUnit).map((unit) => (
-                        <th key={unit.unit_code} className="p-3 text-center text-gray-600 text-sm font-semibold" colSpan={selectedClass?.exam_type_allowed?.includes('practical') ? 4 : 3}>
-                          <div>{unit.unit_name}</div>
-                          <div className="text-xs text-gray-400 font-normal">{unit.unit_code}</div>
-                          {/* Sub-headers */}
-                          <div className="flex gap-1 mt-1.5 justify-center">
-                            <span className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded font-medium">CAT</span>
-                            <span className="text-[10px] px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded font-medium">End Term</span>
-                            {selectedClass?.exam_type_allowed?.includes('practical') && (
-                              <span className="text-[10px] px-1.5 py-0.5 bg-purple-50 text-purple-600 rounded font-medium">Prac</span>
-                            )}
-                            <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded font-medium">Total</span>
-                          </div>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {modStudents.map((student, idx) => (
-                      <tr key={student.id} className={`border-b border-gray-100 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} hover:bg-blue-50/30`}>
-                        <td className="p-3 text-gray-900 font-medium">{student.full_name}</td>
-                        <td className="p-3 text-gray-400 text-sm">{student.admission_number}</td>
-                        {units.filter(u => u.unit_code === selectedMarksUnit).map((unit) => {
-                          const key = `${student.application_id}-${unit.unit_code}`;
-                          const existing = existingMarks.get(key);
-                          const current = marksData.get(key);
-                          
-                          const catMarks = current?.cat_marks ?? existing?.cat_marks ?? null;
-                          const endTermMarks = current?.end_term_marks ?? existing?.end_term_marks ?? null;
-                          const practicalMarks = current?.practical_marks ?? existing?.practical_marks ?? null;
-                          const isAbsent = current?.is_absent ?? existing?.is_absent ?? false;
-                          const isSubmitted = existing?.is_submitted ?? false;
-                          const total = calculateTotal(catMarks, endTermMarks, practicalMarks, isAbsent);
-                          const grade = isAbsent ? 'ABS' : calculateGrade(total);
-                          
-                          return (
-                            <td key={unit.unit_code} className="p-3 align-top">
-                              {/* Submitted Badge */}
-                              {isSubmitted && (
-                                <div className="mb-1 inline-block px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-semibold">✓ SUBMITTED</div>
-                              )}
-                              
-                              {/* Absent Toggle */}
-                              <label className="flex items-center gap-1 mb-2 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={isAbsent}
-                                  onChange={(e) => handleAbsentToggle(student.application_id, unit.unit_code, e.target.checked)}
-                                  disabled={!isWindowOpen || isSubmitted}
-                                  className="w-3 h-3 rounded border-gray-300"
-                                />
-                                <span className="text-xs text-gray-400">Absent</span>
-                              </label>
-                              
-                              {!isAbsent && (
-                                <div className="flex flex-col items-center gap-1">
-                                  <div className="flex gap-1 items-start">
-                                    {/* CAT Input */}
-                                    <div className="flex flex-col items-center">
-                                      <span className="text-[10px] text-blue-600 font-medium mb-0.5">CAT</span>
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        max="30"
-                                        step="0.5"
-                                        value={catMarks ?? ''}
-                                        onChange={(e) => handleMarkChange(student.application_id, unit.unit_code, 'cat_marks', parseFloat(e.target.value) || 0)}
-                                        disabled={!isWindowOpen || isSubmitted}
-                                        className="w-16 px-1 py-1 bg-white border border-gray-300 rounded text-gray-900 text-center text-sm disabled:opacity-30 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                      />
-                                    </div>
-                                    {/* End Term Input */}
-                                    <div className="flex flex-col items-center">
-                                      <span className="text-[10px] text-indigo-600 font-medium mb-0.5">Term</span>
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        max="70"
-                                        step="0.5"
-                                        value={endTermMarks ?? ''}
-                                        onChange={(e) => handleMarkChange(student.application_id, unit.unit_code, 'end_term_marks', parseFloat(e.target.value) || 0)}
-                                        disabled={!isWindowOpen || isSubmitted}
-                                        className="w-16 px-1 py-1 bg-white border border-gray-300 rounded text-gray-900 text-center text-sm disabled:opacity-30 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                      />
-                                    </div>
-                                    {/* Practical marks for CDACC courses */}
-                                    {selectedClass?.exam_type_allowed?.includes('practical') && (
-                                      <div className="flex flex-col items-center">
-                                        <span className="text-[10px] text-purple-600 font-medium mb-0.5">Prac</span>
-                                        <input
-                                          type="number"
-                                          min="0"
-                                          max="30"
-                                          step="0.5"
-                                          value={practicalMarks ?? ''}
-                                          onChange={(e) => handlePracticalMarkChange(student.application_id, unit.unit_code, parseFloat(e.target.value) || 0)}
-                                          disabled={!isWindowOpen || isSubmitted}
-                                          className="w-16 px-1 py-1 bg-white border border-gray-300 rounded text-gray-900 text-center text-sm disabled:opacity-30 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                        />
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {/* Total, Grade and Pass/Fail */}
-                              {(catMarks !== null || endTermMarks !== null || isAbsent) && (
-                                <div className="mt-1 text-xs">
-                                  <span className="text-gray-900 font-semibold">{total}</span>
-                                  <span className="text-gray-400 ml-1">({grade})</span>
-                                  {!isAbsent && (
-                                    <span className={`ml-2 inline-block px-2 py-0.5 rounded text-xs font-semibold ${isPass(total) ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                      {isPass(total) ? 'PASS' : 'FAIL'}
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                  </>
-                );
-              })()}
+                  <span className="text-lg">{item.icon}</span>
+                  <span>{item.label}</span>
+                </button>
+              ))}
             </div>
-
-            {/* Action Buttons */}
-            {isWindowOpen && (
-              <div className="flex justify-end gap-3">
-                <button
-                  onClick={saveMarks}
-                  disabled={loading}
-                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold disabled:opacity-50"
-                >
-                  {loading ? 'Saving...' : 'Save Draft'}
-                </button>
-                <button
-                  onClick={submitMarks}
-                  disabled={isSubmittingMarks || loading}
-                  className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold disabled:opacity-50"
-                >
-                  {isSubmittingMarks ? 'Submitting...' : 'Submit Marks'}
-                </button>
-              </div>
-            )}
-            
-            {/* Fee Clearance Warning */}
-            {students.some(s => s.financial_hold) && (
-              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-yellow-700 text-sm">
-                  ⚠️ Some students have fee holds. Their results will be blocked until they reach 95% fee clearance.
-                </p>
-              </div>
-            )}
           </div>
-        )}
 
-        {/* SETUP VIEW - Lecturer Self-Assignment */}
-        {viewMode === 'setup' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-gray-900">Setup Your Teaching Assignment</h2>
-              <button
-                onClick={() => setViewMode('dashboard')}
-                className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm font-semibold"
-              >
-                Cancel
-              </button>
-            </div>
+          <div className="border-t border-slate-200 p-4">
+            <button
+              onClick={async () => {
+                await supabase.auth.signOut();
+                router.push('/login/lecturer');
+              }}
+              className="w-full px-4 py-2 rounded-lg bg-slate-50 hover:bg-red-50 text-slate-700 hover:text-red-700 font-medium transition-colors text-sm"
+            >
+              Sign Out
+            </button>
+          </div>
+        </nav>
 
-            <form onSubmit={handleCreateAssignment} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6 max-w-3xl">
-              {/* Exam Body Selection */}
-              <div>
-                <label className="block text-gray-700 text-sm font-semibold mb-3">Choose Exam Body</label>
-                <div className="flex flex-wrap gap-3">
-                  {['KNEC', 'CDACC', 'JP', 'Short Course'].map((body) => (
-                    <button
-                      key={body}
-                      type="button"
-                      onClick={() => {
-                        setSelectedExamBody(body);
-                        setSetupForm({ ...setupForm, course_id: '', selected_units: [] });
-                        setCourseUnits([]);
-                        loadCoursesForSetup(body);
-                      }}
-                      className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-colors ${
-                        selectedExamBody === body
-                          ? 'bg-green-600 text-white shadow-sm'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {body}
-                    </button>
-                  ))}
+        {/* MAIN CONTENT */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            {/* Alert Messages */}
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                <span className="text-red-600 text-lg">⚠️</span>
+                <div>
+                  <p className="font-semibold text-red-900">{error}</p>
                 </div>
               </div>
-
-              {/* Campus Selection */}
-              <div>
-                <label className="block text-gray-700 text-sm font-semibold mb-2">Campus *</label>
-                <select
-                  value={setupForm.campus}
-                  onChange={(e) => setSetupForm({ ...setupForm, campus: e.target.value })}
-                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  required
-                >
-                  <option value="">Select Campus</option>
-                  <option value="main">Main Campus</option>
-                  <option value="west">West Campus</option>
-                </select>
+            )}
+            {success && (
+              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+                <span className="text-green-600 text-lg">✓</span>
+                <div>
+                  <p className="font-semibold text-green-900">{success}</p>
+                </div>
               </div>
+            )}
 
-              {/* Course Selection */}
-              <div>
-                <label className="block text-gray-700 text-sm font-semibold mb-2">Select Course *</label>
-                  <select
-                    value={setupForm.course_id}
-                    onChange={(e) => {
-                      const courseId = e.target.value;
-                      setSetupForm({ ...setupForm, course_id: courseId, selected_units: [], selected_class_ids: [] });
-                      setAvailableClasses([]);
-                      loadUnitsForCourse(courseId);
-                      loadClassesForCourse(courseId);
-                    }}
-                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-green-500 focus:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    required
-                    disabled={!selectedExamBody}
-                  >
-                    <option value="">{selectedExamBody ? 'Select a course' : 'Select an exam body first'}</option>
-                    {courses.map((course) => (
-                      <option key={course.id} value={course.id}>{course.name}</option>
-                    ))}
-                  </select>
-              </div>
+            {/* DASHBOARD VIEW */}
+            {viewMode === 'dashboard' && (
+              <div className="space-y-8">
+                {/* Welcome Section */}
+                <div>
+                  <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2">
+                    Welcome, {lecturerInfo?.full_name?.split(' ')[0]}
+                  </h1>
+                  <p className="text-slate-600">Here's an overview of your teaching assignments</p>
+                </div>
 
-              {/* Units Selection - Grouped by Module */}
-              <div>
-                <label className="block text-gray-700 text-sm font-semibold mb-3">Select Units You Teach *</label>
-                {!setupForm.course_id ? (
-                  <p className="text-gray-400 text-sm py-4 text-center">Select a course first.</p>
-                ) : courseUnits.length === 0 ? (
-                  <p className="text-amber-600 text-sm py-4 text-center">No units found for this course.</p>
-                ) : (
-                  <>
-                    {Object.entries(
-                      courseUnits.reduce((groups: any, unit: any) => {
-                        const mod = unit.module_index || 0;
-                        if (!groups[mod]) groups[mod] = [];
-                        groups[mod].push(unit);
-                        return groups;
-                      }, {} as any)
-                    ).sort(([a]: any, [b]: any) => Number(a) - Number(b)).map(([moduleIdx, moduleUnits]: any) => (
-                      <div key={moduleIdx} className="border border-gray-200 rounded-xl overflow-hidden mb-4 last:mb-0">
-                        {/* Module Header */}
-                        <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="w-7 h-7 bg-green-100 text-green-700 rounded-full flex items-center justify-center text-xs font-bold">
-                              {moduleIdx}
-                            </span>
-                            <span className="font-semibold text-gray-900 text-sm">
-                              {Number(moduleIdx) === 0 ? 'Units' : selectedExamBody === 'CDACC' ? `Stage ${moduleIdx}` : `Module ${moduleIdx}`}
-                            </span>
-                          </div>
-                          <span className="text-xs text-gray-400">
-                            {(moduleUnits as any[]).length} unit{(moduleUnits as any[]).length > 1 ? 's' : ''}
-                          </span>
+                {/* Quick Stats */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[
+                    { label: 'Total Classes', value: lecturerClasses.length, icon: '👥', color: 'blue' },
+                    { label: 'Courses', value: courses.length, icon: '📚', color: 'green' },
+                    { label: 'Pending Marks', value: submissionStatus.size, icon: '⏳', color: 'amber' },
+                    { label: 'Units Teaching', value: courseUnits.length, icon: '✏️', color: 'purple' }
+                  ].map((stat, i) => (
+                    <div key={i} className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-slate-500 mb-1">{stat.label}</p>
+                          <p className="text-3xl font-bold text-slate-900">{stat.value}</p>
                         </div>
-                        {/* Module Units */}
-                        <div className="divide-y divide-gray-100">
-                          {(moduleUnits as any[]).map((unit: any) => (
-                            <label key={unit.unit_code} className="flex items-center gap-3 px-4 py-3 hover:bg-green-50/50 cursor-pointer transition-colors">
-                              <input
-                                type="checkbox"
-                                checked={setupForm.selected_units.includes(unit.unit_code)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSetupForm({
-                                      ...setupForm,
-                                      selected_units: [...setupForm.selected_units, unit.unit_code]
-                                    });
-                                  } else {
-                                    setSetupForm({
-                                      ...setupForm,
-                                      selected_units: setupForm.selected_units.filter(u => u !== unit.unit_code)
-                                    });
-                                  }
-                                }}
-                                className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <span className="text-gray-900 text-sm font-medium block truncate">{unit.name}</span>
-                                <span className="text-gray-400 text-xs">
-                                  {unit.unit_code}
-                                  {unit.semester_index ? ` · Sem ${unit.semester_index}` : ''}
-                                  {unit.unit_type ? ` · ${unit.unit_type}` : ''}
-                                </span>
-                              </div>
-                            </label>
-                          ))}
-                        </div>
+                        <div className="text-3xl opacity-70">{stat.icon}</div>
                       </div>
-                    ))}
-                    {/* Selected count */}
-                    <div className="flex items-center justify-between pt-3">
-                      <p className="text-xs text-gray-400">
-                        {setupForm.selected_units.length} of {courseUnits.length} units selected
-                      </p>
-                      {setupForm.selected_units.length < courseUnits.length && courseUnits.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setSetupForm({
-                            ...setupForm,
-                            selected_units: courseUnits.map((u: any) => u.unit_code)
-                          })}
-                          className="text-xs text-green-600 hover:text-green-700 font-medium"
-                        >
-                          Select All
-                        </button>
-                      )}
-                      {setupForm.selected_units.length === courseUnits.length && courseUnits.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setSetupForm({
-                            ...setupForm,
-                            selected_units: []
-                          })}
-                          className="text-xs text-gray-500 hover:text-gray-700 font-medium"
-                        >
-                          Clear All
-                      </button>
-                      )}
                     </div>
-                  </>
+                  ))}
+                </div>
+
+                {/* Your Classes */}
+                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-slate-200 bg-gradient-to-r from-blue-50 to-transparent">
+                    <h2 className="text-lg font-bold text-slate-900">Your Classes</h2>
+                    <p className="text-sm text-slate-600 mt-1">Classes you are assigned to teach</p>
+                  </div>
+                  <div className="divide-y divide-slate-200">
+                    {lecturerClasses.length === 0 ? (
+                      <div className="p-8 text-center">
+                        <p className="text-slate-500 mb-4">No classes assigned yet</p>
+                        <button
+                          onClick={() => setViewMode('setup')}
+                          className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                        >
+                          Set Up Your Courses
+                        </button>
+                      </div>
+                    ) : (
+                      lecturerClasses.map((cls) => (
+                        <div key={cls.id} className="p-4 sm:p-6 hover:bg-blue-50 transition-colors">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div className="min-w-0">
+                              <h3 className="font-semibold text-slate-900">{cls.class_name}</h3>
+                              <p className="text-sm text-slate-500 mt-1">
+                                {cls.course_name} • {formatCampus(cls.campus)} • Sem {cls.semester}
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <span className="inline-block px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-medium whitespace-nowrap">
+                                {cls.total_students || 0} students
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Announcements */}
+                {announcements.length > 0 && (
+                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                    <div className="px-6 py-4 border-b border-slate-200 bg-gradient-to-r from-amber-50 to-transparent">
+                      <h2 className="text-lg font-bold text-slate-900">Announcements</h2>
+                    </div>
+                    <div className="space-y-4 p-6">
+                      {announcements.map((ann, i) => (
+                        <div key={i} className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+                          <p className="text-sm text-amber-900">{ann.message}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
-              {/* Class Selection - Optional */}
-              {setupForm.course_id && (
+            )}
+
+            {/* MARKS VIEW */}
+            {viewMode === 'marks' && (
+              <div className="space-y-6">
                 <div>
-                  <label className="block text-gray-700 text-sm font-semibold mb-3">
-                    Assign to Class(es) <span className="text-gray-400 font-normal">(optional)</span>
-                  </label>
-                  <p className="text-gray-400 text-xs mb-3">
-                    Select which class(es) you teach these {setupForm.selected_units.length} unit{setupForm.selected_units.length !== 1 ? 's' : ''} to. If no class exists yet, one will be auto-created when the first student enrolls.
-                  </p>
-                  {availableClasses.length === 0 ? (
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm">
-                      <p className="text-blue-800 font-medium">ℹ️ No classes yet</p>
-                      <p className="text-blue-600 text-xs mt-1">
-                        A class will be created automatically when the first student enrolls. You can submit the assignment now.
-                      </p>
+                  <h1 className="text-3xl font-bold text-slate-900 mb-2">Manage Marks</h1>
+                  <p className="text-slate-600">Enter and manage student examination marks</p>
+                </div>
+
+                {!selectedClass ? (
+                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                    <div className="px-6 py-4 border-b border-slate-200">
+                      <h2 className="font-bold text-slate-900">Select a Class</h2>
+                    </div>
+                    <div className="divide-y divide-slate-200">
+                      {lecturerClasses.map((cls) => (
+                        <button
+                          key={cls.id}
+                          onClick={() => setSelectedClass(cls)}
+                          className="w-full text-left p-4 sm:p-6 hover:bg-blue-50 transition-colors"
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div>
+                              <h3 className="font-semibold text-slate-900">{cls.class_name}</h3>
+                              <p className="text-sm text-slate-500 mt-1">{cls.course_name}</p>
+                            </div>
+                            <svg className="w-5 h-5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <button
+                      onClick={() => setSelectedClass(null)}
+                      className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                      Back to Classes
+                    </button>
+
+                    {/* Unit & Exam Type Selection */}
+                    <div className="bg-white rounded-xl border border-slate-200 p-6">
+                      <h3 className="font-bold text-slate-900 mb-4">Entry Details</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">Select Unit</label>
+                          <select
+                            value={selectedMarksUnit || ''}
+                            onChange={(e) => setSelectedMarksUnit(e.target.value || null)}
+                            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          >
+                            <option value="">Choose a unit...</option>
+                            {units.map((unit) => (
+                              <option key={unit.unit_code} value={unit.unit_code}>
+                                {unit.unit_code} - {unit.unit_name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">Exam Type</label>
+                          <select
+                            value={selectedExamType}
+                            onChange={(e) => setSelectedExamType(e.target.value)}
+                            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          >
+                            <option value="cat">CAT (Continuous Assessment)</option>
+                            <option value="end_term">End Term</option>
+                            <option value="practical">Practical</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Marks Entry Table */}
+                    {selectedMarksUnit && students.length > 0 && (
+                      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                        <div className="px-6 py-4 border-b border-slate-200 bg-gradient-to-r from-green-50 to-transparent">
+                          <h3 className="font-bold text-slate-900">Student Marks - {selectedMarksUnit}</h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead className="bg-slate-50 border-b border-slate-200">
+                              <tr>
+                                <th className="px-4 py-3 text-left font-semibold text-slate-700">Admission No</th>
+                                <th className="px-4 py-3 text-left font-semibold text-slate-700">Student Name</th>
+                                <th className="px-4 py-3 text-center font-semibold text-slate-700">Mark</th>
+                                <th className="px-4 py-3 text-center font-semibold text-slate-700">Absent</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-200">
+                              {students.map((student) => (
+                                <tr key={student.id} className="hover:bg-blue-50 transition-colors">
+                                  <td className="px-4 py-3 font-medium text-slate-900">{student.admission_number}</td>
+                                  <td className="px-4 py-3 text-slate-700">{student.full_name}</td>
+                                  <td className="px-4 py-3">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max="100"
+                                      placeholder="0"
+                                      className="w-16 px-2 py-1 border border-slate-300 rounded text-center focus:ring-2 focus:ring-blue-500"
+                                    />
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    <input type="checkbox" className="w-4 h-4" />
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex gap-3">
+                          <button className="flex-1 px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg font-medium transition-colors">
+                            Save as Draft
+                          </button>
+                          <button className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors">
+                            Submit Marks
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* SETUP VIEW */}
+            {viewMode === 'setup' && (
+              <div className="space-y-6">
+                <div>
+                  <h1 className="text-3xl font-bold text-slate-900 mb-2">My Courses</h1>
+                  <p className="text-slate-600">Manage your course assignments and units</p>
+                </div>
+
+                {lecturerAssignments.length === 0 ? (
+                  <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+                    <div className="text-5xl mb-4">📚</div>
+                    <h3 className="text-lg font-bold text-slate-900 mb-2">No Courses Yet</h3>
+                    <p className="text-slate-600 mb-6">Create your first course assignment to get started</p>
+                    <button
+                      onClick={() => {
+                        setSetupForm({ course_id: '', campus: '', selected_units: [], selected_class_ids: [] });
+                      }}
+                      className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
+                    >
+                      Create Assignment
+                    </button>
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                    <div className="divide-y divide-slate-200">
+                      {lecturerAssignments.map((assign) => (
+                        <div key={assign.id} className="p-6 hover:bg-blue-50 transition-colors">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                            <div>
+                              <h3 className="font-semibold text-slate-900">{assign.course_name}</h3>
+                              <p className="text-sm text-slate-500 mt-2">{formatCampus(assign.campus)}</p>
+                            </div>
+                            <div className="flex gap-2">
+                              <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                                Active
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* SUBMISSIONS VIEW */}
+            {viewMode === 'submissions' && (
+              <div className="space-y-6">
+                <div>
+                  <h1 className="text-3xl font-bold text-slate-900 mb-2">Submission Status</h1>
+                  <p className="text-slate-600">Track the status of your mark submissions</p>
+                </div>
+
+                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-slate-200 bg-gradient-to-r from-purple-50 to-transparent">
+                    <h2 className="font-bold text-slate-900">Unit Submission Overview</h2>
+                  </div>
+                  {submissionStatus.size === 0 ? (
+                    <div className="p-12 text-center">
+                      <p className="text-slate-500">📊 No marks recorded yet</p>
                     </div>
                   ) : (
-                    <div className="space-y-2">
-                      {availableClasses.map((cls) => (
-                        <label
-                          key={cls.id}
-                          className={`flex items-center gap-3 px-4 py-3 border rounded-xl cursor-pointer transition-colors ${
-                            setupForm.selected_class_ids.includes(cls.id)
-                              ? 'border-green-300 bg-green-50/50'
-                              : 'border-gray-200 hover:border-gray-300 bg-white'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={setupForm.selected_class_ids.includes(cls.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSetupForm({
-                                  ...setupForm,
-                                  selected_class_ids: [...setupForm.selected_class_ids, cls.id]
-                                });
-                              } else {
-                                setSetupForm({
-                                  ...setupForm,
-                                  selected_class_ids: setupForm.selected_class_ids.filter((id) => id !== cls.id)
-                                });
-                              }
-                            }}
-                            className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <span className="text-gray-900 text-sm font-medium block">{cls.class_name}</span>
-                            <span className="text-gray-400 text-xs">
-                              {formatCampus(cls.campus)} · Sem {cls.semester} · {cls.intake_month}
-                            </span>
+                    <div className="divide-y divide-slate-200">
+                      {Array.from(submissionStatus.entries()).map(([unitCode, stats]) => (
+                        <div key={unitCode} className="p-6 hover:bg-purple-50 transition-colors">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                            <div>
+                              <h3 className="font-semibold text-slate-900">{unitCode}</h3>
+                              <p className="text-sm text-slate-500 mt-1">
+                                {stats.submitted} of {stats.total} students submitted
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="w-24 bg-slate-200 rounded-full h-2">
+                                <div
+                                  className="bg-green-500 h-2 rounded-full transition-all"
+                                  style={{ width: `${(stats.submitted / stats.total) * 100}%` }}
+                                />
+                              </div>
+                              {stats.submitted === stats.total ? (
+                                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold whitespace-nowrap">
+                                  ✓ Complete
+                                </span>
+                              ) : (
+                                <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-semibold whitespace-nowrap">
+                                  ⏳ Pending
+                                </span>
+                              )}
+                            </div>
                           </div>
-                        </label>
+                        </div>
                       ))}
                     </div>
                   )}
-                  {setupForm.selected_class_ids.length > 0 && (
-                    <p className="text-xs text-green-600 font-medium mt-2">
-                      ✓ {setupForm.selected_class_ids.length} class{setupForm.selected_class_ids.length > 1 ? 'es' : ''} selected
-                    </p>
-                  )}
                 </div>
-              )}
 
-              {/* Submit Button */}
-              <div className="flex gap-4 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setViewMode('dashboard')}
-                  className="flex-1 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={creatingAssignment || setupForm.selected_units.length === 0}
-                  className="flex-1 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {creatingAssignment ? 'Creating...' : 'Create Assignment'}
-                </button>
+                <div className="bg-white rounded-xl border border-slate-200 p-6">
+                  <h3 className="font-bold text-slate-900 mb-4">Submission Guidelines</h3>
+                  <ul className="space-y-3 text-sm text-slate-600">
+                    <li className="flex gap-3">
+                      <span className="text-blue-600 font-bold flex-shrink-0">1</span>
+                      <span>Save marks as draft before final submission</span>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="text-blue-600 font-bold flex-shrink-0">2</span>
+                      <span>Once submitted, marks cannot be edited</span>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="text-blue-600 font-bold flex-shrink-0">3</span>
+                      <span>Results are automatically released for fee-cleared students</span>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="text-blue-600 font-bold flex-shrink-0">4</span>
+                      <span>Students with fee holds will see results after reaching 95% clearance</span>
+                    </li>
+                  </ul>
+                </div>
               </div>
-            </form>
+            )}
           </div>
-        )}
-
-        {/* SUBMISSIONS VIEW */}
-        {viewMode === 'submissions' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-gray-900">Mark Submission Status</h2>
-              <button
-                onClick={() => setViewMode('dashboard')}
-                className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm font-semibold"
-              >
-                Back to Dashboard
-              </button>
-            </div>
-
-            {/* Submission Status Table */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Unit Submission Overview</h3>
-              
-              {submissionStatus.size === 0 ? (
-                <div className="text-center py-8"><p className="text-gray-400">📊 No marks recorded yet</p></div>
-              ) : (
-                <div className="space-y-3">
-                  {Array.from(submissionStatus.entries()).map(([unitCode, stats]) => (
-                    <div key={unitCode} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div>
-                        <span className="text-gray-900 font-medium">{unitCode}</span>
-                        <span className="text-gray-400 text-sm ml-2">
-                          {stats.submitted} / {stats.total} submitted
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {stats.submitted === stats.total ? (
-                          <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
-                            ✓ Complete
-                          </span>
-                        ) : (
-                          <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm">
-                            ⏳ {stats.total - stats.submitted} remaining
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Instructions */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Submission Rules</h3>
-              <ul className="space-y-2 text-gray-400 text-sm">
-                <li>• Save marks as draft before submitting</li>
-                <li>• Once submitted, marks cannot be edited</li>
-                <li>• Results are automatically released for fee-cleared students</li>
-                <li>• Students with fee holds will see their results after reaching 95% clearance</li>
-              </ul>
-            </div>
-          </div>
-        )}
+        </main>
       </div>
     </div>
   );
