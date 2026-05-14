@@ -12,7 +12,6 @@ interface AcademicCalendar {
   id: string;
   academic_year: string;
   term: number;
-  semester: number;
   term_name: string;
   term_start_date: string;
   term_end_date: string;
@@ -42,7 +41,6 @@ export default function AcademicCalendar() {
   const [formData, setFormData] = useState({
     academic_year: '',
     term: 1,
-    semester: 1,
     term_name: '',
     term_start_date: '',
     term_end_date: '',
@@ -151,7 +149,6 @@ export default function AcademicCalendar() {
     setFormData({
       academic_year: calendar.academic_year,
       term: calendar.term,
-      semester: calendar.semester,
       term_name: calendar.term_name,
       term_start_date: calendar.term_start_date,
       term_end_date: calendar.term_end_date,
@@ -189,7 +186,6 @@ export default function AcademicCalendar() {
     setFormData({
       academic_year: '',
       term: 1,
-      semester: 1,
       term_name: '',
       term_start_date: '',
       term_end_date: '',
@@ -303,22 +299,7 @@ export default function AcademicCalendar() {
                         <option value={3}>Term 3</option>
                       </select>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Semester</label>
-                      <select
-                        value={formData.semester}
-                        onChange={(e) => setFormData({ ...formData, semester: parseInt(e.target.value) })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        required
-                      >
-                        <option value={1}>Semester 1</option>
-                        <option value={2}>Semester 2</option>
-                        <option value={3}>Semester 3</option>
-                        <option value={4}>Semester 4</option>
-                        <option value={5}>Semester 5</option>
-                        <option value={6}>Semester 6</option>
-                      </select>
-                    </div>
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Term Name</label>
                       <input
