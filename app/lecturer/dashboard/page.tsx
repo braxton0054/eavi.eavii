@@ -402,6 +402,21 @@ export default function LecturerDashboard() {
     setError('');
 
     try {
+      // Check if an assignment already exists for this course + campus
+      const { data: dupCheck } = await supabase
+        .from('lecturer_assignments')
+        .select('id')
+        .eq('lecturer_id', lecturerId)
+        .eq('course_id', setupForm.course_id)
+        .eq('campus', setupForm.campus || 'main')
+        .maybeSingle();
+      
+      if (dupCheck) {
+        setError('You already have an assignment for this course at ' + (setupForm.campus || 'main') + ' campus.');
+        setCreatingAssignment(false);
+        return;
+      }
+      
       // Check for unit conflicts: are any selected units already assigned to another lecturer for the chosen class(es)?
       if (setupForm.selected_class_ids.length > 0) {
         const { data: conflicts } = await supabase
