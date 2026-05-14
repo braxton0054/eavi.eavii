@@ -222,7 +222,7 @@ export default function AcademicCalendar() {
   if (loading) {
     return (
       <div className="min-h-screen w-full bg-slate-50 flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
+        <div className="text-gray-500 text-xl">Loading...</div>
       </div>
     );
   }
@@ -230,10 +230,10 @@ export default function AcademicCalendar() {
   return (
     <div className="min-h-screen w-full bg-slate-50">
       <div className="relative z-10 w-full">
-        <div className="bg-gray-50/10 backdrop-blur-md border-b border-white/20">
+        <div className="bg-white border-b border-gray-200 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href="/admin/dashboard" className="text-purple-200 hover:text-white transition-colors">
+              <Link href="/admin/dashboard" className="text-gray-400 hover:text-gray-600 transition-colors">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
@@ -247,8 +247,8 @@ export default function AcademicCalendar() {
                 />
               </div>
               <div>
-                <h1 className="text-xl md:text-2xl font-bold text-white">Academic Calendar</h1>
-                <p className="text-purple-200 text-sm">{getCampusName(campus)}</p>
+                <h1 className="text-xl md:text-2xl font-bold text-gray-900">Academic Calendar</h1>
+                <p className="text-gray-500 text-sm">{getCampusName(campus)}</p>
               </div>
             </div>
           </div>
@@ -268,7 +268,7 @@ export default function AcademicCalendar() {
           </div>
 
           {showForm && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 flex items-center justify-center z-50 p-4">
               <div className="bg-gray-50 rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">
                   {editingCalendar ? 'Edit Term' : 'Add New Term'}
@@ -281,7 +281,7 @@ export default function AcademicCalendar() {
                         type="text"
                         value={formData.academic_year}
                         onChange={(e) => setFormData({ ...formData, academic_year: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                         placeholder="2024-2025"
                         required
                       />
@@ -291,7 +291,7 @@ export default function AcademicCalendar() {
                       <select
                         value={formData.term}
                         onChange={(e) => setFormData({ ...formData, term: parseInt(e.target.value) })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                         required
                       >
                         <option value={1}>Term 1</option>
@@ -306,7 +306,7 @@ export default function AcademicCalendar() {
                         type="text"
                         value={formData.term_name}
                         onChange={(e) => setFormData({ ...formData, term_name: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                         placeholder="January Term"
                         required
                       />
@@ -316,7 +316,7 @@ export default function AcademicCalendar() {
                       <select
                         value={formData.campus}
                         onChange={(e) => setFormData({ ...formData, campus: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                         required
                       >
                         <option value="west">West Campus</option>
@@ -329,7 +329,7 @@ export default function AcademicCalendar() {
                         type="date"
                         value={formData.term_start_date}
                         onChange={(e) => setFormData({ ...formData, term_start_date: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                         required
                       />
                     </div>
@@ -339,7 +339,7 @@ export default function AcademicCalendar() {
                         type="date"
                         value={formData.term_end_date}
                         onChange={(e) => setFormData({ ...formData, term_end_date: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                         required
                       />
                     </div>
@@ -349,7 +349,7 @@ export default function AcademicCalendar() {
                         type="date"
                         value={formData.intake_start_date}
                         onChange={(e) => setFormData({ ...formData, intake_start_date: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                         required
                       />
                     </div>
@@ -359,7 +359,7 @@ export default function AcademicCalendar() {
                         type="date"
                         value={formData.intake_end_date}
                         onChange={(e) => setFormData({ ...formData, intake_end_date: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                         required
                       />
                     </div>
@@ -369,7 +369,7 @@ export default function AcademicCalendar() {
                         type="number"
                         value={formData.bridge_trigger_day}
                         onChange={(e) => setFormData({ ...formData, bridge_trigger_day: parseInt(e.target.value) })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                         min="1"
                         required
                       />
@@ -381,7 +381,7 @@ export default function AcademicCalendar() {
                         type="date"
                         value={formData.cat_opening_date}
                         onChange={(e) => setFormData({ ...formData, cat_opening_date: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                         required
                       />
                     </div>
@@ -391,7 +391,7 @@ export default function AcademicCalendar() {
                         type="date"
                         value={formData.cat_closing_date}
                         onChange={(e) => setFormData({ ...formData, cat_closing_date: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                         required
                       />
                     </div>
@@ -401,7 +401,7 @@ export default function AcademicCalendar() {
                         type="date"
                         value={formData.end_term_exam_date}
                         onChange={(e) => setFormData({ ...formData, end_term_exam_date: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                         required
                       />
                     </div>
@@ -411,7 +411,7 @@ export default function AcademicCalendar() {
                         id="mock_exam_available"
                         checked={formData.mock_exam_available}
                         onChange={(e) => setFormData({ ...formData, mock_exam_available: e.target.checked })}
-                        className="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                        className="w-5 h-5 text-green-600 border-gray-300 rounded focus:ring-green-500"
                       />
                       <label htmlFor="mock_exam_available" className="text-sm font-medium text-gray-700">Mock Exam Available</label>
                     </div>
@@ -422,7 +422,7 @@ export default function AcademicCalendar() {
                           type="date"
                           value={formData.mock_exam_date}
                           onChange={(e) => setFormData({ ...formData, mock_exam_date: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                           required
                         />
                       </div>
@@ -453,16 +453,16 @@ export default function AcademicCalendar() {
 
           <div className="grid grid-cols-1 gap-6">
             {calendars.length === 0 ? (
-              <div className="bg-gray-50/10 backdrop-blur-md rounded-xl p-8 border border-white/20 text-center">
-                <p className="text-purple-200">No academic calendar entries found. Click "Add New Term" to create one.</p>
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+                <p className="text-gray-500">No academic calendar entries found. Click "Add New Term" to create one.</p>
               </div>
             ) : (
               calendars.map((calendar) => (
-                <div key={calendar.id} className="bg-gray-50/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
+                <div key={calendar.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h3 className="text-xl font-bold text-white">{calendar.academic_year} - {calendar.term_name}</h3>
-                      <p className="text-purple-200 text-sm">Term {calendar.term}</p>
+                      <h3 className="text-xl font-bold text-gray-900">{calendar.academic_year} - {calendar.term_name}</h3>
+                      <p className="text-gray-500 text-sm">Term {calendar.term}</p>
                     </div>
                     <div className="flex gap-2">
                       <button
@@ -484,21 +484,21 @@ export default function AcademicCalendar() {
                     </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div className="bg-gray-50/5 rounded-lg p-4">
-                      <p className="text-purple-300 text-sm mb-1">Term Period</p>
-                      <p className="text-white font-semibold">{formatDate(calendar.term_start_date)} - {formatDate(calendar.term_end_date)}</p>
+                    <div className="bg-gray-50 rounded-lg border border-gray-100 p-4">
+                      <p className="text-gray-500 text-sm mb-1">Term Period</p>
+                      <p className="text-gray-900 font-semibold">{formatDate(calendar.term_start_date)} - {formatDate(calendar.term_end_date)}</p>
                     </div>
-                    <div className="bg-gray-50/5 rounded-lg p-4">
-                      <p className="text-purple-300 text-sm mb-1">CAT Period</p>
-                      <p className="text-white font-semibold">{formatDate(calendar.cat_opening_date)} - {formatDate(calendar.cat_closing_date)}</p>
+                    <div className="bg-gray-50 rounded-lg border border-gray-100 p-4">
+                      <p className="text-gray-500 text-sm mb-1">CAT Period</p>
+                      <p className="text-gray-900 font-semibold">{formatDate(calendar.cat_opening_date)} - {formatDate(calendar.cat_closing_date)}</p>
                     </div>
-                    <div className="bg-gray-50/5 rounded-lg p-4">
-                      <p className="text-purple-300 text-sm mb-1">End Term Exam</p>
-                      <p className="text-white font-semibold">{formatDate(calendar.end_term_exam_date)}</p>
+                    <div className="bg-gray-50 rounded-lg border border-gray-100 p-4">
+                      <p className="text-gray-500 text-sm mb-1">End Term Exam</p>
+                      <p className="text-gray-900 font-semibold">{formatDate(calendar.end_term_exam_date)}</p>
                     </div>
-                    <div className="bg-gray-50/5 rounded-lg p-4">
-                      <p className="text-purple-300 text-sm mb-1">Mock Exam</p>
-                      <p className="text-white font-semibold">
+                    <div className="bg-gray-50 rounded-lg border border-gray-100 p-4">
+                      <p className="text-gray-500 text-sm mb-1">Mock Exam</p>
+                      <p className="text-gray-900 font-semibold">
                         {calendar.mock_exam_available ? `Yes - ${formatDate(calendar.mock_exam_date || '')}` : 'No'}
                       </p>
                     </div>
