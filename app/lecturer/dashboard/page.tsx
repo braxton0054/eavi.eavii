@@ -99,10 +99,12 @@ export default function LecturerDashboard() {
   const [availableClasses, setAvailableClasses] = useState<Class[]>([]);
   const [courseUnits, setCourseUnits] = useState<any[]>([]);
   const [filteredUnits, setFilteredUnits] = useState<any[]>([]);
+  const [selectedExamBody, setSelectedExamBody] = useState<string | null>(null);
   const [setupForm, setSetupForm] = useState({
     course_id: '',
     campus: '',
-    selected_units: [] as string[]
+    selected_units: [] as string[],
+    selected_class_ids: [] as string[]
   });
   const [creatingAssignment, setCreatingAssignment] = useState(false);
   
@@ -279,14 +281,33 @@ export default function LecturerDashboard() {
   };
 
   // Setup functions for lecturer self-assignment
-  const loadCoursesForSetup = async () => {
-    const { data, error } = await supabase.from('courses').select('id, name').order('name');
-    if (error) {
-      console.error('Courses load error:', error);
-      setError('Failed to load courses: ' + error.message);
-      return;
+  const loadCoursesForSetup = async (examBody: string) => {
+    if (examBody === 'Short Course') {
+      const { data, error } = await supabase
+        .from('short_courses')
+        .select('id, name, course_id')
+        .eq('is_active', true)
+        .order('name');
+      if (error) {
+        console.error('Short courses load error:', error);
+        setError('Failed to load short courses: ' + error.message);
+        return;
+      }
+      setCourses((data || []).map((sc: any) => ({
+        id: sc.course_id || sc.id,
+        name: sc.name,
+        _short_course_id: sc.id,
+        _is_short_course: true
+      })));
+    } else {
+      const { data, error } = await supabase.from('courses').select('id, name').eq('exam_body', examBody).order('name');
+      if (error) {
+        console.error('Courses load error:', error);
+        setError('Failed to load courses: ' + error.message);
+        return;
+      }
+      setCourses(data || []);
     }
-    setCourses(data || []);
   };
 
   const loadClassesForCourse = async (courseId: string) => {
@@ -308,19 +329,41 @@ export default function LecturerDashboard() {
       setCourseUnits([]);
       return;
     }
-    const { data } = await supabase
-      .from('units')
-      .select('unit_code, name, unit_type, semester_index, module_index')
-      .eq('course_id', courseId)
-      .order('module_index')
-      .order('semester_index');
-    setCourseUnits(data || []);
+    if (selectedExamBody === 'Short Course') {
+      const selected = courses.find((c: any) => (c.id === courseId || c._short_course_id === courseId));
+      const shortCourseId = selected?._short_course_id || courseId;
+      const { data } = await supabase
+        .from('short_course_units')
+        .select('id, unit_name')
+        .eq('short_course_id', shortCourseId)
+        .order('id');
+      setCourseUnits((data || []).map((u: any, i: number) => ({
+        unit_code: u.id,
+        name: u.unit_name,
+        unit_type: 'Short Course',
+        semester_index: 1,
+        module_index: 0
+      })));
+    } else {
+      const { data } = await supabase
+        .from('units')
+        .select('unit_code, name, unit_type, semester_index, module_index')
+        .eq('course_id', courseId)
+        .order('module_index')
+        .order('semester_index');
+      setCourseUnits(data || []);
+    }
   };
 
   const handleCreateAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!lecturerId || setupForm.selected_units.length === 0) {
-      setError('Please select a course and at least one unit');
+    if (!lecturerId || !selectedExamBody || setupForm.selected_units.length === 0) {
+      setError('Please select an exam body, course, and at least one unit');
+      return;
+    }
+    // Class selection is optional - class is auto-created when students enroll
+    if (selectedExamBody === 'Short Course') {
+      setError('Short course lecturer assignment is coming soon. Select KNEC, CDACC, or JP for now.');
       return;
     }
 
@@ -342,7 +385,34 @@ export default function LecturerDashboard() {
         return;
       }
 
-      // Create lecturer assignment (without class_id — auto-matched)
+      // Check for unit conflicts: are any selected units already assigned to another lecturer for the chosen class(es)?
+      if (setupForm.selected_class_ids.length > 0) {
+        const { data: conflicts } = await supabase
+          .from('lecturer_assignment_units')
+          .select(`
+            unit_code,
+            class_id,
+            lecturer_assignments!inner(
+              lecturer_id,
+              lecturers!inner(full_name)
+            )
+          `)
+          .eq('course_id', setupForm.course_id)
+          .in('unit_code', setupForm.selected_units)
+          .in('class_id', setupForm.selected_class_ids)
+          .neq('lecturer_assignments.lecturer_id', lecturerId);
+
+        if (conflicts && conflicts.length > 0) {
+          const conflictNames = conflicts.map((c: any) => 
+            `Unit ${c.unit_code} → ${c.lecturer_assignments?.lecturers?.full_name || 'another lecturer'}`
+          );
+          setError(`Conflict: These units are already assigned to another lecturer in the selected class(es):\n${conflictNames.join('\n')}`);
+          setCreatingAssignment(false);
+          return;
+        }
+      }
+
+      // Create lecturer assignment (without class_id - auto-matched)
       const { data: assignmentData, error: assignmentError } = await supabase
         .from('lecturer_assignments')
         .insert([{
@@ -355,12 +425,18 @@ export default function LecturerDashboard() {
 
       if (assignmentError) throw assignmentError;
 
-      // Create unit assignments
-      const unitAssignments = setupForm.selected_units.map(unitCode => ({
-        assignment_id: assignmentData.id,
-        course_id: setupForm.course_id,
-        unit_code: unitCode
-      }));
+      // Create unit assignments - one row per unit × per class
+      const unitAssignments: any[] = [];
+      setupForm.selected_units.forEach(unitCode => {
+        (setupForm.selected_class_ids.length > 0 ? setupForm.selected_class_ids : [null]).forEach(classId => {
+          unitAssignments.push({
+            assignment_id: assignmentData.id,
+            course_id: setupForm.course_id,
+            unit_code: unitCode,
+            class_id: classId || null
+          });
+        });
+      });
 
       const { error: unitsError } = await supabase
         .from('lecturer_assignment_units')
@@ -369,7 +445,8 @@ export default function LecturerDashboard() {
       if (unitsError) throw unitsError;
 
       setSuccess('Assignment created successfully!');
-      setSetupForm({ course_id: "", campus: "", selected_units: [] });
+      setSetupForm({ course_id: "", campus: "", selected_units: [], selected_class_ids: [] });
+      setSelectedExamBody(null);
       setViewMode('dashboard');
       await loadLecturerClasses(lecturerId);
     } catch (err: any) {
@@ -380,9 +457,10 @@ export default function LecturerDashboard() {
   };
 
   const openSetup = async () => {
-    await loadCoursesForSetup();
     setViewMode('setup');
-    setSetupForm({ course_id: "", campus: "", selected_units: [] });
+    setSelectedExamBody(null);
+    setCourses([]);
+    setSetupForm({ course_id: "", campus: "", selected_units: [], selected_class_ids: [] });
     setCourseUnits([]);
   };
 
@@ -626,18 +704,14 @@ export default function LecturerDashboard() {
           const data = marksData.get(key);
           const existing = existingMarks.get(key);
           
-          // Skip if no data and no existing mark
-          if (!data && !existing) continue;
-          
           // Skip if already submitted (can't edit submitted marks)
           if (existing?.is_submitted || data?.is_submitted) continue;
           
-          const catMarks = data?.cat_marks ?? existing?.cat_marks ?? null;
-          const endTermMarks = data?.end_term_marks ?? existing?.end_term_marks ?? null;
-          const practicalMarks = data?.practical_marks ?? existing?.practical_marks ?? null;
+          // Default to 0 for ungraded students (ensures all students have marks)
+          const catMarks = data?.cat_marks ?? existing?.cat_marks ?? 0;
+          const endTermMarks = data?.end_term_marks ?? existing?.end_term_marks ?? 0;
+          const practicalMarks = data?.practical_marks ?? existing?.practical_marks ?? 0;
           const isAbsent = data?.is_absent ?? existing?.is_absent ?? false;
-          
-          if (!isAbsent && catMarks === null && endTermMarks === null && selectedExamType === 'cat') continue;
           
           const totalMarks = calculateTotal(catMarks, endTermMarks, practicalMarks, isAbsent);
           const grade = isAbsent ? 'ABS' : calculateGrade(totalMarks);
@@ -656,7 +730,7 @@ export default function LecturerDashboard() {
             marks: totalMarks,
             grade: grade,
             is_absent: isAbsent,
-            is_submitted: false, // Not submitted yet, just saved as draft
+            is_submitted: false,
             lecturer_id: lecturerId,
             intake: selectedIntake,
             semester_assignment_id: selectedSemesterAssignment.id
@@ -704,6 +778,27 @@ export default function LecturerDashboard() {
     setError('');
     
     try {
+      // VALIDATION: Check ALL enrolled students have marks entered
+      const totalStudents = students.length;
+      
+      // Count distinct students who have exam_marks rows for this lecturer+class
+      const { count: marksCount, error: countError } = await supabase
+        .from('exam_marks')
+        .select('*', { count: 'exact', head: true })
+        .eq('lecturer_id', lecturerId)
+        .eq('class_id', selectedClass.class_id)
+        .eq('semester', selectedClass.semester)
+        .eq('intake', selectedIntake);
+      
+      if (countError) throw countError;
+      
+      if (!marksCount || marksCount < totalStudents) {
+        const missing = totalStudents - (marksCount || 0);
+        setError(`Cannot submit: ${marksCount || 0} of ${totalStudents} students have marks. ${missing} student${missing > 1 ? 's are' : ' is'} missing. Please save marks (enter 0 for absent/no-show) for all students first.`);
+        setIsSubmittingMarks(false);
+        return;
+      }
+      
       // Update all marks for this class/semester to is_submitted = true
       const { error: submitError } = await supabase
         .from('exam_marks')
@@ -712,7 +807,7 @@ export default function LecturerDashboard() {
         .eq('class_id', selectedClass.class_id)
         .eq('semester', selectedClass.semester)
         .eq('intake', selectedIntake)
-        .eq('is_submitted', false); // Only submit unsaved marks
+        .eq('is_submitted', false);
       
       if (submitError) {
         throw submitError;
@@ -826,23 +921,23 @@ export default function LecturerDashboard() {
   if (loading && viewMode === 'dashboard') {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
+        <div className="text-gray-500 text-xl">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen w-full bg-white">
+    <div className="min-h-screen w-full bg-gray-50">
       {/* Header */}
-      <div className="relative z-10 w-full glass-neu-inset border-b border-white/10 rounded-none">
+      <div className="relative z-10 w-full bg-white border-b border-gray-200 shadow-sm rounded-none">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/" className="relative w-12 h-12">
               <Image src="/logo.webp" alt="EAVI Logo" fill className="object-contain" />
             </Link>
             <div>
-              <h1 className="text-white font-bold text-lg">Lecturer Portal</h1>
-              <p className="text-purple-200 text-sm">{lecturerInfo?.full_name}</p>
+              <h1 className="text-gray-900 font-bold text-lg">Lecturer Portal</h1>
+              <p className="text-gray-500 text-sm">{lecturerInfo?.full_name}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -854,7 +949,7 @@ export default function LecturerDashboard() {
                   setSelectedSemesterAssignment(null);
                   setMarksData(new Map());
                 }}
-                className="px-4 py-2 glass-neu-btn text-white text-sm font-semibold"
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
               >
                 ← Back to Classes
               </button>
@@ -865,7 +960,7 @@ export default function LecturerDashboard() {
                   loadSubmissionStatus();
                   setViewMode('submissions');
                 }}
-                className="px-4 py-2 glass-neu-btn text-white text-sm font-semibold"
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
               >
                 Submission Status
               </button>
@@ -873,7 +968,7 @@ export default function LecturerDashboard() {
             {(viewMode === 'submissions' || viewMode === 'setup') && (
               <button
                 onClick={() => setViewMode('dashboard')}
-                className="px-4 py-2 glass-neu-btn text-white text-sm font-semibold"
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
               >
                 ← Back to Dashboard
               </button>
@@ -891,13 +986,13 @@ export default function LecturerDashboard() {
       {/* Main Content */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 py-8">
         {error && (
-          <div className="mb-6 p-4 bg-red-500/20 border border-red-500 rounded-lg text-red-200 text-sm">
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
             {error}
           </div>
         )}
         
         {success && (
-          <div className="mb-6 p-4 bg-green-500/20 border border-green-500 rounded-lg text-green-200 text-sm">
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
             {success}
           </div>
         )}
@@ -906,9 +1001,9 @@ export default function LecturerDashboard() {
         {viewMode === 'dashboard' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-white">Your Classes</h2>
+              <h2 className="text-2xl font-bold text-gray-900">Your Classes</h2>
               <div className="flex items-center gap-4">
-                <span className="text-purple-300">{lecturerClasses.length} classes assigned</span>
+                <span className="text-gray-400">{lecturerClasses.length} classes assigned</span>
                 <button
                   onClick={openSetup}
                   className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold"
@@ -918,90 +1013,122 @@ export default function LecturerDashboard() {
               </div>
             </div>
 
-            {lecturerClasses.length === 0 ? (
-              <div className="glass-neu p-8 text-center">
-                <p className="text-purple-200 mb-4">No classes assigned yet.</p>
-                <button
-                  onClick={openSetup}
-                  className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold"
-                >
-                  Setup Your Classes
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {lecturerClasses.map((cls) => {
-                  const catStatus = checkWindowStatus(cls, 'cat');
-                  const endTermStatus = checkWindowStatus(cls, 'end_term');
-                  
-                  return (
-                    <div key={cls.class_id} className="glass-neu p-6 space-y-4">
-                      {/* Course Name */}
-                      <h3 className="text-lg font-semibold text-white">{cls.course_name}</h3>
-                      
-                      {/* Class Info */}
-                      <div className="space-y-1">
-                        <p className="text-purple-200 text-sm">{cls.class_name}</p>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          <span className="px-2 py-1 bg-purple-600/30 rounded text-xs text-purple-200">
-                            {cls.intake_month}
-                          </span>
-                          <span className="px-2 py-1 bg-blue-600/30 rounded text-xs text-blue-200">
-                            {formatCampus(cls.campus)}
-                          </span>
-                          <span className="px-2 py-1 bg-green-600/30 rounded text-xs text-green-200">
-                            Sem {cls.semester}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Student Count */}
-                      <div className="flex items-center gap-2 text-purple-300 text-sm">
-                        <span className="font-semibold">{cls.total_students}</span> students enrolled
-                      </div>
-
-                      {/* Term Info */}
-                      {cls.term_name && (
-                        <p className="text-purple-300 text-xs">{cls.term_name}</p>
-                      )}
-
-                      {/* Window Status */}
-                      <div className="space-y-2 pt-2 border-t border-white/10">
-                        {/* CAT Status */}
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-purple-300">CAT:</span>
-                          <span className={`px-2 py-0.5 rounded ${
-                            catStatus.open ? 'bg-green-500/30 text-green-300' : 'bg-red-500/30 text-red-300'
-                          }`}>
-                            {catStatus.open ? 'OPEN' : 'CLOSED'}
-                          </span>
-                        </div>
-                        
-                        {/* End Term Status */}
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-purple-300">End Term:</span>
-                          <span className={`px-2 py-0.5 rounded ${
-                            endTermStatus.open ? 'bg-green-500/30 text-green-300' : 
-                            endTermStatus.message.includes('UPCOMING') ? 'bg-yellow-500/30 text-yellow-300' :
-                            'bg-red-500/30 text-red-300'
-                          }`}>
-                            {endTermStatus.open ? 'DUE' : endTermStatus.message.includes('opens') ? 'UPCOMING' : 'CLOSED'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Enter Marks Button */}
-                      <button
-                        onClick={() => enterMarks(cls)}
-                        className="w-full py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-semibold transition-colors"
-                      >
-                        Enter Marks
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+             {lecturerClasses.length === 0 ? (
+               <div className="flex items-center justify-center py-12">
+                 <div className="text-center">
+                   <div className="flex items-center justify-center mb-4">
+                     <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center mb-2">
+                       <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                       </svg>
+                     </div>
+                     <h3 className="text-xl font-bold text-gray-900 mb-2">No classes assigned</h3>
+                     <p className="text-gray-500 mb-4">Click "Setup Your Classes" to get started</p>
+                     <button
+                       onClick={openSetup}
+                       className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors"
+                     >
+                       Setup Your Classes
+                     </button>
+                   </div>
+                 </div>
+               </div>
+             ) : (
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                 {lecturerClasses.map((cls) => {
+                   const catStatus = checkWindowStatus(cls, 'cat');
+                   const endTermStatus = checkWindowStatus(cls, 'end_term');
+                   
+                   // Determine border color based on exam body
+                   const borderColor = cls.exam_body === 'CDACC' ? 'border-l-4 border-l-blue-500' : 'border-l-4 border-l-green-500';
+                   
+                   return (
+                     <div key={cls.class_id} className={`bg-white rounded-xl border border-gray-200 p-6 space-y-4 hover:shadow-md transition-shadow ${borderColor}`}>
+                       {/* Header with exam body badge */}
+                       <div className="flex items-center justify-between mb-2">
+                         <div className="flex-1">
+                           <h3 className="text-lg font-semibold text-gray-900">{cls.course_name}</h3>
+                           <div className="flex items-center gap-2 mt-1">
+                             <span className="text-xs font-medium">{cls.class_name}</span>
+                             <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs font-semibold">
+                               {cls.exam_body}
+                             </span>
+                           </div>
+                         </div>
+                       </div>
+                       
+                       {/* Info Section */}
+                       <div className="space-y-2">
+                         <div className="flex items-center gap-2 mb-1">
+                           <div className="w-5 h-5 bg-indigo-50 flex items-center justify-center rounded">
+                             <svg className="w-3 h-3 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2z"></path>
+                             </svg>
+                           </div>
+                           <span className="text-sm text-gray-500">{cls.intake_month} • {formatCampus(cls.campus)}</span>
+                         </div>
+                         
+                         <div className="flex items-center gap-2 mb-1">
+                           <div className="w-5 h-5 bg-green-50 flex items-center justify-center rounded">
+                             <svg className="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.1 0-2 .9-2 2s1 2 2 2 2-.9 2-2-1-2-2-2zm0 12c-4 0-6-2-6-4 0-1.2.4-2.2 1-3"/>
+                             </svg>
+                           </div>
+                           <span className="flex items-center gap-1 text-sm text-gray-500 font-medium">
+                             <span>{cls.total_students}</span>
+                             <span>students</span>
+                           </span>
+                         </div>
+                         
+                         {/* Term and Status Badges */}
+                         <div className="flex flex-wrap gap-2 mb-3">
+                           {cls.is_attachment_stage && (
+                             <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-medium">
+                               🔧 Industrial Attachment
+                             </span>
+                           )}
+                           {cls.term_name && !cls.is_attachment_stage && (
+                             <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded text-xs font-medium">
+                               {cls.term_name}
+                             </span>
+                           )}
+                           {!cls.is_attachment_stage && (
+                           <>
+                           <span className={`px-2 py-0.5 rounded ${
+                             catStatus.open ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                           } text-xs font-medium`}>
+                             {catStatus.open ? 'CAT: OPEN' : 'CAT: CLOSED'}
+                           </span>
+                           <span className={`px-2 py-0.5 rounded ${
+                             endTermStatus.open ? 'bg-green-100 text-green-700' : 
+                             endTermStatus.message.includes('UPCOMING') ? 'bg-yellow-100 text-yellow-700' :
+                             'bg-red-100 text-red-700'
+                           } text-xs font-medium`}>
+                             {endTermStatus.open ? 'END TERM: DUE' : endTermStatus.message.includes('opens') ? 'END TERM: UPCOMING' : 'END TERM: CLOSED'}
+                           </span>
+                           </>
+                           )}
+                         </div>
+                       </div>
+ 
+                       {/* Enter Marks Button - disabled during attachment */}
+                       {cls.is_attachment_stage ? (
+                         <div className="w-full py-2 bg-gray-100 text-gray-400 rounded-lg text-sm font-semibold text-center mt-4 cursor-not-allowed">
+                           Attachment - No marks entry
+                         </div>
+                       ) : (
+                         <button
+                           onClick={() => enterMarks(cls)}
+                           className="w-full py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition-colors mt-4"
+                         >
+                           Enter Marks
+                         </button>
+                       )}
+                     </div>
+                   );
+                 })}
+               </div>
+             )}
           </div>
         )}
 
@@ -1009,25 +1136,25 @@ export default function LecturerDashboard() {
         {viewMode === 'marks' && selectedClass && (
           <div className="space-y-6">
             {/* Class Header */}
-            <div className="glass-neu p-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="flex items-start justify-between">
                 <div>
-                  <h2 className="text-xl font-bold text-white">{selectedClass.course_name}</h2>
-                  <p className="text-purple-200">{selectedClass.class_name}</p>
+                  <h2 className="text-xl font-bold text-gray-900">{selectedClass.course_name}</h2>
+                  <p className="text-gray-500">{selectedClass.class_name}</p>
                   <div className="flex gap-2 mt-2">
-                    <span className="px-2 py-1 bg-purple-600/30 rounded text-xs text-purple-200">
+                    <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium">
                       {selectedClass.intake_month}
                     </span>
-                    <span className="px-2 py-1 bg-blue-600/30 rounded text-xs text-blue-200">
+                    <span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-xs font-medium">
                       {formatCampus(selectedClass.campus)}
                     </span>
-                    <span className="px-2 py-1 bg-green-600/30 rounded text-xs text-green-200">
-                      Sem {selectedClass.semester} • Mod {selectedClass.module_index}
+                    <span className="px-2 py-1 bg-green-50 text-green-700 rounded text-xs font-medium">
+                      Sem {selectedClass.semester} • {selectedClass.exam_body === 'CDACC' ? 'Stage' : 'Mod'} {selectedClass.module_index}
                     </span>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-purple-300 text-sm">{students.length} students</p>
+                  <p className="text-gray-400 text-sm">{students.length} students</p>
                 </div>
               </div>
             </div>
@@ -1039,10 +1166,10 @@ export default function LecturerDashboard() {
                   key={type}
                   onClick={() => handleExamTypeChange(type)}
                   disabled={!selectedClass.exam_type_allowed?.includes(type)}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  className={`px-5 py-2 rounded-full text-sm font-semibold transition-colors ${
                     selectedExamType === type
-                      ? 'bg-purple-600 text-white'
-                      : 'glass-neu-btn text-white disabled:opacity-30'
+                      ? 'bg-green-600 text-white'
+                      : 'border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-30'
                   }`}
                 >
                   {formatExamType(type)}
@@ -1052,43 +1179,43 @@ export default function LecturerDashboard() {
 
             {/* Window Status Banner */}
             {!isWindowOpen && (
-              <div className="p-4 bg-red-500/20 border border-red-500 rounded-lg">
-                <p className="text-red-200 font-semibold">Window Closed</p>
-                <p className="text-red-300 text-sm">{windowMessage}</p>
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-red-700 font-semibold">Window Closed</p>
+                <p className="text-red-500 text-sm">{windowMessage}</p>
               </div>
             )}
             
             {isWindowOpen && windowMessage && (
-              <div className="p-4 bg-green-500/20 border border-green-500 rounded-lg">
-                <p className="text-green-200 font-semibold">{windowMessage}</p>
+              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-green-700 font-semibold">{windowMessage}</p>
               </div>
             )}
 
             {/* Marks Table */}
-            <div className="glass-neu p-6 overflow-x-auto">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 overflow-x-auto">
               {students.length === 0 ? (
-                <p className="text-purple-200 text-center">No enrolled students found.</p>
+                <div className="text-center py-12"><p className="text-gray-400 text-lg">👥 No enrolled students</p><p className="text-gray-400 text-sm mt-1">This class has no enrolled students yet</p></div>
               ) : units.length === 0 ? (
-                <p className="text-purple-200 text-center">No units assigned.</p>
+                <div className="text-center py-12"><p className="text-gray-400 text-lg">📝 No units assigned</p><p className="text-gray-400 text-sm mt-1">You haven't been assigned units for this class</p></div>
               ) : (
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-white/20">
-                      <th className="text-left p-3 text-purple-200 text-sm">Student</th>
-                      <th className="text-left p-3 text-purple-200 text-sm">Admission #</th>
+                    <tr className="border-b-2 border-gray-200 bg-gray-50">
+                      <th className="text-left p-3 text-gray-600 text-sm font-semibold">Student</th>
+                      <th className="text-left p-3 text-gray-600 text-sm font-semibold">Admission #</th>
                       {units.map((unit) => (
-                        <th key={unit.unit_code} className="p-3 text-center text-purple-200 text-sm">
+                        <th key={unit.unit_code} className="p-3 text-center text-gray-600 text-sm font-semibold">
                           <div>{unit.unit_name}</div>
-                          <div className="text-xs text-purple-400">{unit.unit_code}</div>
+                          <div className="text-xs text-gray-400 font-normal">{unit.unit_code}</div>
                         </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {students.map((student) => (
-                      <tr key={student.id} className="border-b border-white/10">
-                        <td className="p-3 text-white">{student.full_name}</td>
-                        <td className="p-3 text-purple-300 text-sm">{student.admission_number}</td>
+                    {students.map((student, idx) => (
+                      <tr key={student.id} className={`border-b border-gray-100 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} hover:bg-blue-50/30`}>
+                        <td className="p-3 text-gray-900 font-medium">{student.full_name}</td>
+                        <td className="p-3 text-gray-400 text-sm">{student.admission_number}</td>
                         {units.map((unit) => {
                           const key = `${student.application_id}-${unit.unit_code}`;
                           const existing = existingMarks.get(key);
@@ -1106,7 +1233,7 @@ export default function LecturerDashboard() {
                             <td key={unit.unit_code} className="p-3">
                               {/* Submitted Badge */}
                               {isSubmitted && (
-                                <div className="mb-1 text-xs text-green-400 font-semibold">✓ SUBMITTED</div>
+                                <div className="mb-1 inline-block px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-semibold">✓ SUBMITTED</div>
                               )}
                               
                               {/* Absent Toggle */}
@@ -1116,9 +1243,9 @@ export default function LecturerDashboard() {
                                   checked={isAbsent}
                                   onChange={(e) => handleAbsentToggle(student.application_id, unit.unit_code, e.target.checked)}
                                   disabled={!isWindowOpen || isSubmitted}
-                                  className="w-3 h-3 rounded border-white/30"
+                                  className="w-3 h-3 rounded border-gray-300"
                                 />
-                                <span className="text-xs text-purple-300">Absent</span>
+                                <span className="text-xs text-gray-400">Absent</span>
                               </label>
                               
                               {!isAbsent && (
@@ -1132,7 +1259,7 @@ export default function LecturerDashboard() {
                                       value={catMarks ?? ''}
                                       onChange={(e) => handleMarkChange(student.application_id, unit.unit_code, 'cat_marks', parseFloat(e.target.value) || 0)}
                                       disabled={!isWindowOpen || isSubmitted}
-                                      className="w-20 px-2 py-1 bg-white/10 border border-white/30 rounded text-white text-center disabled:opacity-30"
+                                      className="w-20 px-2 py-1 bg-white border border-gray-300 rounded text-gray-900 text-center disabled:opacity-30 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                                     />
                                   )}
                                   
@@ -1146,7 +1273,7 @@ export default function LecturerDashboard() {
                                         value={endTermMarks ?? ''}
                                         onChange={(e) => handleMarkChange(student.application_id, unit.unit_code, 'end_term_marks', parseFloat(e.target.value) || 0)}
                                         disabled={!isWindowOpen || isSubmitted}
-                                        className="w-20 px-2 py-1 bg-white/10 border border-white/30 rounded text-white text-center disabled:opacity-30 mb-1"
+                                        className="w-20 px-2 py-1 bg-white border border-gray-300 rounded text-gray-900 text-center disabled:opacity-30 mb-1 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                                       />
                                       {/* Practical marks for CDACC courses */}
                                       {selectedClass?.exam_type_allowed?.includes('practical') && (
@@ -1159,7 +1286,7 @@ export default function LecturerDashboard() {
                                           value={practicalMarks ?? ''}
                                           onChange={(e) => handlePracticalMarkChange(student.application_id, unit.unit_code, parseFloat(e.target.value) || 0)}
                                           disabled={!isWindowOpen || isSubmitted}
-                                          className="w-20 px-2 py-1 bg-white/10 border border-white/30 rounded text-white text-center disabled:opacity-30 text-xs"
+                                          className="w-20 px-2 py-1 bg-white border border-gray-300 rounded text-gray-900 text-center disabled:opacity-30 text-xs focus:ring-2 focus:ring-green-500 focus:border-green-500"
                                         />
                                       )}
                                     </>
@@ -1173,7 +1300,7 @@ export default function LecturerDashboard() {
                                       step="0.5"
                                       value={total || ''}
                                       disabled={!isWindowOpen || isSubmitted}
-                                      className="w-20 px-2 py-1 bg-white/10 border border-white/30 rounded text-white text-center disabled:opacity-30"
+                                      className="w-20 px-2 py-1 bg-white border border-gray-300 rounded text-gray-900 text-center disabled:opacity-30 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                                     />
                                   )}
                                 </>
@@ -1182,10 +1309,10 @@ export default function LecturerDashboard() {
                               {/* Total, Grade and Pass/Fail */}
                               {(catMarks !== null || endTermMarks !== null || isAbsent) && (
                                 <div className="mt-1 text-xs">
-                                  <span className="text-white font-semibold">{total}</span>
-                                  <span className="text-purple-300 ml-1">({grade})</span>
+                                  <span className="text-gray-900 font-semibold">{total}</span>
+                                  <span className="text-gray-400 ml-1">({grade})</span>
                                   {!isAbsent && (
-                                    <span className={`ml-2 ${isPass(total) ? 'text-green-400' : 'text-red-400'}`}>
+                                    <span className={`ml-2 inline-block px-2 py-0.5 rounded text-xs font-semibold ${isPass(total) ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                                       {isPass(total) ? 'PASS' : 'FAIL'}
                                     </span>
                                   )}
@@ -1223,8 +1350,8 @@ export default function LecturerDashboard() {
             
             {/* Fee Clearance Warning */}
             {students.some(s => s.financial_hold) && (
-              <div className="mt-4 p-3 bg-yellow-500/20 border border-yellow-500/50 rounded-lg">
-                <p className="text-yellow-300 text-sm">
+              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-yellow-700 text-sm">
                   ⚠️ Some students have fee holds. Their results will be blocked until they reach 95% fee clearance.
                 </p>
               </div>
@@ -1236,7 +1363,7 @@ export default function LecturerDashboard() {
         {viewMode === 'setup' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-white">Setup Your Teaching Assignment</h2>
+              <h2 className="text-2xl font-bold text-gray-900">Setup Your Teaching Assignment</h2>
               <button
                 onClick={() => setViewMode('dashboard')}
                 className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm font-semibold"
@@ -1245,12 +1372,42 @@ export default function LecturerDashboard() {
               </button>
             </div>
 
-            <form onSubmit={handleCreateAssignment} className="glass-neu p-6 space-y-6 max-w-3xl">
+            <form onSubmit={handleCreateAssignment} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6 max-w-3xl">
+              {/* Exam Body Selection */}
+              <div>
+                <label className="block text-gray-700 text-sm font-semibold mb-3">Choose Exam Body</label>
+                <div className="flex flex-wrap gap-3">
+                  {['KNEC', 'CDACC', 'JP', 'Short Course'].map((body) => (
+                    <button
+                      key={body}
+                      type="button"
+                      onClick={() => {
+                        setSelectedExamBody(body);
+                        setSetupForm({ ...setupForm, course_id: '', selected_units: [] });
+                        setCourseUnits([]);
+                        loadCoursesForSetup(body);
+                      }}
+                      className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-colors ${
+                        selectedExamBody === body
+                          ? 'bg-green-600 text-white shadow-sm'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {body}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Campus Selection */}
               <div>
-                <label className="block text-purple-200 text-sm mb-2">Campus *</label>
-                <select value={setupForm.campus} onChange={(e) => setSetupForm({ ...setupForm, campus: e.target.value, course_id: '', selected_units: [] })}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white" required>
+                <label className="block text-gray-700 text-sm font-semibold mb-2">Campus *</label>
+                <select
+                  value={setupForm.campus}
+                  onChange={(e) => setSetupForm({ ...setupForm, campus: e.target.value })}
+                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  required
+                >
                   <option value="">Select Campus</option>
                   <option value="main">Main Campus</option>
                   <option value="west">West Campus</option>
@@ -1259,67 +1416,189 @@ export default function LecturerDashboard() {
 
               {/* Course Selection */}
               <div>
-                <label className="block text-purple-200 text-sm mb-2">Select Course *</label>
-                <select
-                  value={setupForm.course_id}
-                  onChange={(e) => {
-                    const courseId = e.target.value;
-                    setSetupForm({ ...setupForm, course_id: courseId, selected_units: [] });
-                    loadUnitsForCourse(courseId);
-                  }}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white"
-                  required
-                >
-                  <option value="">Select a course</option>
-                  {courses.map((course) => (
-                    <option key={course.id} value={course.id}>{course.name}</option>
-                  ))}
-                </select>
+                <label className="block text-gray-700 text-sm font-semibold mb-2">Select Course *</label>
+                  <select
+                    value={setupForm.course_id}
+                    onChange={(e) => {
+                      const courseId = e.target.value;
+                      setSetupForm({ ...setupForm, course_id: courseId, selected_units: [], selected_class_ids: [] });
+                      setAvailableClasses([]);
+                      loadUnitsForCourse(courseId);
+                      loadClassesForCourse(courseId);
+                    }}
+                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-green-500 focus:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    required
+                    disabled={!selectedExamBody}
+                  >
+                    <option value="">{selectedExamBody ? 'Select a course' : 'Select an exam body first'}</option>
+                    {courses.map((course) => (
+                      <option key={course.id} value={course.id}>{course.name}</option>
+                    ))}
+                  </select>
               </div>
 
-              {/* Units Selection */}
+              {/* Units Selection - Grouped by Module */}
               <div>
-                <label className="block text-purple-200 text-sm mb-2">Select Units You Teach *</label>
-                <p className="text-purple-300 text-xs mb-3">Check all units/subjects you teach in this course.</p>
-                {setupForm.course_id && courseUnits.length === 0 ? (
-                  <p className="text-orange-300 text-sm">No units found for this course.</p>
-                ) : !setupForm.course_id ? (
-                  <p className="text-purple-300 text-sm">Select a course first.</p>
+                <label className="block text-gray-700 text-sm font-semibold mb-3">Select Units You Teach *</label>
+                {!setupForm.course_id ? (
+                  <p className="text-gray-400 text-sm py-4 text-center">Select a course first.</p>
+                ) : courseUnits.length === 0 ? (
+                  <p className="text-amber-600 text-sm py-4 text-center">No units found for this course.</p>
                 ) : (
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {courseUnits.map((unit) => (
-                      <label key={unit.unit_code} className="flex items-center gap-3 p-2 hover:bg-white/5 rounded cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={setupForm.selected_units.includes(unit.unit_code)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSetupForm({
-                                ...setupForm,
-                                selected_units: [...setupForm.selected_units, unit.unit_code]
-                              });
-                            } else {
-                              setSetupForm({
-                                ...setupForm,
-                                selected_units: setupForm.selected_units.filter(u => u !== unit.unit_code)
-                              });
-                            }
-                          }}
-                          className="w-4 h-4"
-                        />
-                        <div className="flex-1">
-                          <span className="text-white text-sm">{unit.name}</span>
-                          <span className="text-purple-300 text-xs ml-2">({unit.unit_code})</span>
-                          <span className="text-purple-400 text-xs ml-2">Mod {unit.module_index}, Sem {unit.semester_index}</span>
+                  <>
+                    {Object.entries(
+                      courseUnits.reduce((groups: any, unit: any) => {
+                        const mod = unit.module_index || 0;
+                        if (!groups[mod]) groups[mod] = [];
+                        groups[mod].push(unit);
+                        return groups;
+                      }, {} as any)
+                    ).sort(([a]: any, [b]: any) => Number(a) - Number(b)).map(([moduleIdx, moduleUnits]: any) => (
+                      <div key={moduleIdx} className="border border-gray-200 rounded-xl overflow-hidden mb-4 last:mb-0">
+                        {/* Module Header */}
+                        <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="w-7 h-7 bg-green-100 text-green-700 rounded-full flex items-center justify-center text-xs font-bold">
+                              {moduleIdx}
+                            </span>
+                            <span className="font-semibold text-gray-900 text-sm">
+                              {Number(moduleIdx) === 0 ? 'Units' : selectedExamBody === 'CDACC' ? `Stage ${moduleIdx}` : `Module ${moduleIdx}`}
+                            </span>
+                          </div>
+                          <span className="text-xs text-gray-400">
+                            {(moduleUnits as any[]).length} unit{(moduleUnits as any[]).length > 1 ? 's' : ''}
+                          </span>
                         </div>
-                      </label>
+                        {/* Module Units */}
+                        <div className="divide-y divide-gray-100">
+                          {(moduleUnits as any[]).map((unit: any) => (
+                            <label key={unit.unit_code} className="flex items-center gap-3 px-4 py-3 hover:bg-green-50/50 cursor-pointer transition-colors">
+                              <input
+                                type="checkbox"
+                                checked={setupForm.selected_units.includes(unit.unit_code)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSetupForm({
+                                      ...setupForm,
+                                      selected_units: [...setupForm.selected_units, unit.unit_code]
+                                    });
+                                  } else {
+                                    setSetupForm({
+                                      ...setupForm,
+                                      selected_units: setupForm.selected_units.filter(u => u !== unit.unit_code)
+                                    });
+                                  }
+                                }}
+                                className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <span className="text-gray-900 text-sm font-medium block truncate">{unit.name}</span>
+                                <span className="text-gray-400 text-xs">
+                                  {unit.unit_code}
+                                  {unit.semester_index ? ` · Sem ${unit.semester_index}` : ''}
+                                  {unit.unit_type ? ` · ${unit.unit_type}` : ''}
+                                </span>
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
                     ))}
-                  </div>
+                    {/* Selected count */}
+                    <div className="flex items-center justify-between pt-3">
+                      <p className="text-xs text-gray-400">
+                        {setupForm.selected_units.length} of {courseUnits.length} units selected
+                      </p>
+                      {setupForm.selected_units.length < courseUnits.length && courseUnits.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setSetupForm({
+                            ...setupForm,
+                            selected_units: courseUnits.map((u: any) => u.unit_code)
+                          })}
+                          className="text-xs text-green-600 hover:text-green-700 font-medium"
+                        >
+                          Select All
+                        </button>
+                      )}
+                      {setupForm.selected_units.length === courseUnits.length && courseUnits.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setSetupForm({
+                            ...setupForm,
+                            selected_units: []
+                          })}
+                          className="text-xs text-gray-500 hover:text-gray-700 font-medium"
+                        >
+                          Clear All
+                      </button>
+                      )}
+                    </div>
+                  </>
                 )}
-                <p className="text-purple-300 text-xs mt-2">
-                  Selected: {setupForm.selected_units.length} of {filteredUnits.length || courseUnits.length} units
-                </p>
               </div>
+              {/* Class Selection - Optional */}
+              {setupForm.course_id && (
+                <div>
+                  <label className="block text-gray-700 text-sm font-semibold mb-3">
+                    Assign to Class(es) <span className="text-gray-400 font-normal">(optional)</span>
+                  </label>
+                  <p className="text-gray-400 text-xs mb-3">
+                    Select which class(es) you teach these {setupForm.selected_units.length} unit{setupForm.selected_units.length !== 1 ? 's' : ''} to. If no class exists yet, one will be auto-created when the first student enrolls.
+                  </p>
+                  {availableClasses.length === 0 ? (
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm">
+                      <p className="text-blue-800 font-medium">ℹ️ No classes yet</p>
+                      <p className="text-blue-600 text-xs mt-1">
+                        A class will be created automatically when the first student enrolls. You can submit the assignment now.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {availableClasses.map((cls) => (
+                        <label
+                          key={cls.id}
+                          className={`flex items-center gap-3 px-4 py-3 border rounded-xl cursor-pointer transition-colors ${
+                            setupForm.selected_class_ids.includes(cls.id)
+                              ? 'border-green-300 bg-green-50/50'
+                              : 'border-gray-200 hover:border-gray-300 bg-white'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={setupForm.selected_class_ids.includes(cls.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSetupForm({
+                                  ...setupForm,
+                                  selected_class_ids: [...setupForm.selected_class_ids, cls.id]
+                                });
+                              } else {
+                                setSetupForm({
+                                  ...setupForm,
+                                  selected_class_ids: setupForm.selected_class_ids.filter((id) => id !== cls.id)
+                                });
+                              }
+                            }}
+                            className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <span className="text-gray-900 text-sm font-medium block">{cls.class_name}</span>
+                            <span className="text-gray-400 text-xs">
+                              {formatCampus(cls.campus)} · Sem {cls.semester} · {cls.intake_month}
+                            </span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  {setupForm.selected_class_ids.length > 0 && (
+                    <p className="text-xs text-green-600 font-medium mt-2">
+                      ✓ {setupForm.selected_class_ids.length} class{setupForm.selected_class_ids.length > 1 ? 'es' : ''} selected
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Submit Button */}
               <div className="flex gap-4 pt-4">
@@ -1346,7 +1625,7 @@ export default function LecturerDashboard() {
         {viewMode === 'submissions' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-white">Mark Submission Status</h2>
+              <h2 className="text-2xl font-bold text-gray-900">Mark Submission Status</h2>
               <button
                 onClick={() => setViewMode('dashboard')}
                 className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm font-semibold"
@@ -1356,28 +1635,28 @@ export default function LecturerDashboard() {
             </div>
 
             {/* Submission Status Table */}
-            <div className="glass-neu p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Unit Submission Overview</h3>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Unit Submission Overview</h3>
               
               {submissionStatus.size === 0 ? (
-                <p className="text-purple-300">No marks recorded yet.</p>
+                <div className="text-center py-8"><p className="text-gray-400">📊 No marks recorded yet</p></div>
               ) : (
                 <div className="space-y-3">
                   {Array.from(submissionStatus.entries()).map(([unitCode, stats]) => (
-                    <div key={unitCode} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                    <div key={unitCode} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div>
-                        <span className="text-white font-medium">{unitCode}</span>
-                        <span className="text-purple-300 text-sm ml-2">
+                        <span className="text-gray-900 font-medium">{unitCode}</span>
+                        <span className="text-gray-400 text-sm ml-2">
                           {stats.submitted} / {stats.total} submitted
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
                         {stats.submitted === stats.total ? (
-                          <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm">
+                          <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
                             ✓ Complete
                           </span>
                         ) : (
-                          <span className="px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-sm">
+                          <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm">
                             ⏳ {stats.total - stats.submitted} remaining
                           </span>
                         )}
@@ -1389,9 +1668,9 @@ export default function LecturerDashboard() {
             </div>
 
             {/* Instructions */}
-            <div className="glass-neu p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Submission Rules</h3>
-              <ul className="space-y-2 text-purple-300 text-sm">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Submission Rules</h3>
+              <ul className="space-y-2 text-gray-400 text-sm">
                 <li>• Save marks as draft before submitting</li>
                 <li>• Once submitted, marks cannot be edited</li>
                 <li>• Results are automatically released for fee-cleared students</li>

@@ -355,6 +355,120 @@ export default function ClassesPage() {
 
   const getCampusName = (c: string) => c === 'west' ? 'West Campus' : 'Main Campus';
 
+  const handlePromoteClass = async (cls: Class) => {
+    setLoading(true);
+    setError('');
+    
+    // Check if this class is currently in an attachment stage
+    const { data: attachStudents } = await supabase
+      .from('applications')
+      .select('id, full_name')
+      .eq('class_id', cls.id)
+      .eq('status', 'enrolled');
+    
+    if (!attachStudents || attachStudents.length === 0) {
+      setError('No enrolled students found in this class.');
+      setLoading(false);
+      return;
+    }
+    
+    // Check if any student is in an attachment stage (module_index 4 for CDACC, or has attachment flag)
+    const { data: moduleInfo } = await supabase
+      .from('modules')
+      .select('is_attachment_stage')
+      .eq('module_index', cls.module_index)
+      .limit(1)
+      .maybeSingle();
+    
+    const isAttachmentStage = moduleInfo?.is_attachment_stage === true;
+    
+    if (isAttachmentStage) {
+      if (!confirm(`Mark attachment as COMPLETE for ALL ${attachStudents.length} students in "${cls.class_name}" and move them to the next stage?`)) {
+        setLoading(false);
+        return;
+      }
+    } else {
+      if (!confirm(`Promote ALL ${attachStudents.length} students in "${cls.class_name}" to the next module/stage?`)) {
+        setLoading(false);
+        return;
+      }
+    }
+    
+    try {
+      // If this is an attachment stage, mark attachment_completed first
+      if (isAttachmentStage) {
+        await supabase
+          .from('applications')
+          .update({ attachment_completed: true })
+          .eq('class_id', cls.id)
+          .eq('status', 'enrolled');
+      }
+      
+      // Get all enrolled students in this class
+      const { data: students, error: studentError } = await supabase
+        .from('applications')
+        .select('id, full_name, current_module, current_semester, total_balance, financial_hold')
+        .eq('class_id', cls.id)
+        .eq('status', 'enrolled');
+      
+      if (studentError) throw studentError;
+      if (!students || students.length === 0) {
+        setError('No enrolled students found in this class.');
+        setLoading(false);
+        return;
+      }
+      
+      // Get current academic calendar for this class
+      const { data: cal } = await supabase
+        .from('academic_calendar')
+        .select('id')
+        .eq('campus', cls.campus)
+        .eq('semester', cls.semester)
+        .maybeSingle();
+      
+      const calendarId = cal?.id || null;
+      
+      // Promote each student
+      let promoted = 0;
+      let failed: { name: string; reason: string }[] = [];
+      
+      for (const student of students) {
+        try {
+          const { error: rpcError } = await supabase.rpc('promote_student', {
+            p_application_id: student.id,
+            p_force: false,
+            p_academic_calendar_id: calendarId,
+            p_promoted_by: 'admin',
+            p_notes: 'Bulk promotion from admin classes page'
+          });
+          
+          if (rpcError) {
+            failed.push({ name: student.full_name, reason: rpcError.message });
+          } else {
+            promoted++;
+          }
+        } catch (err: any) {
+          failed.push({ name: student.full_name, reason: err.message });
+        }
+      }
+      
+      // Show result
+      if (failed.length === 0) {
+        setSuccess(`✅ All ${promoted} students promoted successfully!`);
+      } else {
+        setSuccess(`✅ ${promoted} promoted. ❌ ${failed.length} failed:\n${failed.map(f => `${f.name}: ${f.reason}`).join('\n')}`);
+      }
+      setTimeout(() => { setSuccess(''); setError(''); }, 8000);
+      
+      // Refresh class data
+      loadClasses(campus || 'all');
+    } catch (err: any) {
+      setError(`Promotion failed: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen w-full bg-slate-50 flex items-center justify-center">
@@ -545,6 +659,12 @@ export default function ClassesPage() {
                             className="px-2 py-1 bg-blue-600/50 hover:bg-blue-600 text-white rounded text-xs"
                           >
                             View Students
+                          </button>
+                          <button
+                            onClick={() => handlePromoteClass(cls)}
+                            className="px-2 py-1 bg-amber-500/50 hover:bg-amber-500 text-white rounded text-xs"
+                          >
+                            Promote
                           </button>
                         </div>
                       </td>

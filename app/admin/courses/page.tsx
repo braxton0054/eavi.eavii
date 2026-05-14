@@ -995,7 +995,7 @@ export default function CoursesPage() {
                               <select className="inp" value={courseFormData.fee_payment_mode}
                                 onChange={e => setCourseFormData(p => ({ ...p, fee_payment_mode: e.target.value as any }))}>
                                 <option value="per_semester">Per Semester</option>
-                                <option value="per_module">Per Module/Stage</option>
+                                <option value="per_module">{selectedCourseType === 'CDACC' ? 'Per Stage' : 'Per Module'}</option>
                               </select>
                             </div>
                           )}
