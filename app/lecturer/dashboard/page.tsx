@@ -1253,6 +1253,16 @@ export default function LecturerDashboard() {
               </div>
             ) : selectedClass && (
           <div className="space-y-6">
+            {/* Back Button */}
+            <button
+              onClick={() => setSelectedClass(null)}
+              className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Back to Classes
+            </button>
             {/* Class Header */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="flex items-start justify-between">
