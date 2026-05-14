@@ -1349,50 +1349,267 @@ export default function LecturerDashboard() {
             )}
 
             {/* SETUP VIEW */}
-            {viewMode === 'setup' && (
-              <div className="space-y-6">
-                <div>
-                  <h1 className="text-3xl font-bold text-slate-900 mb-2">My Courses</h1>
-                  <p className="text-slate-600">Manage your course assignments and units</p>
-                </div>
 
-                {lecturerAssignments.length === 0 ? (
-                  <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
-                    <div className="text-5xl mb-4">📚</div>
-                    <h3 className="text-lg font-bold text-slate-900 mb-2">No Courses Yet</h3>
-                    <p className="text-slate-600 mb-6">Create your first course assignment to get started</p>
+        {viewMode === 'setup' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-gray-900">Setup Your Teaching Assignment</h2>
+              <button
+                onClick={() => setViewMode('dashboard')}
+                className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm font-semibold"
+              >
+                Cancel
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateAssignment} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6 max-w-3xl">
+              {/* Exam Body Selection */}
+              <div>
+                <label className="block text-gray-700 text-sm font-semibold mb-3">Choose Exam Body</label>
+                <div className="flex flex-wrap gap-3">
+                  {['KNEC', 'CDACC', 'JP', 'Short Course'].map((body) => (
                     <button
+                      key={body}
+                      type="button"
                       onClick={() => {
-                        setSetupForm({ course_id: '', campus: '', selected_units: [], selected_class_ids: [] });
+                        setSelectedExamBody(body);
+                        setSetupForm({ ...setupForm, course_id: '', selected_units: [] });
+                        setCourseUnits([]);
+                        loadCoursesForSetup(body);
                       }}
-                      className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
+                      className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-colors ${
+                        selectedExamBody === body
+                          ? 'bg-green-600 text-white shadow-sm'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
                     >
-                      Create Assignment
+                      {body}
                     </button>
-                  </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Campus Selection */}
+              <div>
+                <label className="block text-gray-700 text-sm font-semibold mb-2">Campus *</label>
+                <select
+                  value={setupForm.campus}
+                  onChange={(e) => setSetupForm({ ...setupForm, campus: e.target.value })}
+                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  required
+                >
+                  <option value="">Select Campus</option>
+                  <option value="main">Main Campus</option>
+                  <option value="west">West Campus</option>
+                </select>
+              </div>
+
+              {/* Course Selection */}
+              <div>
+                <label className="block text-gray-700 text-sm font-semibold mb-2">Select Course *</label>
+                  <select
+                    value={setupForm.course_id}
+                    onChange={(e) => {
+                      const courseId = e.target.value;
+                      setSetupForm({ ...setupForm, course_id: courseId, selected_units: [], selected_class_ids: [] });
+                      setAvailableClasses([]);
+                      loadUnitsForCourse(courseId);
+                      loadClassesForCourse(courseId);
+                    }}
+                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-green-500 focus:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    required
+                    disabled={!selectedExamBody}
+                  >
+                    <option value="">{selectedExamBody ? 'Select a course' : 'Select an exam body first'}</option>
+                    {courses.map((course) => (
+                      <option key={course.id} value={course.id}>{course.name}</option>
+                    ))}
+                  </select>
+              </div>
+
+              {/* Units Selection - Grouped by Module */}
+              <div>
+                <label className="block text-gray-700 text-sm font-semibold mb-3">Select Units You Teach *</label>
+                {!setupForm.course_id ? (
+                  <p className="text-gray-400 text-sm py-4 text-center">Select a course first.</p>
+                ) : courseUnits.length === 0 ? (
+                  <p className="text-amber-600 text-sm py-4 text-center">No units found for this course.</p>
                 ) : (
-                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                    <div className="divide-y divide-slate-200">
-                      {lecturerAssignments.map((assign) => (
-                        <div key={assign.id} className="p-6 hover:bg-blue-50 transition-colors">
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                            <div>
-                              <h3 className="font-semibold text-slate-900">{assign.course_name}</h3>
-                              <p className="text-sm text-slate-500 mt-2">{formatCampus(assign.campus)}</p>
-                            </div>
-                            <div className="flex gap-2">
-                              <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                                Active
-                              </span>
-                            </div>
+                  <>
+                    {Object.entries(
+                      courseUnits.reduce((groups: any, unit: any) => {
+                        const mod = unit.module_index || 0;
+                        if (!groups[mod]) groups[mod] = [];
+                        groups[mod].push(unit);
+                        return groups;
+                      }, {} as any)
+                    ).sort(([a]: any, [b]: any) => Number(a) - Number(b)).map(([moduleIdx, moduleUnits]: any) => (
+                      <div key={moduleIdx} className="border border-gray-200 rounded-xl overflow-hidden mb-4 last:mb-0">
+                        {/* Module Header */}
+                        <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="w-7 h-7 bg-green-100 text-green-700 rounded-full flex items-center justify-center text-xs font-bold">
+                              {moduleIdx}
+                            </span>
+                            <span className="font-semibold text-gray-900 text-sm">
+                              {Number(moduleIdx) === 0 ? 'Units' : selectedExamBody === 'CDACC' ? `Stage ${moduleIdx}` : `Module ${moduleIdx}`}
+                            </span>
                           </div>
+                          <span className="text-xs text-gray-400">
+                            {(moduleUnits as any[]).length} unit{(moduleUnits as any[]).length > 1 ? 's' : ''}
+                          </span>
                         </div>
-                      ))}
+                        {/* Module Units */}
+                        <div className="divide-y divide-gray-100">
+                          {(moduleUnits as any[]).map((unit: any) => (
+                            <label key={unit.unit_code} className="flex items-center gap-3 px-4 py-3 hover:bg-green-50/50 cursor-pointer transition-colors">
+                              <input
+                                type="checkbox"
+                                checked={setupForm.selected_units.includes(unit.unit_code)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSetupForm({
+                                      ...setupForm,
+                                      selected_units: [...setupForm.selected_units, unit.unit_code]
+                                    });
+                                  } else {
+                                    setSetupForm({
+                                      ...setupForm,
+                                      selected_units: setupForm.selected_units.filter(u => u !== unit.unit_code)
+                                    });
+                                  }
+                                }}
+                                className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <span className="text-gray-900 text-sm font-medium block truncate">{unit.name}</span>
+                                <span className="text-gray-400 text-xs">
+                                  {unit.unit_code}
+                                  {unit.semester_index ? ` · Sem ${unit.semester_index}` : ''}
+                                  {unit.unit_type ? ` · ${unit.unit_type}` : ''}
+                                </span>
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    {/* Selected count */}
+                    <div className="flex items-center justify-between pt-3">
+                      <p className="text-xs text-gray-400">
+                        {setupForm.selected_units.length} of {courseUnits.length} units selected
+                      </p>
+                      {setupForm.selected_units.length < courseUnits.length && courseUnits.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setSetupForm({
+                            ...setupForm,
+                            selected_units: courseUnits.map((u: any) => u.unit_code)
+                          })}
+                          className="text-xs text-green-600 hover:text-green-700 font-medium"
+                        >
+                          Select All
+                        </button>
+                      )}
+                      {setupForm.selected_units.length === courseUnits.length && courseUnits.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setSetupForm({
+                            ...setupForm,
+                            selected_units: []
+                          })}
+                          className="text-xs text-gray-500 hover:text-gray-700 font-medium"
+                        >
+                          Clear All
+                      </button>
+                      )}
                     </div>
-                  </div>
+                  </>
                 )}
               </div>
-            )}
+              {/* Class Selection - Optional */}
+              {setupForm.course_id && (
+                <div>
+                  <label className="block text-gray-700 text-sm font-semibold mb-3">
+                    Assign to Class(es) <span className="text-gray-400 font-normal">(optional)</span>
+                  </label>
+                  <p className="text-gray-400 text-xs mb-3">
+                    Select which class(es) you teach these {setupForm.selected_units.length} unit{setupForm.selected_units.length !== 1 ? 's' : ''} to. If no class exists yet, one will be auto-created when the first student enrolls.
+                  </p>
+                  {availableClasses.length === 0 ? (
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm">
+                      <p className="text-blue-800 font-medium">ℹ️ No classes yet</p>
+                      <p className="text-blue-600 text-xs mt-1">
+                        A class will be created automatically when the first student enrolls. You can submit the assignment now.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {availableClasses.map((cls) => (
+                        <label
+                          key={cls.id}
+                          className={`flex items-center gap-3 px-4 py-3 border rounded-xl cursor-pointer transition-colors ${
+                            setupForm.selected_class_ids.includes(cls.id)
+                              ? 'border-green-300 bg-green-50/50'
+                              : 'border-gray-200 hover:border-gray-300 bg-white'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={setupForm.selected_class_ids.includes(cls.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSetupForm({
+                                  ...setupForm,
+                                  selected_class_ids: [...setupForm.selected_class_ids, cls.id]
+                                });
+                              } else {
+                                setSetupForm({
+                                  ...setupForm,
+                                  selected_class_ids: setupForm.selected_class_ids.filter((id) => id !== cls.id)
+                                });
+                              }
+                            }}
+                            className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <span className="text-gray-900 text-sm font-medium block">{cls.class_name}</span>
+                            <span className="text-gray-400 text-xs">
+                              {formatCampus(cls.campus)} · Sem {cls.semester} · {cls.intake_month}
+                            </span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  {setupForm.selected_class_ids.length > 0 && (
+                    <p className="text-xs text-green-600 font-medium mt-2">
+                      ✓ {setupForm.selected_class_ids.length} class{setupForm.selected_class_ids.length > 1 ? 'es' : ''} selected
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Submit Button */}
+              <div className="flex gap-4 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('dashboard')}
+                  className="flex-1 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creatingAssignment || setupForm.selected_units.length === 0}
+                  className="flex-1 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {creatingAssignment ? 'Creating...' : 'Create Assignment'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
 
             {/* SUBMISSIONS VIEW */}
             {viewMode === 'submissions' && (
