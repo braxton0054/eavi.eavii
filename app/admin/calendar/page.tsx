@@ -107,8 +107,12 @@ export default function AcademicCalendar() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Auto-generate term_name from term + semester
+    const termName = formData.term_name || `Term ${formData.term} - Semester ${formData.semester}`;
+    
     const submitData = {
       ...formData,
+      term_name: termName,
       mock_exam_date: formData.mock_exam_available ? formData.mock_exam_date : null
     };
 
