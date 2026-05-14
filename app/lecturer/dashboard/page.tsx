@@ -116,6 +116,7 @@ export default function LecturerDashboard() {
   // Marks entry state - Updated for Part 3
   const [students, setStudents] = useState<Student[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
+  const [selectedMarksUnit, setSelectedMarksUnit] = useState<string | null>(null);
   const [existingMarks, setExistingMarks] = useState<Map<string, ExamMark>>(new Map());
   const [selectedExamType, setSelectedExamType] = useState<string>('cat');
   const [marksData, setMarksData] = useState<Map<string, { 
@@ -581,6 +582,7 @@ export default function LecturerDashboard() {
     })) || [];
 
     setUnits(mappedUnits);
+    setSelectedMarksUnit(mappedUnits[0]?.unit_code || null);
     
     // Load existing marks
     await loadExistingMarks(selectedClass?.class_id, mappedUnits);
@@ -1189,6 +1191,27 @@ export default function LecturerDashboard() {
               ))}
             </div>
 
+            {/* Unit Selector */}
+            {units.length > 1 && (
+              <div className="flex items-center gap-3">
+                <label className="text-sm text-gray-500 font-medium">Unit:</label>
+                <select
+                  value={selectedMarksUnit || ''}
+                  onChange={(e) => {
+                    setSelectedMarksUnit(e.target.value);
+                    loadExistingMarks(selectedClass?.class_id, units);
+                  }}
+                  className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                >
+                  {units.map((u) => (
+                    <option key={u.unit_code} value={u.unit_code}>
+                      {u.unit_code} — {u.unit_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Window Status Banner */}
             {!isWindowOpen && (
               <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -1215,7 +1238,7 @@ export default function LecturerDashboard() {
                     <tr className="border-b-2 border-gray-200 bg-gray-50">
                       <th className="text-left p-3 text-gray-600 text-sm font-semibold">Student</th>
                       <th className="text-left p-3 text-gray-600 text-sm font-semibold">Admission #</th>
-                      {units.map((unit) => (
+                      {units.filter(u => u.unit_code === selectedMarksUnit).map((unit) => (
                         <th key={unit.unit_code} className="p-3 text-center text-gray-600 text-sm font-semibold">
                           <div>{unit.unit_name}</div>
                           <div className="text-xs text-gray-400 font-normal">{unit.unit_code}</div>
@@ -1228,7 +1251,7 @@ export default function LecturerDashboard() {
                       <tr key={student.id} className={`border-b border-gray-100 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} hover:bg-blue-50/30`}>
                         <td className="p-3 text-gray-900 font-medium">{student.full_name}</td>
                         <td className="p-3 text-gray-400 text-sm">{student.admission_number}</td>
-                        {units.map((unit) => {
+                        {units.filter(u => u.unit_code === selectedMarksUnit).map((unit) => {
                           const key = `${student.application_id}-${unit.unit_code}`;
                           const existing = existingMarks.get(key);
                           const current = marksData.get(key);
