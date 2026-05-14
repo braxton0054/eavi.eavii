@@ -533,7 +533,7 @@ export default function LecturerDashboard() {
     }
     
     // Load students (by class_id or course_id fallback)
-    await loadStudentsForClass(cls.class_id, cls.course_id);
+    await loadStudentsForClass(cls.class_id, cls.course_id, cls.campus);
     
     // Load units
     await loadUnitsForAssignment(cls.assignment_id);
@@ -554,7 +554,7 @@ export default function LecturerDashboard() {
   };
 
   // Load students for class
-  const loadStudentsForClass = async (classId: string, courseId?: string) => {
+  const loadStudentsForClass = async (classId: string, courseId?: string, campus?: string) => {
     let query = supabase
       .from('applications')
       .select('id, full_name, admission_number, current_module, current_semester, financial_hold, status')
@@ -565,6 +565,7 @@ export default function LecturerDashboard() {
       query = query.eq('class_id', classId);
     } else if (courseId) {
       query = query.eq('course_id', courseId);
+      if (campus) query = query.eq('campus', campus);
     }
 
     const { data, error } = await query.order('full_name');
