@@ -110,6 +110,7 @@ export default function LecturerDashboard() {
     selected_class_ids: [] as string[]
   });
   const [creatingAssignment, setCreatingAssignment] = useState(false);
+  const [courseSearch, setCourseSearch] = useState('');
   
   // Selected class for marks entry
   const [selectedClass, setSelectedClass] = useState<any>(null);
@@ -1389,42 +1390,70 @@ export default function LecturerDashboard() {
                 </div>
               </div>
 
-              {/* Campus Selection */}
+              {/* Campus Selection - Pill Buttons */}
               <div>
-                <label className="block text-gray-700 text-sm font-semibold mb-2">Campus *</label>
-                <select
-                  value={setupForm.campus}
-                  onChange={(e) => setSetupForm({ ...setupForm, campus: e.target.value })}
-                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  required
-                >
-                  <option value="">Select Campus</option>
-                  <option value="main">Main Campus</option>
-                  <option value="west">West Campus</option>
-                </select>
+                <label className="block text-gray-700 text-sm font-semibold mb-3">Campus *</label>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setSetupForm({ ...setupForm, campus: 'main', course_id: '', selected_units: [], selected_class_ids: [] })}
+                    className={`flex-1 px-5 py-3 rounded-xl text-sm font-semibold transition-all border-2 ${
+                      setupForm.campus === 'main'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                        : 'bg-white text-slate-700 border-slate-300 hover:border-blue-400 hover:shadow-sm'
+                    }`}
+                  >
+                    <span className="block text-lg mb-1">🏛️</span>
+                    Main Campus
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSetupForm({ ...setupForm, campus: 'west', course_id: '', selected_units: [], selected_class_ids: [] })}
+                    className={`flex-1 px-5 py-3 rounded-xl text-sm font-semibold transition-all border-2 ${
+                      setupForm.campus === 'west'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                        : 'bg-white text-slate-700 border-slate-300 hover:border-blue-400 hover:shadow-sm'
+                    }`}
+                  >
+                    <span className="block text-lg mb-1">🌍</span>
+                    West Campus
+                  </button>
+                </div>
               </div>
 
-              {/* Course Selection */}
+              {/* Course Selection - Searchable */}
               <div>
                 <label className="block text-gray-700 text-sm font-semibold mb-2">Select Course *</label>
-                  <select
-                    value={setupForm.course_id}
-                    onChange={(e) => {
-                      const courseId = e.target.value;
-                      setSetupForm({ ...setupForm, course_id: courseId, selected_units: [], selected_class_ids: [] });
-                      setAvailableClasses([]);
-                      loadUnitsForCourse(courseId);
-                      loadClassesForCourse(courseId);
-                    }}
-                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-green-500 focus:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    required
-                    disabled={!selectedExamBody}
-                  >
-                    <option value="">{selectedExamBody ? 'Select a course' : 'Select an exam body first'}</option>
-                    {courses.map((course) => (
+                {selectedExamBody && courses.length > 5 && (
+                  <input
+                    type="text"
+                    placeholder="Search courses..."
+                    value={courseSearch}
+                    onChange={(e) => setCourseSearch(e.target.value)}
+                    className="w-full px-4 py-2.5 mb-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                )}
+                <select
+                  value={setupForm.course_id}
+                  onChange={(e) => {
+                    const courseId = e.target.value;
+                    setSetupForm({ ...setupForm, course_id: courseId, selected_units: [], selected_class_ids: [] });
+                    setCourseSearch('');
+                    setAvailableClasses([]);
+                    loadUnitsForCourse(courseId);
+                    loadClassesForCourse(courseId);
+                  }}
+                  className="w-full px-4 py-3 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                  required
+                  disabled={!selectedExamBody}
+                >
+                  <option value="">{selectedExamBody ? (courses.length > 0 ? 'Select a course' : 'No courses found') : 'Select an exam body first'}</option>
+                  {courses
+                    .filter((c) => !courseSearch || c.name.toLowerCase().includes(courseSearch.toLowerCase()))
+                    .map((course) => (
                       <option key={course.id} value={course.id}>{course.name}</option>
                     ))}
-                  </select>
+                </select>
               </div>
 
               {/* Units Selection - Grouped by Module */}
