@@ -1224,7 +1224,7 @@ export default function LecturerDashboard() {
           <div className="space-y-6">
             {!selectedClass ? (
               <div>
-                <h2 className="text-2xl font-bold text-slate-900 mb-4">Select a Class</h2>
+                <h2 className="text-2xl font-bold text-slate-900 mb-4">Select a Course</h2>
                 <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
                   <div className="divide-y divide-slate-200">
                     {lecturerClasses.length === 0 ? (
@@ -1239,8 +1239,8 @@ export default function LecturerDashboard() {
                           className="w-full text-left p-4 sm:p-6 hover:bg-blue-50 transition-colors flex items-center justify-between"
                         >
                           <div>
-                            <h3 className="font-semibold text-slate-900">{cls.class_name || cls.course_name}</h3>
-                            <p className="text-sm text-slate-500 mt-1">{cls.course_name} · {formatCampus(cls.campus)}</p>
+                            <h3 className="font-semibold text-slate-900">{cls.course_name}</h3>
+                            <p className="text-sm text-slate-500 mt-1">{formatCampus(cls.campus)}{cls.total_students > 0 ? ` · ${cls.total_students} student${cls.total_students !== 1 ? 's' : ''}` : ' · No students yet'}</p>
                           </div>
                           <svg className="w-5 h-5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -1261,7 +1261,7 @@ export default function LecturerDashboard() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
-              Back to Classes
+              Back to Courses
             </button>
             {/* Class Header */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
