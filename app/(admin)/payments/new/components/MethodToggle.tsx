@@ -2,7 +2,7 @@
 import React from 'react'
 import styles from './styles.module.css'
 
-const METHODS = ['mpesa','bank','cash','card'] as const
+const METHODS = ['bank','cash','card'] as const
 
 export default function MethodToggle({ value, onChange }:{ value:string, onChange:(m:string)=>void }){
   return (

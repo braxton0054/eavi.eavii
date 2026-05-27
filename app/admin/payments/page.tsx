@@ -3,91 +3,67 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/client';
 import { useRouter } from 'next/navigation';
-import { Search, Loader2, CheckCircle } from 'lucide-react';
+import MpesaPayButton from '@/components/payhero/MpesaPayButton';
 
 export const dynamic = 'force-dynamic';
 
-const fmt = (n: number) => `KES ${(n || 0).toLocaleString()}`;
+const fmt = (n: number) => `KES ${(n || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 const genReceipt = () => {
   const d = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   return `RCP-${d}-${Math.floor(Math.random() * 90000 + 10000)}`;
 };
-
-const PAYMENT_TYPES = [
-  { value: 'tuition', label: 'Tuition' },
-  { value: 'practical', label: 'Practical' },
-  { value: 'exam', label: 'Exam' },
-  { value: 'registration', label: 'Registration' },
-  { value: 'library', label: 'Library' },
-  { value: 'other', label: 'Other' },
-];
-
-const PAYMENT_METHODS = [
-  { value: 'mpesa', label: 'M-Pesa', needsRef: true },
-  { value: 'bank_transfer', label: 'Bank Transfer', needsRef: true },
-  { value: 'cash', label: 'Cash', needsRef: false },
-  { value: 'card', label: 'Card', needsRef: true },
-];
-
-const feeLabel = (mode: string, modIdx: number, semIdx: number) =>
-  mode === 'per_module' ? `Stage ${modIdx}` : `Module ${modIdx} · Semester ${semIdx}`;
 
 export default function PaymentsPage() {
   const router = useRouter();
   const [supabase, setSupabase] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // Search
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
 
-  // Student data
   const [student, setStudent] = useState<any>(null);
-  const [studentProfile, setStudentProfile] = useState<any>(null);
   const [feeLines, setFeeLines] = useState<any[]>([]);
-  const [selectedFee, setSelectedFee] = useState<any>(null);
+  const [history, setHistory] = useState<any[]>([]);
+  const [payheroCfg, setPayheroCfg] = useState<{ paybill_no: string; is_active: boolean } | null>(null);
 
-  // Payment form
   const [form, setForm] = useState({
-    payment_type: 'tuition',
+    payment_type: 'tuition' as string,
     amount: 0,
-    payment_method: 'mpesa',
+    payment_method: 'cash' as string,
     transaction_id: '',
     payment_date: new Date().toISOString().split('T')[0],
     receipt_number: genReceipt(),
     notes: '',
   });
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [history, setHistory] = useState<any[]>([]);
 
+  /* auth */
   useEffect(() => {
     const client = createClient();
     setSupabase(client);
     client.auth.getSession().then(({ data }: any) => {
       const s = data.session;
-      if (!s || s.user?.user_metadata?.role !== 'admin') {
-        router.push('/login/admin');
-        return;
-      }
+      if (!s || s.user?.user_metadata?.role !== 'admin') { router.push('/login/admin'); return; }
       setLoading(false);
     });
   }, [router]);
 
-  // Search
+  /* search — enrolled only */
   useEffect(() => {
     if (query.length < 2 || !supabase) { setResults([]); setShowResults(false); return; }
     setSearching(true);
     const t = setTimeout(async () => {
       const { data } = await supabase
         .from('applications')
-        .select('id, full_name, admission_number, campus, courses!inner(name)')
-        .in('status', ['enrolled', 'pending'])
+        .select('id, full_name, admission_number, campus, total_balance, financial_hold, status')
+        .eq('status', 'enrolled')
         .or(`full_name.ilike.%${query}%,admission_number.ilike.%${query}%`)
-        .limit(8);
+        .order('full_name')
+        .limit(10);
       setResults(data || []);
       setShowResults((data?.length || 0) > 0);
       setSearching(false);
@@ -95,334 +71,220 @@ export default function PaymentsPage() {
     return () => clearTimeout(t);
   }, [query, supabase]);
 
+  /* select student */
   const selectStudent = async (s: any) => {
     setShowResults(false);
     setQuery(s.full_name);
-    setStudent(s);
-    setStudentProfile(null);
-    setFeeLines([]);
-    setSelectedFee(null);
-    setSuccess(false);
-    setHistory([]);
-    setForm(f => ({ ...f, receipt_number: genReceipt() }));
+    setStudent(null); setFeeLines([]); setHistory([]); setSuccess(false);
+    setForm(f => ({ ...f, receipt_number: genReceipt(), amount: 0 }));
 
-    // Profile
     const { data: profile } = await supabase!
       .from('applications')
-      .select('id, full_name, admission_number, campus, total_balance, credit_balance, financial_hold, transcript_unlocked')
-      .eq('id', s.id)
-      .single();
-    setStudentProfile(profile);
+      .select('id, full_name, admission_number, campus, total_balance, credit_balance, financial_hold, status')
+      .eq('id', s.id).single();
+    if (!profile) return;
+    setStudent(profile);
 
-    // Fee summary from backend view
-    let { data: fees } = await supabase!
-      .from('v_student_fee_summary')
-      .select('*')
-      .eq('application_id', s.id);
+    /* payhero config — single global config */
+    const { data: ph } = await supabase!.from('payhero_config').select('paybill_no, channel_id, is_active').single();
+    setPayheroCfg(ph && ph.is_active && ph.channel_id > 0 ? { paybill_no: ph.paybill_no, is_active: ph.is_active } : null);
 
-    // Fallback for pending students (view only returns enrolled)
-    if (!fees || fees.length === 0) {
-      const { data: app } = await supabase!
-        .from('applications')
-        .select('course_type_id, current_module')
-        .eq('id', s.id)
-        .single();
-
-      if (app) {
-        const ctId = (app as any).course_type_id;
-        const currMod = (app as any).current_module || 1;
-
-        // Get current module
-        const { data: mods } = await supabase!
-          .from('modules')
-          .select('id, module_index, label, payment_mode, fee, exam_fee')
-          .eq('course_type_id', ctId)
-          .order('module_index');
-
-        const curMod = mods?.find((m: any) => m.module_index === currMod);
-        if (curMod && mods) {
-          if (curMod.payment_mode === 'per_module') {
-            const modFee = Number(curMod.fee || 0);
-            fees = [{
-              module_id: curMod.id,
-              module_index: curMod.module_index,
-              module_label: curMod.label || '',
-              payment_mode: 'per_module',
-              semester_id: null,
-              semester_index: 0,
-              tuition_fee: modFee,
-              practical_fee: 0,
-              additional_fees: 0,
-              total_expected: modFee,
-              total_paid: 0,
-              balance: modFee,
-              due_date: null,
-            }];
-          } else {
-            const { data: sems } = await supabase!
-              .from('semesters')
-              .select('id, semester_index, fee, practical_fee')
-              .eq('module_id', curMod.id)
-              .order('semester_index');
-
-            fees = (sems || []).map((sem: any) => {
-              const total = Number(sem.fee || 0) + Number(sem.practical_fee || 0);
-              return {
-                module_id: curMod.id,
-                module_index: curMod.module_index,
-                module_label: curMod.label || '',
-                payment_mode: 'per_semester',
-                semester_id: sem.id,
-                semester_index: sem.semester_index,
-                tuition_fee: Number(sem.fee || 0),
-                practical_fee: Number(sem.practical_fee || 0),
-                additional_fees: 0,
-                total_expected: total,
-                total_paid: 0,
-                balance: total,
-                due_date: null,
-              };
-            });
-          }
-        }
-      }
-    }
-
+    const [{ data: fees }, { data: hist }] = await Promise.all([
+      supabase!.from('v_student_fee_summary').select('*').eq('application_id', profile.id),
+      supabase!.from('v_student_payment_history').select('*').eq('application_id', profile.id).order('payment_date', { ascending: false }).limit(20),
+    ]);
     setFeeLines(fees || []);
-
-    // Payment history
-    const { data: hist } = await supabase!
-      .from('v_student_payment_history')
-      .select('*')
-      .eq('application_id', s.id)
-      .limit(10);
     setHistory(hist || []);
   };
 
-  const selectFeeLine = (fee: any) => {
-    if (fee.balance <= 0) return;
-    setSelectedFee(fee);
-    setForm(f => ({
-      ...f,
-      amount: fee.balance,
-      receipt_number: genReceipt(),
-    }));
-    setErrors({});
-    setSuccess(false);
-  };
-
-  const validate = (): boolean => {
-    const e: Record<string, string> = {};
-    if (!selectedFee) e._ = 'Select a fee line';
-    if (!form.amount || form.amount <= 0) e.amount = 'Enter valid amount';
-    const method = PAYMENT_METHODS.find(m => m.value === form.payment_method);
-    if (method?.needsRef && !form.transaction_id.trim()) e.transaction_id = 'Transaction ref required';
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  /* submit manual payment */
+  const submitManual = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate() || !student || !selectedFee || !supabase) return;
-
-    // Block payment if course has no fees configured
-    if (selectedFee.total_expected <= 0) {
-      alert('This course has no fees configured. Set the fees in course setup first.');
-      setSubmitting(false);
-      return;
-    }
+    if (!student) return;
+    const errs: Record<string, string> = {};
+    if (!form.amount || form.amount <= 0) errs.amount = 'Enter amount > 0';
+    if (form.payment_method !== 'cash' && !form.transaction_id.trim()) errs.transaction_id = 'Reference required';
+    setFormErrors(errs);
+    if (Object.keys(errs).length) return;
 
     setSubmitting(true);
-
-    const isPerModule = selectedFee.payment_mode === 'per_module';
-    const insertSemesterId = isPerModule ? null : selectedFee.semester_id || null;
-    const insertModuleId = isPerModule ? selectedFee.module_id : selectedFee.module_id || null;
-
     const { error } = await supabase.from('fee_payments').insert({
-      application_id: student.id,
-      payment_type: form.payment_type,
-      amount: Number(form.amount),
-      payment_method: form.payment_method,
-      transaction_id: form.transaction_id || null,
-      payment_date: form.payment_date,
-      status: 'completed',
-      receipt_number: form.receipt_number,
-      notes: form.notes || null,
-      semester_id: insertSemesterId,
-      module_id: insertModuleId,
+      application_id: student.id, payment_type: form.payment_type, amount: Number(form.amount),
+      payment_method: form.payment_method, transaction_id: form.transaction_id || null,
+      payment_date: form.payment_date, status: 'completed', receipt_number: form.receipt_number, notes: form.notes || null,
     });
+    if (error) { alert('Error: ' + error.message); setSubmitting(false); return; }
 
-    if (error) {
-      alert('Error: ' + error.message);
-      setSubmitting(false);
-      return;
-    }
-
-    setSuccess(true);
-    setSubmitting(false);
-    setForm(f => ({
-      ...f,
-      payment_type: 'tuition',
-      amount: 0,
-      transaction_id: '',
-      receipt_number: genReceipt(),
-      notes: '',
-    }));
-
-    // Refresh data
-    const { data: fees } = await supabase.from('v_student_fee_summary').select('*').eq('application_id', student.id);
-    setFeeLines(fees || []);
-    const { data: hist } = await supabase.from('v_student_payment_history').select('*').eq('application_id', student.id).limit(10);
-    setHistory(hist || []);
+    setSuccess(true); setSubmitting(false);
+    setForm(f => ({ ...f, payment_type: 'tuition', amount: 0, transaction_id: '', receipt_number: genReceipt(), notes: '' }));
+    const [{ data: fees }, { data: hist }, { data: prof }] = await Promise.all([
+      supabase.from('v_student_fee_summary').select('*').eq('application_id', student.id),
+      supabase.from('v_student_payment_history').select('*').eq('application_id', student.id).order('payment_date', { ascending: false }).limit(20),
+      supabase.from('applications').select('id, full_name, admission_number, campus, total_balance, credit_balance, financial_hold, status').eq('id', student.id).single(),
+    ]);
+    setFeeLines(fees || []); setHistory(hist || []);
+    if (prof) setStudent(prof);
   };
 
+  /* pay hero success */
+  const onPayHeroSuccess = async () => {
+    setSuccess(true);
+    if (!student || !supabase) return;
+    const [{ data: fees }, { data: hist }, { data: prof }] = await Promise.all([
+      supabase.from('v_student_fee_summary').select('*').eq('application_id', student.id),
+      supabase.from('v_student_payment_history').select('*').eq('application_id', student.id).order('payment_date', { ascending: false }).limit(20),
+      supabase.from('applications').select('id, full_name, admission_number, campus, total_balance, credit_balance, financial_hold, status').eq('id', student.id).single(),
+    ]);
+    setFeeLines(fees || []); setHistory(hist || []);
+    if (prof) setStudent(prof);
+  };
+
+  /* ── render ── */
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-[#1a1a1a] border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-[#666] font-medium">Loading…</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-gray-50 font-sans text-[#1a1a1a]">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-6 py-4">
-        <div className="max-w-6xl mx-auto flex items-center gap-4">
-          <button onClick={() => router.push('/admin/dashboard')} className="text-sm text-slate-400 hover:text-slate-600">← Back</button>
-          <h1 className="text-lg font-bold text-slate-900">Fee Payments</h1>
+      <header className="sticky top-0 z-40 bg-gray-50 border-b border-[#e5e5e2] h-14">
+        <div className="h-full max-w-screen-xl mx-auto px-4 flex items-center gap-4">
+          <button onClick={() => router.push('/admin/dashboard')} className="text-sm text-[#666] hover:text-[#1a1a1a] transition-colors">← Dashboard</button>
+          <h1 className="font-bold text-sm tracking-tight">Fee Payments</h1>
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-6xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="max-w-screen-xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {/* ─── LEFT: Search + Fee Summary ─── */}
+        {/* ════ LEFT ════ */}
         <div className="lg:col-span-2 space-y-5">
 
           {/* Search */}
-          <div className="bg-white rounded-lg border border-slate-200 p-4">
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                type="text"
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-                placeholder="Search student by name or admission number..."
-                className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-              {searching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-slate-400" />}
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+              <input type="text" value={query} onChange={e => setQuery(e.target.value)}
+                placeholder="Search enrolled student by name or admission number..."
+                className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1a1a1a]" />
             </div>
             {showResults && (
-              <div className="mt-2 border border-slate-200 rounded-lg bg-white shadow-sm max-h-60 overflow-y-auto">
+              <div className="mt-2 border border-gray-200 rounded-lg bg-white shadow-sm max-h-60 overflow-y-auto">
                 {results.map((r: any) => (
-                  <button
-                    key={r.id}
-                    onClick={() => selectStudent(r)}
-                    className="w-full text-left px-3 py-2.5 text-sm hover:bg-slate-50 border-b border-slate-100 last:border-0 flex items-center gap-3"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-semibold text-xs">
+                  <button key={r.id} onClick={() => selectStudent(r)}
+                    className="w-full text-left px-3 py-2.5 text-sm hover:bg-gray-50 border-b border-gray-100 last:border-0 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-xs">
                       {r.full_name?.charAt(0) || '?'}
                     </div>
-                    <div className="min-w-0">
-                      <p className="font-medium text-slate-900 truncate">{r.full_name}</p>
-                      <p className="text-xs text-slate-400">{r.admission_number} · {r.courses?.name}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-gray-900 truncate">{r.full_name}</p>
+                      <p className="text-xs text-gray-400">{r.admission_number} · {r.campus}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className={`text-xs font-semibold ${(r.total_balance || 0) > 0 ? 'text-red-600' : 'text-emerald-600'}`}>{fmt(r.total_balance || 0)}</p>
+                      {r.financial_hold && <p className="text-[10px] text-amber-600 mt-0.5">HOLD</p>}
                     </div>
                   </button>
                 ))}
+                {results.length === 0 && <p className="px-3 py-3 text-sm text-gray-400">No enrolled students found</p>}
               </div>
             )}
           </div>
 
-          {/* Student Info */}
-          {studentProfile && (
-            <div className="bg-white rounded-lg border border-slate-200 p-4 flex items-center justify-between">
+          {/* Student Profile */}
+          {student && (
+            <div className="bg-white rounded-lg border border-gray-200 p-4 flex items-center justify-between">
               <div>
-                <h2 className="font-bold text-slate-900">{studentProfile.full_name}</h2>
-                <p className="text-xs text-slate-500">{studentProfile.admission_number} · {studentProfile.campus}</p>
+                <h2 className="font-bold text-gray-900">{student.full_name}</h2>
+                <p className="text-xs text-gray-500">{student.admission_number} · {student.campus}</p>
               </div>
               <div className="text-right">
-                <p className="text-xs text-slate-400">Balance</p>
-                <p className={`text-lg font-bold ${(studentProfile.total_balance || 0) > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                  {fmt(studentProfile.total_balance ?? 0)}
-                </p>
+                <p className="text-xs text-gray-400 uppercase tracking-wider">Outstanding</p>
+                <p className={`text-2xl font-bold ${(student.total_balance || 0) > 0 ? 'text-red-600' : 'text-emerald-600'}`}>{fmt(student.total_balance || 0)}</p>
+                {student.financial_hold && (
+                  <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">Financial Hold</span>
+                )}
               </div>
             </div>
           )}
 
           {/* Fee Lines */}
-          {student && feeLines.length === 0 && (
-            <div className="bg-white rounded-lg border border-slate-200 p-8 text-center text-sm text-slate-400">
-              No fee lines found for this student.
-            </div>
-          )}
-          {feeLines.length > 0 && (
+          {student && feeLines.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Fee Lines</p>
-              <div className="space-y-1.5">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Fee Structure</p>
+              <div className="space-y-2">
                 {feeLines.map((fee: any, i: number) => {
-                  const pct = fee.total_expected > 0 ? Math.min(Math.round((fee.total_paid / fee.total_expected) * 100), 100) : 0;
-                  const cleared = pct >= 95;
-                  const sel = selectedFee?.semester_id === fee.semester_id && selectedFee?.module_id === fee.module_id;
+                  const pct = fee.total_expected > 0 ? Math.min(Math.round((Number(fee.total_paid) / Number(fee.total_expected)) * 100), 100) : 0;
+                  const cleared = Number(fee.balance) <= 0;
                   return (
-                    <button
-                      key={fee.semester_id || fee.module_id || i}
-                      onClick={() => selectFeeLine(fee)}
-                      disabled={fee.balance <= 0}
-                      className={`w-full text-left p-3.5 rounded-lg border transition-all text-sm ${
-                        sel
-                          ? 'border-indigo-500 bg-indigo-50'
-                          : cleared
-                          ? 'border-emerald-200 bg-emerald-50'
-                          : fee.balance <= 0
-                          ? 'border-slate-200 bg-slate-50 opacity-60'
-                          : 'border-slate-200 bg-white hover:border-indigo-300'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="font-semibold text-slate-800">
-                          {feeLabel(fee.payment_mode, fee.module_index, fee.semester_index || 0)}
+                    <div key={fee.semester_id || fee.module_id || i} className={`bg-white rounded-lg border p-4 ${cleared ? 'border-emerald-200 bg-emerald-50/50' : 'border-gray-200'}`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-semibold text-gray-800 text-sm">
+                          {fee.payment_mode === 'per_module' ? `Stage ${fee.module_index}` : `Module ${fee.module_index} · Sem ${fee.semester_index}`}
+                          {fee.module_label && <span className="text-gray-400 font-normal ml-2">({fee.module_label})</span>}
                         </span>
-                        <span className={`font-bold text-sm ${fee.balance > 0 ? 'text-red-500' : 'text-emerald-600'}`}>
-                          {fee.balance > 0 ? fmt(fee.balance) : 'Cleared'}
+                        <span className={`font-bold text-sm ${cleared ? 'text-emerald-600' : 'text-red-600'}`}>
+                          {cleared ? 'Cleared' : fmt(Number(fee.balance))}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-400">
-                        Expected: {fmt(fee.total_expected)} · Paid: {fmt(fee.total_paid)}
-                      </p>
-                      <div className="mt-1.5 h-1.5 rounded-full bg-slate-200 overflow-hidden">
+                      <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
+                        <span>Expected: {fmt(Number(fee.total_expected))} · Paid: {fmt(Number(fee.total_paid))}</span>
+                        <span>{pct}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-gray-200 overflow-hidden">
                         <div className={`h-full rounded-full ${cleared ? 'bg-emerald-500' : pct >= 50 ? 'bg-amber-400' : 'bg-red-400'}`}
                           style={{ width: `${pct}%` }} />
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>
             </div>
           )}
 
+          {student && feeLines.length === 0 && (
+            <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
+              <p className="text-gray-400 text-sm">No fee structure found for this student's course.</p>
+              <p className="text-gray-300 text-xs mt-1">Fees may not be configured in course setup yet.</p>
+            </div>
+          )}
+
           {/* Payment History */}
           {history.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Recent Payments</p>
-              <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-                <table className="w-full text-xs">
-                  <thead className="bg-slate-50">
-                    <tr className="text-slate-500">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Payment History</p>
+              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50">
+                    <tr className="text-gray-500 text-xs uppercase tracking-wider">
                       <th className="text-left py-2.5 px-3 font-medium">Receipt</th>
                       <th className="text-left py-2.5 px-3 font-medium">Date</th>
                       <th className="text-left py-2.5 px-3 font-medium">Type</th>
-                      <th className="text-right py-2.5 px-3 font-medium">Amount</th>
                       <th className="text-left py-2.5 px-3 font-medium">Method</th>
+                      <th className="text-right py-2.5 px-3 font-medium">Amount</th>
                     </tr>
                   </thead>
                   <tbody>
                     {history.map((p: any) => (
-                      <tr key={p.id} className="border-t border-slate-100 text-slate-700">
-                        <td className="py-2.5 px-3 font-mono">{p.receipt_number}</td>
-                        <td className="py-2.5 px-3">{new Date(p.payment_date).toLocaleDateString()}</td>
+                      <tr key={p.id} className="border-t border-gray-100 text-gray-700">
+                        <td className="py-2.5 px-3 font-mono text-xs">{p.receipt_number}</td>
+                        <td className="py-2.5 px-3">{p.payment_date ? new Date(p.payment_date).toLocaleDateString() : '-'}</td>
                         <td className="py-2.5 px-3 capitalize">{p.payment_type}</td>
-                        <td className="py-2.5 px-3 text-right font-semibold">{fmt(p.amount)}</td>
-                        <td className="py-2.5 px-3 capitalize">{p.payment_method}</td>
+                        <td className="py-2.5 px-3">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            p.payment_method === 'mpesa' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                            p.payment_method === 'bank_transfer' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                            p.payment_method === 'cash' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                            'bg-gray-50 text-gray-600 border border-gray-200'
+                          }`}>{p.payment_method}</span>
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-semibold text-emerald-600">{fmt(Number(p.amount))}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -432,130 +294,104 @@ export default function PaymentsPage() {
           )}
         </div>
 
-        {/* ─── RIGHT: Payment Form ─── */}
+        {/* ════ RIGHT — Payment Form ════ */}
         <div>
-          <div className="bg-white rounded-lg border border-slate-200 p-4 sticky top-6">
-            <h2 className="font-bold text-slate-900 mb-4">Record Payment</h2>
+          <div className="bg-white rounded-lg border border-gray-200 p-4 sticky top-20 space-y-4">
+            <h2 className="font-bold text-gray-900">Record Payment</h2>
 
-            {!student && (
-              <p className="text-xs text-slate-400">Search and select a student first.</p>
-            )}
+            {!student && <p className="text-xs text-gray-400">Search and select an enrolled student first.</p>}
 
             {success && (
               <div className="text-center py-6">
-                <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-3">
-                  <CheckCircle className="w-6 h-6 text-emerald-600" />
+                <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                 </div>
                 <p className="font-semibold text-emerald-600 text-sm mb-1">Payment Recorded</p>
-                <p className="text-xs text-slate-400">Receipt: {form.receipt_number}</p>
+                <p className="text-xs text-gray-400">Data refreshed from server</p>
               </div>
             )}
 
             {student && !success && (
-              <form onSubmit={handleSubmit} className="space-y-3.5">
-                {/* Selected fee line */}
+              <form onSubmit={submitManual} className="space-y-3.5">
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Fee Line</label>
-                  <select
-                    value={selectedFee?.semester_id || ''}
-                    onChange={e => {
-                      const fee = feeLines.find((f: any) => f.semester_id === e.target.value || f.module_id === e.target.value);
-                      if (fee) selectFeeLine(fee);
-                    }}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-                  >
-                    <option value="">Select fee line...</option>
-                    {feeLines.map((fee: any, i: number) => (
-                      <option key={fee.semester_id || `mod-${i}`} value={fee.semester_id || fee.module_id}
-                        disabled={fee.balance <= 0}>
-                        {feeLabel(fee.payment_mode, fee.module_index, fee.semester_index || 0)}
-                        {fee.balance > 0 ? ` — ${fmt(fee.balance)} due` : ' — Cleared'}
-                      </option>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Payment Type</label>
+                  <select value={form.payment_type} onChange={e => setForm(f => ({ ...f, payment_type: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1a1a1a] bg-white">
+                    {['tuition','practical','exam','registration','library','other'].map(t => (
+                      <option key={t} value={t}>{t.charAt(0).toUpperCase()+t.slice(1)}</option>
                     ))}
                   </select>
                 </div>
 
-                {selectedFee && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Amount (KES)</label>
+                  <input type="number" value={form.amount || ''} onChange={e => setForm(f => ({ ...f, amount: parseFloat(e.target.value) || 0 }))}
+                    className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1a1a1a] ${formErrors.amount ? 'border-red-400' : 'border-gray-300'}`}
+                    placeholder="0" />
+                  {formErrors.amount && <p className="text-xs text-red-500 mt-1">{formErrors.amount}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Method</label>
+                  <select value={form.payment_method} onChange={e => setForm(f => ({ ...f, payment_method: e.target.value, transaction_id: '' }))}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1a1a1a] bg-white">
+                    {[{v:'cash',l:'Cash'},{v:'bank_transfer',l:'Bank Transfer'},{v:'card',l:'Card'}].map(m => (
+                      <option key={m.v} value={m.v}>{m.l}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {form.payment_method !== 'cash' && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Reference</label>
+                    <input type="text" value={form.transaction_id} onChange={e => setForm(f => ({ ...f, transaction_id: e.target.value }))}
+                      className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1a1a1a] ${formErrors.transaction_id ? 'border-red-400' : 'border-gray-300'}`}
+                      placeholder="Transaction reference" />
+                    {formErrors.transaction_id && <p className="text-xs text-red-500 mt-1">{formErrors.transaction_id}</p>}
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Date</label>
+                  <input type="date" value={form.payment_date} onChange={e => setForm(f => ({ ...f, payment_date: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1a1a1a]" />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Notes</label>
+                  <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1a1a1a] resize-none"
+                    placeholder="Optional..." />
+                </div>
+
+                <button type="submit" disabled={submitting}
+                  className="w-full py-2.5 rounded-lg font-semibold text-sm text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:text-gray-500 transition-colors">
+                  {submitting ? 'Recording…' : 'Record Payment'}
+                </button>
+
+                {/* Pay Hero separator + button */}
+                {payheroCfg && (
                   <>
-                    {/* Warning if no fees configured */}
-                    {selectedFee.total_expected <= 0 && (
-                      <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
-                        ⚠ No fees configured for this course. Go to <strong>Courses</strong> to set module/semester fees first.
-                      </div>
-                    )}
-
-                    {/* Type + Amount */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1">Type</label>
-                        <select value={form.payment_type}
-                          onChange={e => setForm(f => ({ ...f, payment_type: e.target.value }))}
-                          className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
-                          {PAYMENT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1">Amount (KES)</label>
-                        <input type="number" value={form.amount}
-                          onChange={e => setForm(f => ({ ...f, amount: parseFloat(e.target.value) || 0 }))}
-                          className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 ${errors.amount ? 'border-red-400' : 'border-slate-200'}`} />
-                        {errors.amount && <p className="text-xs text-red-500 mt-1">{errors.amount}</p>}
-                      </div>
+                    <div className="relative py-1">
+                      <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200" /></div>
+                      <div className="relative flex justify-center"><span className="px-3 text-xs text-gray-400 bg-white">or pay via M-Pesa</span></div>
                     </div>
-
-                    {/* Method */}
-                    <div>
-                      <label className="block text-xs font-medium text-slate-500 mb-1">Method</label>
-                      <select value={form.payment_method}
-                        onChange={e => setForm(f => ({ ...f, payment_method: e.target.value, transaction_id: '' }))}
-                        className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
-                        {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                      </select>
+                    <div className="bg-gray-50 rounded-lg border border-gray-200 p-3 text-center">
+                      <p className="text-[10px] text-gray-400 mb-1">Paybill Number</p>
+                      <p className="text-xl font-bold text-gray-900 font-mono mb-3">{payheroCfg.paybill_no}</p>
+                      <MpesaPayButton
+                        applicationId={student.id}
+                        amount={Number(student.total_balance) || 0}
+                        studentName={student.full_name}
+                        paybillNo={payheroCfg.paybill_no}
+                        onPaymentSuccess={onPayHeroSuccess}
+                      />
                     </div>
-
-                    {/* Transaction ref */}
-                    {PAYMENT_METHODS.find(m => m.value === form.payment_method)?.needsRef && (
-                      <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-1">
-                          {form.payment_method === 'mpesa' ? 'M-Pesa Code' : 'Reference'}
-                        </label>
-                        <input type="text" value={form.transaction_id}
-                          onChange={e => setForm(f => ({ ...f, transaction_id: e.target.value }))}
-                          className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 ${errors.transaction_id ? 'border-red-400' : 'border-slate-200'}`}
-                          placeholder={form.payment_method === 'mpesa' ? 'e.g. QJ98ABC0P1' : 'e.g. Bank ref'} />
-                        {errors.transaction_id && <p className="text-xs text-red-500 mt-1">{errors.transaction_id}</p>}
-                      </div>
-                    )}
-
-                    {/* Date */}
-                    <div>
-                      <label className="block text-xs font-medium text-slate-500 mb-1">Date</label>
-                      <input type="date" value={form.payment_date}
-                        onChange={e => setForm(f => ({ ...f, payment_date: e.target.value }))}
-                        className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                    </div>
-
-                    {/* Notes */}
-                    <div>
-                      <label className="block text-xs font-medium text-slate-500 mb-1">Notes (optional)</label>
-                      <textarea value={form.notes} rows={2}
-                        onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                        className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        placeholder="Optional notes..." />
-                    </div>
-
-                    {/* Preview */}
-                    <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-400 space-y-1">
-                      <p>Receipt: <span className="font-mono text-slate-700">{form.receipt_number}</span></p>
-                      <p>Status: <span className="text-emerald-600 font-medium">Completed</span></p>
-                      <p className="italic">DB triggers handle clearance automatically.</p>
-                    </div>
-
-                    <button type="submit" disabled={submitting}
-                      className="w-full py-2.5 rounded-lg font-semibold text-sm text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:text-slate-500 transition-colors">
-                      {submitting ? <span className="flex items-center justify-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Recording...</span> : 'Record Payment'}
-                    </button>
                   </>
+                )}
+
+                {!payheroCfg && (
+                  <p className="text-[10px] text-gray-400 text-center">M-Pesa not configured. Set up channel_id and paybill in admin settings.</p>
                 )}
               </form>
             )}
